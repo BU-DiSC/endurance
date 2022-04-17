@@ -1,0 +1,6 @@
+[submodule "endure-jupyter"]
+	path = notebook
+	url = git@github.com:ephoris/endure-jupyter.git
+[submodule "notebook"]
+	path = notebook
+	url = git@github.com:ephoris/endure-jupyter.git
