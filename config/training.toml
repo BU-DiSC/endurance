@@ -1,0 +1,37 @@
+model = "KCostModel"
+log_level = "INFO"
+
+[io]
+data_dir = "/scratchNVM0/ndhuynh/data"
+train_dir = "cost_k_feather"
+train_data = [
+    "k_wl_0.feather",
+    "k_wl_1.feather",
+    "k_wl_2.feather",
+    # "k_wl_3.feather",
+    "k_wl_4.feather",
+    "k_wl_5.feather",
+    "k_wl_6.feather",
+    "k_wl_7.feather",
+    "k_wl_8.feather",
+    "k_wl_9.feather",
+    "k_wl_10.feather",
+    "k_wl_11.feather",
+    "k_wl_12.feather",
+    "k_wl_13.feather",
+    "k_wl_14.feather",
+]
+
+[static_params]
+max_levels = 16
+max_size_ratio = 50
+
+[hyper_params]
+num_cont_vars = 5
+num_cate_vars = 17
+hidden_layers = 2
+learning_rate = 0.001
+lr_schedule_gamma = 0.9
+max_epochs = 128
+batch_size = 32
+validate_frac = 0.1
