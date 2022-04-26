@@ -1,49 +1,19 @@
+import sys
+from pathlib import Path
 import torch
-import numpy as np
 import pandas as pd
 import logging
 from tqdm import tqdm
 from torch import nn
 from torch.utils.data import Dataset, DataLoader
 
+path = str(Path(Path(__file__).parent.absolute()).parent.absolute())
+sys.path.insert(0, path)
 
-class KCost2Hidden(nn.Module):
-    def __init__(self):
-        super(KCost2Hidden, self).__init__()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(21, 21),
-            nn.ReLU(),
-            nn.Linear(21, 21),
-            nn.ReLU(),
-            nn.Linear(21, 21),
-            nn.ReLU(),
-            nn.Linear(21, 1),
-            nn.ReLU(),
-        )
+from model.kcost import KCost1Hidden
 
-    def forward(self, x):
-        out = self.linear_relu_stack(x)
-        return out
-
-
-class KCostDouble2Hidden(nn.Module):
-    def __init__(self):
-        super(KCostDouble2Hidden, self).__init__()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(21, 42),
-            nn.ReLU(),
-            nn.Linear(42, 42),
-            nn.ReLU(),
-            nn.Linear(42, 42),
-            nn.ReLU(),
-            nn.Linear(42, 1),
-            nn.ReLU(),
-        )
-
-    def forward(self, x):
-        out = self.linear_relu_stack(x)
-        return out
-
+MAX_LEVELS = 15
+KDATA_PATH = '/Users/ndhuynh/sandbox/data/cost_surface_k.feather'
 
 logging.basicConfig(
     level=logging.INFO,
@@ -52,27 +22,27 @@ logging.basicConfig(
 )
 
 log = logging.getLogger()
-KDATA_PATH = '/scratchNVM0/ndhuynh/data/cost_surface_k.csv'
 
 
 class KCostDataSet(Dataset):
-    def __init__(self, transform=None, target_transform=None):
-        self.df = pd.read_csv(KDATA_PATH)
-        data = self.df['K'].map(lambda x: list(map(int, x[1:-1].split())))
-        Ks = pd.DataFrame(data.to_list()).add_prefix('K_').fillna(0)
-        self.df = pd.concat([self.df, Ks], axis=1)
+    def __init__(self, data_path, transform=None, target_transform=None):
+        df = pd.read_feather(data_path)
 
-        max_levels = self.df.query('T == 2')['K'].apply(lambda x: len(x[1:-1].split())).max()
-        input_cols = ['h', 'T', 'z0', 'z1', 'q', 'w'] + [f'K_{i}' for i in range(max_levels)]
+        cont_inputs = ['h', 'z0', 'z1', 'q', 'w']
+        cate_inputs = ['T'] + [f'K_{i}' for i in range(MAX_LEVELS)]
         output_cols = ['new_cost']
 
-        mean = self.df[input_cols].mean()
-        std = self.df[input_cols].std()
+        mean = df[cont_inputs].mean()
+        std = df[cont_inputs].std()
         std[std == 0] = 1
-        self.df[input_cols] = (self.df[input_cols] - mean) / std
+        df[cont_inputs] = (df[cont_inputs] - mean) / std
 
-        self.inputs = torch.from_numpy(self.df[input_cols].values).float()
-        self.outputs = torch.from_numpy(self.df[output_cols].values).float()
+        cont_inputs = torch.from_numpy(df[cont_inputs].values).float()
+        categories = torch.from_numpy(df[cate_inputs].values).to(torch.int64)
+        categories = torch.flatten(nn.functional.one_hot(categories, num_classes=50), start_dim=-2)
+
+        self.inputs = torch.cat([cont_inputs, categories], dim=1)
+        self.outputs = torch.from_numpy(df[output_cols].values).float()
 
     def __len__(self):
         return len(self.inputs)
@@ -85,7 +55,6 @@ class KCostDataSet(Dataset):
 
 
 def train_loop(dataloader, model, loss_fn, optimizer):
-    # size = len(dataloader.dataset)
     model.train()
     pbar = tqdm(dataloader, bar_format='{l_bar}{bar:50}{r_bar}{bar:-10b}')
     for batch, (X, y) in enumerate(pbar):
@@ -118,7 +87,7 @@ def test_loop(dataloader, model, loss_fn):
 
 
 log.info('Reading data')
-data = KCostDataSet()
+data = KCostDataSet(KDATA_PATH)
 val_len = int(len(data) * 0.1)
 train_len = len(data) - val_len
 
@@ -128,17 +97,19 @@ train = DataLoader(train, batch_size=32, shuffle=True)
 val = DataLoader(val, batch_size=32, shuffle=False)
 
 loss_fn = nn.MSELoss()
-model = KCost2Hidden()
-# optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
-optimizer = torch.optim.Adam(model.parameters())
+model = KCost1Hidden()
+optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
+scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
+# optimizer = torch.optim.Adam(model.parameters())
 
-MAX_EPOCHS = 64
+MAX_EPOCHS = 128
 prev_loss = float('inf')
 loss_min = float('inf')
 no_improvement = 0
 for t in range(MAX_EPOCHS):
     log.info(f"Epoch {t+1}/{MAX_EPOCHS} : No Improvement Count {no_improvement}")
     train_loop(train, model, loss_fn, optimizer)
+    scheduler.step()
     curr_loss = test_loop(val, model, loss_fn)
     if curr_loss < loss_min:
         loss_min = curr_loss
