@@ -64,7 +64,7 @@ class Trainer():
                 self.log.info('Loss increasing, stopping and saving model')
                 torch.save(self.model.state_dict(), 'kcost.model')
                 break
-            log.info('Check pointing')
+            self.log.info('Check pointing')
             torch.save({
                 'epoch': t,
                 'model_state_dict': self.model.state_dict(),

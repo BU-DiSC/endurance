@@ -1,5 +1,6 @@
 model = "KCostModel"
 log_level = "INFO"
+early_stop_num = 2
 
 [io]
 data_dir = "/scratchNVM0/ndhuynh/data"
@@ -21,17 +22,24 @@ train_data = [
     "k_wl_13.feather",
     "k_wl_14.feather",
 ]
+test_data = ["k_wl_3.feather"]
 
 [static_params]
 max_levels = 16
 max_size_ratio = 50
+mean_bias = [6.45, 0.25, 0.25, 0.25, 0.25]
+std_bias = [2.49,  0.27, 0.27, 0.27, 0.27]
 
 [hyper_params]
 num_cont_vars = 5
 num_cate_vars = 17
 hidden_layers = 2
+embedding_size = 17
+
+[train]
+max_epochs = 128
+train_batch_size = 32
+val_batch_size = 8192
+validate_frac = 0.1
 learning_rate = 0.001
 lr_schedule_gamma = 0.9
-max_epochs = 128
-batch_size = 32
-validate_frac = 0.1
