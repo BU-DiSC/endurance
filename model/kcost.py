@@ -56,27 +56,3 @@ class KCostModel(nn.Module):
         out = self.cost_layer(out)
 
         return out
-
-
-class KCost1Hidden(nn.Module):
-    def __init__(self):
-        super(KCost1Hidden, self).__init__()
-        self.categorical_stack = nn.Sequential(
-            nn.Linear(800, 16),
-            nn.ReLU(),
-            )
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(21, 21),
-            nn.ReLU(),
-            nn.Linear(21, 21),
-            nn.ReLU(),
-            nn.Linear(21, 1),
-            nn.ReLU(),
-        )
-
-    def forward(self, x):
-        out = self.categorical_stack(x[:, 5:])
-        out = torch.cat((out, x[:, :5]), -1)
-        out = self.linear_relu_stack(out)
-
-        return out

@@ -4,8 +4,8 @@ from tqdm import tqdm
 
 
 class Trainer():
-    def __init__(self, env_config, dataloader, model, optimizer, loss_fn, validate_percentage=0.1,
-                 batch_size=32, early_term_iter=4):
+    def __init__(self, env_config, dataloader, model, optimizer, loss_fn,
+                 validate_percentage=0.1, batch_size=32, early_term_iter=4):
         self.env_config = env_config
         self.log = logging.getLogger(env_config['log_name'])
         self.dataloader = dataloader
@@ -17,13 +17,21 @@ class Trainer():
         val_len = int(validate_percentage * len(dataloader))
         train_len = len(dataloader) - val_len
         train, val = torch.utils.random_split(dataloader, (train_len, val_len))
-        self.train = torch.utils.data.DataLoader(train, batch_size=batch_size, shuffle=True)
-        self.val = torch.utils.data.DataLoader(val, batch_size=batch_size, shuffle=False)
+        self.train = torch.utils.data.DataLoader(
+                train,
+                batch_size=batch_size,
+                shuffle=True)
+        self.val = torch.utils.data.DataLoader(
+                val,
+                batch_size=batch_size,
+                shuffle=False)
 
     def _train_loop(self, disp_pbar=False):
         self.model.train()
         if disp_pbar:
-            pbar = tqdm(self.train, bar_format='{l_bar}{bar:50}{r_bar}{bar:-10b}')
+            pbar = tqdm(
+                    self.train,
+                    bar_format='{l_bar}{bar:50}{r_bar}{bar:-10b}')
         else:
             pbar = self.train
 

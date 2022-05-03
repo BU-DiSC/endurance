@@ -6,30 +6,34 @@ early_stop_num = 2
 data_dir = "/scratchNVM0/ndhuynh/data"
 train_dir = "cost_k_feather"
 train_data = [
-    "k_wl_0.feather",
-    "k_wl_1.feather",
-    "k_wl_2.feather",
-    # "k_wl_3.feather",
-    "k_wl_4.feather",
-    "k_wl_5.feather",
-    "k_wl_6.feather",
-    "k_wl_7.feather",
-    "k_wl_8.feather",
-    "k_wl_9.feather",
-    "k_wl_10.feather",
-    "k_wl_11.feather",
-    "k_wl_12.feather",
-    "k_wl_13.feather",
-    "k_wl_14.feather",
+    "train_0.feather",
+    "train_1.feather",
+    "train_2.feather",
+    "train_3.feather",
+    "train_4.feather",
+    "train_5.feather",
+    "train_6.feather",
+    "train_7.feather",
+    "train_8.feather",
+    "train_9.feather",
+    # "train_10.feather",
+    # "train_11.feather",
+    # "train_12.feather",
+    # "train_13.feather",
+    # "train_14.feather",
+    # "train_15.feather",
+    # "train_16.feather",
+    # "train_17.feather",
+    # "train_18.feather",
 ]
-test_data = ["k_wl_3.feather"]
+test_data = ["train_19.feather"]
 
 [static_params]
 max_levels = 16
 max_size_ratio = 50
 # h, z0, z1, q, w
-mean_bias = [6.45, 0.500, 0.500, 0.500, 0.500]
-std_bias = [2.49,  3.464, 3.464, 3.464, 3.464]
+mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
+std_bias =  [2.74,  0.3, 0.3, 0.3, 0.3]
 
 [hyper_params]
 num_cont_vars = 5
