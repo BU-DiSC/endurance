@@ -10,7 +10,7 @@ class KCostDataSet(Dataset):
 
         cont_inputs = ['h', 'z0', 'z1', 'q', 'w']
         cate_inputs = ['T'] + [f'K_{i}' for i in range(16)]
-        output_cols = ['new_cost']
+        output_cols = ['k_cost']
 
         mean = df[cont_inputs].mean()
         std = df[cont_inputs].std()
@@ -41,7 +41,6 @@ class KCostDataSet(Dataset):
 class KCostDataSetSplit(Dataset):
     def __init__(self, config, paths: list[str]):
         self.config = config
-        self.normalize_vars = (0, 0)
         df = []
         for path in paths:
             df.append(pd.read_feather(path))
@@ -51,10 +50,40 @@ class KCostDataSetSplit(Dataset):
         cate_inputs = ['T']
         for i in range(config['static_params']['max_levels']):
             cate_inputs += [f'K_{i}']
-        output_cols = ['new_cost']
+        output_cols = ['k_cost']
 
         self.cont_inputs = torch.from_numpy(df[cont_inputs].values).float()
-        self.cate_inputs = torch.from_numpy(df[cate_inputs].values).to(torch.int64)
+        self.cate_inputs = torch.from_numpy(df[cate_inputs].values)
+
+        self.outputs = torch.from_numpy(df[output_cols].values).float()
+
+    def __len__(self):
+        return len(self.cont_inputs)
+
+    def __getitem__(self, idx):
+        categories = torch.flatten(
+                nn.functional.one_hot(
+                    self.cate_inputs[idx],
+                    num_classes=self.config['static_params']['max_size_ratio']),
+                start_dim=-2)
+        inputs = torch.cat((self.cont_inputs[idx], categories), dim=-1)
+        label = self.outputs[idx]
+
+        return inputs, label
+
+
+class KCostDataSetSplitDF(Dataset):
+    def __init__(self, config, df):
+        self.config = config
+
+        cont_inputs = ['h', 'z0', 'z1', 'q', 'w']
+        cate_inputs = ['T']
+        for i in range(config['static_params']['max_levels']):
+            cate_inputs += [f'K_{i}']
+        output_cols = ['k_cost']
+
+        self.cont_inputs = torch.from_numpy(df[cont_inputs].values).float()
+        self.cate_inputs = torch.from_numpy(df[cate_inputs].values)
 
         self.outputs = torch.from_numpy(df[output_cols].values).float()
 

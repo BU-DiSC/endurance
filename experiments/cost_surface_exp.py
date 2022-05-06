@@ -8,6 +8,7 @@ import lsm.cost as CostFunc
 
 MAX_LEVELS = 16
 
+
 class CostSurfaceExp():
     def __init__(self, config: dict) -> None:
         self.config = config

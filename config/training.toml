@@ -4,19 +4,19 @@ early_stop_num = 2
 
 [io]
 data_dir = "/scratchNVM0/ndhuynh/data"
-train_dir = "cost_k_feather"
+train_dir = "training_data"
 train_data = [
     "train_0.feather",
     "train_1.feather",
     "train_2.feather",
-    "train_3.feather",
-    "train_4.feather",
-    "train_5.feather",
-    "train_6.feather",
-    "train_7.feather",
-    "train_8.feather",
-    "train_9.feather",
-    # "train_10.feather",
+    # "train_3.feather",
+    # "train_4.feather",
+    # "train_5.feather",
+    # "train_6.feather",
+    # "train_7.feather",
+    # "train_8.feather",
+    # "train_9.feather",
+    # # "train_10.feather",
     # "train_11.feather",
     # "train_12.feather",
     # "train_13.feather",
