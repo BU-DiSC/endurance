@@ -50,14 +50,14 @@ def create_row(h, T, z0, z1, q, w, cost) -> dict:
 
 
 def generate_random_list() -> list:
-    wls = np.random.rand(SAMPLES, WL_DIM)
-    wls = np.around(wls / wls.sum(axis=1, keepdims=True), PRECISION)
-    hs = np.around(HMAX * np.random.rand(SAMPLES), PRECISION)
-    Ts = np.random.randint(low=TLOW, high=TMAX, size=SAMPLES)
-
     df = []
-    for wl, h, T in tqdm(zip(wls, hs, Ts), total=SAMPLES, ncols=80):
+    for _ in tqdm(range(SAMPLES), ncols=80):
+        wl = np.random.rand(WL_DIM)
+        wl = np.around(wl / wl.sum())
         z0, z1, q, w = wl
+        T = np.random.randint(low=TLOW, high=TMAX)
+        h = np.around(HMAX * np.random.rand(), PRECISION)
+
         levels = int(cf.L(h, T, True))
         arr = create_k_levels(levels, T - 1)
         arr = random.sample(arr, min(10, len(arr)))
@@ -81,6 +81,7 @@ def gen_files():
 
         df = pd.DataFrame(generate_random_list())
         df.to_feather(fname)
+        del df
 
 
 if __name__ == "__main__":
