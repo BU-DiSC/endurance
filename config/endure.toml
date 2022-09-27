@@ -4,122 +4,159 @@ log_level = "INFO"
 data_dir = "/Users/ndhuynh/sandbox/data"
 experiments = [
     #'Exp01',
-    'CostSurfaceExp']
+    'CostSurfaceEp']
 
+# =============================================================================
+# HEADER IO
+#   Generic IO settings for experiments, saving data, etc
+# =============================================================================
+[io]
+data_dir = "/scratchNVM0/ndhuynh/data"
+cold_data_dir = "/scratchHDDa/ndhuynh/data-cold"
+
+# =============================================================================
+# HEADER SYSTEM
+#   System settings encapsulate physical components of the machine you're
+#   expecting to run your LSM tree on, and additionally starting budgets and
+#   number of element.
+# =============================================================================
 [system]
-B = 4           # Entries per page
-phi = 1         # Read/write asymmetry
-s = 0.00        # Range query selectivity
-E = 1024        # (Bytes) entry size
-H = 10          # (bits) Budget bits per element 
-N = 100000000   # Number elments
+# Number of physical entries per page
+B = 4
 
+# Read/Write asymmetry coefficient, 1 implies writes and reads throughput is
+# roughly the same the current storage device
+phi = 1
+
+# Range query selectivity, 0 implies the key range per range query would roughly
+# fit into 1 page. Selectivity 1 implies range queries will always query the
+# full key possible range
+s = 0.00
+
+# Size of a single entry in bytes
+E = 1024
+
+# Memory budget in terms of bits per element, this combined with number of
+# elements (N) will get you roughly the expected total memory we are allocating
+# between bloom filter memory and buffer memory
+H = 10
+
+# Total number of elements our LSM tree will start off with
+N = 100000000
+
+# =============================================================================
+# HEADER EXPERIMENT CONFIG
+#     Specific experiment configurations will be listed below
+# =============================================================================
 [exp_config]
     [exp_config.Exp01]
     wl_ids = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 
-[inputs]
-    [[inputs.workloads]]
-    id = 0
-    z0 = 0.25
-    z1 = 0.25
-    q  = 0.25
-    w  = 0.25
+# =============================================================================
+# HEADER WORKLOADS
+#     List of workloads we will be looking at
+# =============================================================================
+[[workloads]]
+id = 0
+z0 = 0.25
+z1 = 0.25
+q  = 0.25
+w  = 0.25
 
-    [[inputs.workloads]]
-    id = 1
-    z0 = 0.97
-    z1 = 0.01
-    q = 0.01
-    w = 0.01
+[[workloads]]
+id = 1
+z0 = 0.97
+z1 = 0.01
+q = 0.01
+w = 0.01
 
-    [[inputs.workloads]]
-    id = 2
-    z0 = 0.01
-    z1 = 0.97
-    q = 0.01
-    w = 0.01
+[[workloads]]
+id = 2
+z0 = 0.01
+z1 = 0.97
+q = 0.01
+w = 0.01
 
-    [[inputs.workloads]]
-    id = 3
-    z0 = 0.01
-    z1 = 0.01
-    q = 0.97
-    w = 0.01
+[[workloads]]
+id = 3
+z0 = 0.01
+z1 = 0.01
+q = 0.97
+w = 0.01
 
-    [[inputs.workloads]]
-    id = 4
-    z0 = 0.01
-    z1 = 0.01
-    q = 0.01
-    w = 0.97
+[[workloads]]
+id = 4
+z0 = 0.01
+z1 = 0.01
+q = 0.01
+w = 0.97
 
-    [[inputs.workloads]]
-    id = 5
-    z0 = 0.49
-    z1 = 0.49
-    q = 0.01
-    w = 0.01
+[[workloads]]
+id = 5
+z0 = 0.49
+z1 = 0.49
+q = 0.01
+w = 0.01
 
-    [[inputs.workloads]]
-    id = 6
-    z0 = 0.49
-    z1 = 0.01
-    q = 0.49
-    w = 0.01
+[[workloads]]
+id = 6
+z0 = 0.49
+z1 = 0.01
+q = 0.49
+w = 0.01
 
-    [[inputs.workloads]]
-    id = 7
-    z0 = 0.49
-    z1 = 0.01
-    q = 0.01
-    w = 0.49
+[[workloads]]
+id = 7
+z0 = 0.49
+z1 = 0.01
+q = 0.01
+w = 0.49
 
-    [[inputs.workloads]]
-    id = 8
-    z0 = 0.01
-    z1 = 0.49
-    q = 0.49
-    w = 0.01
+[[workloads]]
+id = 8
+z0 = 0.01
+z1 = 0.49
+q = 0.49
+w = 0.01
 
-    [[inputs.workloads]]
-    id = 9
-    z0 = 0.01
-    z1 = 0.49
-    q = 0.01
-    w = 0.49
+[[workloads]]
+id = 9
+z0 = 0.01
+z1 = 0.49
+q = 0.01
+w = 0.49
 
-    [[inputs.workloads]]
-     id = 10
-     z0 = 0.01
-     z1 = 0.01
-     q = 0.49
-     w = 0.49
+[[workloads]]
+ id = 10
+ z0 = 0.01
+ z1 = 0.01
+ q = 0.49
+ w = 0.49
 
-     [[inputs.workloads]]
-     id = 11
-     z0 = 0.33
-     z1 = 0.33
-     q = 0.33
-     w = 0.01
+ [[workloads]]
+ id = 11
+ z0 = 0.33
+ z1 = 0.33
+ q = 0.33
+ w = 0.01
 
-     [[inputs.workloads]]
-     id = 12
-     z0 = 0.33
-     z1 = 0.33
-     q = 0.01
-     w = 0.33
+ [[workloads]]
+ id = 12
+ z0 = 0.33
+ z1 = 0.33
+ q = 0.01
+ w = 0.33
 
-     [[inputs.workloads]]
-     id = 13
-     z0 = 0.33
-     z1 = 0.01
-     q = 0.33
-     w = 0.33
+ [[workloads]]
+ id = 13
+ z0 = 0.33
+ z1 = 0.01
+ q = 0.33
+ w = 0.33
 
-     [[inputs.workloads]]
-     id = 14
-     z0 = 0.01
-     z1 = 0.33
-     q = 0.33
-     w = 0.33
+ [[workloads]]
+ id = 14
+ z0 = 0.01
+ z1 = 0.33
+ q = 0.33
+ w = 0.33
