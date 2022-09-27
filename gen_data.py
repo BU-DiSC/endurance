@@ -17,7 +17,7 @@ HMAX = 9.5
 HLOW = 0
 WL_DIM = 4
 PRECISION = 3
-SAMPLES = 1000000
+SAMPLES = 100000
 
 config = Reader.read_config("config/endure.toml")
 reader = Reader(config)
