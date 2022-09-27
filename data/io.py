@@ -3,7 +3,6 @@ import logging
 import toml
 import pandas as pd
 import dill
-import joblib
 
 
 class Writer(object):
@@ -19,11 +18,9 @@ class Writer(object):
         :param df:
         :param filename:
         """
-        DATA_DIR = self.config['project']['data_dir']
+        DATA_DIR = self.config['io']['data_dir']
         filepath = os.path.join(DATA_DIR, filename)
-        self.log.info(f'Writing dataframe to {filepath}')
         df.to_csv(filepath, sep=',', header=True, index=False)
-        self.log.info(f'Successfully wrote dataframe to {filepath}')
 
     def export_dill_file(self, data, filename):
         """
@@ -32,17 +29,10 @@ class Writer(object):
         :param data:
         :param filename:
         """
-        DATA_DIR = self.config['project']['data_dir']
+        DATA_DIR = self.config['io']['data_dir']
         filepath = os.path.join(DATA_DIR, filename)
         with open(filepath, 'wb') as f:
             dill.dump(data, f)
-        self.log.info("Exported data to {}".format(filepath))
-
-    def export_model(self, model, model_name):
-        DATA_DIR = self.config['project']['data_dir']
-        filepath = os.path.join(DATA_DIR, model_name)
-        joblib.dump(model, filepath)
-        self.log.info(f'Model dumped {filepath}')
 
     def export_figure(self, fig, figname, **kwargs):
         """
@@ -54,7 +44,6 @@ class Writer(object):
         DATA_DIR = self.config['app']['data_dir']
         filepath = os.path.join(DATA_DIR, figname, **kwargs)
         fig.savefig(filepath)
-        self.log.info("Exported data to {}".format(filepath))
 
 
 class Reader(object):

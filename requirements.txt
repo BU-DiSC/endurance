@@ -3,4 +3,7 @@ scipy
 numpy
 numba
 dill
+tqdm
 torch
+pandas
+joblib

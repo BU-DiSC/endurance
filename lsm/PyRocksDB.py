@@ -52,7 +52,8 @@ class RocksDB(object):
             r'\[[0-9:.]+\]\[info\] runs_per_level : '
             r'(\[[0-9,\s]+\])'
         )
-        self.existing_keys_prog = re.compile(r'\[[0-9:.]+\]\[info\] Writing out ([0-9]+) existing keys')
+        self.existing_keys_prog = re.compile(
+            r'\[[0-9:.]+\]\[info\] Writing out ([0-9]+) existing keys')
 
     def options_from_config(self):
         db_settings = {}
@@ -73,7 +74,8 @@ class RocksDB(object):
 
     def estimate_levels(self):
         mbuff = self.M - (self.h * self.N)
-        levels = np.ceil((np.log((self.N * self.E) / mbuff) + 1) / np.log(self.T))
+        levels = np.ceil(
+            (np.log((self.N * self.E) / mbuff) + 1) / np.log(self.T))
 
         return levels
 
@@ -154,7 +156,8 @@ class RocksDB(object):
             shell=True,
         ).communicate()
 
-        existing_keys = int(self.existing_keys_prog.search(completed_process).groups()[0])  # type: ignore
+        existing_keys = int(self.existing_keys_prog.search(
+            completed_process).groups()[0])  # type: ignore
 
         return existing_keys
 
@@ -166,7 +169,8 @@ class RocksDB(object):
         :type tmp_folder: str. required
         """
         os.makedirs(tmp_folder, exist_ok=True)
-        shutil.copytree(os.path.join(self.path_db, self.db_name), tmp_folder, dirs_exist_ok=True)
+        shutil.copytree(os.path.join(self.path_db, self.db_name),
+                        tmp_folder, dirs_exist_ok=True)
 
     def delete_temp_copy(self, tmp_folder):
         """
@@ -249,12 +253,18 @@ class RocksDB(object):
                 self.delete_temp_copy(db_dir)
             return results
 
-        level_hit_results = [int(result) for result in self.level_hit_prog.search(proc_results).groups()]
-        bf_count_results = [int(result) for result in self.bf_count_prog.search(proc_results).groups()]
-        compaction_results = [int(result) for result in self.compaction_bytes_prog.search(proc_results).groups()]
-        block_read_result = [int(result) for result in self.block_read_prog.search(proc_results).groups()]
-        compact_time_result = [int(result) for result in self.compact_time_prog.search(proc_results).groups()]
-        time_results = [int(result) for result in self.time_prog.search(proc_results).groups()]
+        level_hit_results = [
+            int(result) for result in self.level_hit_prog.search(proc_results).groups()]
+        bf_count_results = [
+            int(result) for result in self.bf_count_prog.search(proc_results).groups()]
+        compaction_results = [
+            int(result) for result in self.compaction_bytes_prog.search(proc_results).groups()]
+        block_read_result = [
+            int(result) for result in self.block_read_prog.search(proc_results).groups()]
+        compact_time_result = [
+            int(result) for result in self.compact_time_prog.search(proc_results).groups()]
+        time_results = [int(result)
+                        for result in self.time_prog.search(proc_results).groups()]
         runs_per_level = self.runs_per_level_prog.findall(proc_results)[0]
 
         if copy:

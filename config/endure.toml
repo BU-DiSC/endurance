@@ -4,8 +4,7 @@ log_level = "INFO"
 data_dir = "/Users/ndhuynh/sandbox/data"
 experiments = [
     #'Exp01',
-    'CostSurfaceExp',
-]
+    'CostSurfaceExp']
 
 [system]
 B = 4           # Entries per page
@@ -34,90 +33,90 @@ N = 100000000   # Number elments
     q = 0.01
     w = 0.01
 
-     [[inputs.workloads]]
-     id = 2
-     z0 = 0.01
-     z1 = 0.97
-     q = 0.01
-     w = 0.01
- 
-     [[inputs.workloads]]
-     id = 3
-     z0 = 0.01
-     z1 = 0.01
-     q = 0.97
-     w = 0.01
- 
-     [[inputs.workloads]]
-     id = 4
-     z0 = 0.01
-     z1 = 0.01
-     q = 0.01
-     w = 0.97
- 
-     [[inputs.workloads]]
-     id = 5
-     z0 = 0.49
-     z1 = 0.49
-     q = 0.01
-     w = 0.01
- 
-     [[inputs.workloads]]
-     id = 6
-     z0 = 0.49
-     z1 = 0.01
-     q = 0.49
-     w = 0.01
- 
-     [[inputs.workloads]]
-     id = 7
-     z0 = 0.49
-     z1 = 0.01
-     q = 0.01
-     w = 0.49
- 
-     [[inputs.workloads]]
-     id = 8
-     z0 = 0.01
-     z1 = 0.49
-     q = 0.49
-     w = 0.01
- 
-     [[inputs.workloads]]
-     id = 9
-     z0 = 0.01
-     z1 = 0.49
-     q = 0.01
-     w = 0.49
- 
-     [[inputs.workloads]]
+    [[inputs.workloads]]
+    id = 2
+    z0 = 0.01
+    z1 = 0.97
+    q = 0.01
+    w = 0.01
+
+    [[inputs.workloads]]
+    id = 3
+    z0 = 0.01
+    z1 = 0.01
+    q = 0.97
+    w = 0.01
+
+    [[inputs.workloads]]
+    id = 4
+    z0 = 0.01
+    z1 = 0.01
+    q = 0.01
+    w = 0.97
+
+    [[inputs.workloads]]
+    id = 5
+    z0 = 0.49
+    z1 = 0.49
+    q = 0.01
+    w = 0.01
+
+    [[inputs.workloads]]
+    id = 6
+    z0 = 0.49
+    z1 = 0.01
+    q = 0.49
+    w = 0.01
+
+    [[inputs.workloads]]
+    id = 7
+    z0 = 0.49
+    z1 = 0.01
+    q = 0.01
+    w = 0.49
+
+    [[inputs.workloads]]
+    id = 8
+    z0 = 0.01
+    z1 = 0.49
+    q = 0.49
+    w = 0.01
+
+    [[inputs.workloads]]
+    id = 9
+    z0 = 0.01
+    z1 = 0.49
+    q = 0.01
+    w = 0.49
+
+    [[inputs.workloads]]
      id = 10
      z0 = 0.01
      z1 = 0.01
      q = 0.49
      w = 0.49
- 
+
      [[inputs.workloads]]
      id = 11
      z0 = 0.33
      z1 = 0.33
      q = 0.33
      w = 0.01
- 
+
      [[inputs.workloads]]
      id = 12
      z0 = 0.33
      z1 = 0.33
      q = 0.01
      w = 0.33
- 
+
      [[inputs.workloads]]
      id = 13
      z0 = 0.33
      z1 = 0.01
      q = 0.33
      w = 0.33
- 
+
      [[inputs.workloads]]
      id = 14
      z0 = 0.01

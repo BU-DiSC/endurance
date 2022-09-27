@@ -1,6 +1,8 @@
 model = "KCostModel"
-log_level = "INFO"
-early_stop_num = 2
+
+[log]
+level = "INFO"
+name = "endure"
 
 [io]
 data_dir = "/scratchNVM0/ndhuynh/data"
@@ -43,8 +45,13 @@ embedding_size = 17
 
 [train]
 max_epochs = 128
-train_batch_size = 32
-val_batch_size = 8192
-validate_frac = 0.1
-learning_rate = 0.001
-lr_schedule_gamma = 0.9
+batch_size = 32
+lr = 0.001  # learning rate
+lr_decay = 0.9  # if doing SGD, gamma decay paramter for learning
+early_stop_num = 2
+shuffle = true
+
+[validate]
+batch_size = 8192
+percent = 0.1
+shuffle = false
