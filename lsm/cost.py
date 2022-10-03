@@ -38,7 +38,8 @@ class EndureTierLevelCost:
         return (T - 1) * mbuff * T**(level - 1) / (Nf * self.E)
 
     def Z0(self, h: float, T: float, policy: Policy) -> float:
-        z0 = sum([self.fp(h, T, level) for level in range(1, int(self.L(h, T, ceil=True)) + 1)])
+        z0 = sum([self.fp(h, T, level)
+                 for level in range(1, int(self.L(h, T, ceil=True)) + 1)])
         if policy == Policy.Tiering:
             z0 *= (T - 1)
         return z0
@@ -52,9 +53,11 @@ class EndureTierLevelCost:
             if policy == Policy.Tiering:
                 upper_fp *= (T - 1)
                 curr_fp = ((T - 2) / 2) * self.fp(h, T, i)
-                z1 += self.run_prob(i, T, self.mbuff(h), self.Nfull(h, T, L)) * (1 + upper_fp + curr_fp)
+                z1 += self.run_prob(i, T, self.mbuff(h),
+                                    self.Nfull(h, T, L)) * (1 + upper_fp + curr_fp)
             else:  # Policy.Leveling
-                z1 += self.run_prob(i, T, self.mbuff(h), self.Nfull(h, T, L)) * (1 + upper_fp)
+                z1 += self.run_prob(i, T, self.mbuff(h),
+                                    self.Nfull(h, T, L)) * (1 + upper_fp)
 
         return z1
 
@@ -122,7 +125,8 @@ class EndureQFixedCost():
             for j in range(1, level):
                 upper_fp += Q * self.fp(h, T, j)
             current_fp = ((Q - 1) / 2) * self.fp(h, T, level)
-            z1 += self.run_prob(level, T, mbuff, Nf) * (1 + upper_fp + current_fp)
+            z1 += self.run_prob(level, T, mbuff, Nf) * \
+                (1 + upper_fp + current_fp)
 
         return z1
 
@@ -182,7 +186,8 @@ class EndureKHybridCost():
             for j in range(1, level):
                 upper_fp += K[j - 1] * self.fp(h, T, j)
             current_fp = ((K[level - 1] - 1) / 2) * self.fp(h, T, level)
-            z1 += self.run_prob(level, T, self.mbuff(h), self.Nfull(h, T, L)) * (1 + upper_fp + current_fp)
+            z1 += self.run_prob(level, T, self.mbuff(h),
+                                self.Nfull(h, T, L)) * (1 + upper_fp + current_fp)
 
         return z1
 
@@ -252,7 +257,8 @@ class EndureYZHybridCost():
             for j in range(1, level):
                 upper_fp += Y * self.fp(h, T, j)
             current_fp = ((Y - 1) / 2) * self.fp(h, T, level)
-            z1 += self.run_prob(level, T, mbuff, Nf) * (1 + upper_fp + current_fp)
+            z1 += self.run_prob(level, T, mbuff, Nf) * \
+                (1 + upper_fp + current_fp)
 
         upper_fp = 0
         for j in range(1, L):

@@ -5,30 +5,31 @@ level = "INFO"
 name = "endure"
 
 [io]
-data_dir = "/scratchNVM0/ndhuynh/data"
+data_dir = "/scratchHDDa/ndhuynh/data-cold"
 train_dir = "training_data"
 train_data = [
     "train_0.feather",
     "train_1.feather",
     "train_2.feather",
-    # "train_3.feather",
-    # "train_4.feather",
-    # "train_5.feather",
-    # "train_6.feather",
-    # "train_7.feather",
-    # "train_8.feather",
-    # "train_9.feather",
-    # # "train_10.feather",
-    # "train_11.feather",
-    # "train_12.feather",
-    # "train_13.feather",
-    # "train_14.feather",
-    # "train_15.feather",
-    # "train_16.feather",
-    # "train_17.feather",
-    # "train_18.feather",
+    "train_3.feather",
+    "train_4.feather",
+    "train_5.feather",
+    "train_6.feather",
+    "train_7.feather",
+    "train_8.feather",
+    "train_9.feather",
+    "train_10.feather",
+    "train_11.feather",
+    "train_12.feather",
+    "train_13.feather",
+    "train_14.feather",
+    "train_15.feather",
+    "train_16.feather",
+    "train_17.feather",
+    "train_18.feather",
+    "train_19.feather",
 ]
-test_data = ["train_19.feather"]
+test_data = ["train_20.feather"]
 
 [static_params]
 max_levels = 16
@@ -36,6 +37,7 @@ max_size_ratio = 50
 # h, z0, z1, q, w
 mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
 std_bias =  [2.74,  0.3, 0.3, 0.3, 0.3]
+out_dims = 4
 
 [hyper_params]
 num_cont_vars = 5
@@ -46,8 +48,9 @@ embedding_size = 17
 [train]
 max_epochs = 128
 batch_size = 32
-lr = 0.001  # learning rate
-lr_decay = 0.9  # if doing SGD, gamma decay paramter for learning
+learning_rate = 0.001
+# If training is via SGD, this will be the gamma decay parameter for learning
+learning_rate_decay = 0.9
 early_stop_num = 2
 shuffle = true
 
