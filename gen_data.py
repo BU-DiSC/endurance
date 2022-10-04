@@ -9,7 +9,7 @@ from itertools import combinations_with_replacement
 from data.io import Reader
 import lsm.cost as CostFunc
 
-NUM_FILES = 30
+NUM_FILES = 100
 TMAX = 50
 TLOW = 2
 MAX_LEVELS = 16
@@ -17,7 +17,7 @@ HMAX = 9.5
 HLOW = 0
 WL_DIM = 4
 PRECISION = 3
-SAMPLES = 2**12
+SAMPLES = 2**20
 
 config = Reader.read_config("config/endure.toml")
 reader = Reader(config)
@@ -87,7 +87,7 @@ def gen_files() -> None:
     output_dir = os.path.join(config["io"]["cold_data_dir"], "training_data")
     os.makedirs(output_dir, exist_ok=True)
     for idx in range(NUM_FILES):
-        fname = os.path.join(output_dir, f"train_{idx}.feather")
+        fname = os.path.join(output_dir, f"train_{idx:04}.feather")
         print(f"Generating file: {fname}")
 
         df = pd.DataFrame(generate_random_list())
