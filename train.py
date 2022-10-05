@@ -16,7 +16,7 @@ logging.basicConfig(
 )
 log = logging.getLogger()
 cfg = toml.load('config/training.toml')
-model_dir = cfg['io']['model_dir']
+model_dir = os.path.join(cfg['io']['data_dir'], cfg['io']['model_dir'])
 os.makedirs(model_dir, exist_ok=True)
 with open(os.path.join(model_dir, 'config.toml'), "w") as fid:
     toml.dump(cfg, fid)
