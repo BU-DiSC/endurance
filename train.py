@@ -5,8 +5,8 @@ import toml
 from tqdm import tqdm
 from torch import nn
 from torch.utils.data import DataLoader
-from model.kcost import KCostModel
-from data.kcost_dataset import KCostDataSetSplit
+from model.kcost import KCostModelAlpha
+from data.kcost_dataset import KCostDataSet
 
 
 logging.basicConfig(
@@ -15,10 +15,10 @@ logging.basicConfig(
     datefmt='%H:%M:%S'
 )
 log = logging.getLogger()
-cfg = toml.load('config/training_2.toml')
+cfg = toml.load('config/training.toml')
 model_dir = cfg['io']['model_dir']
 os.makedirs(model_dir, exist_ok=True)
-with open(os.path.join(model_dir, 'config.toml')) as fid:
+with open(os.path.join(model_dir, 'config.toml'), "w") as fid:
     toml.dump(cfg, fid)
 
 
@@ -59,23 +59,23 @@ data_dir = os.path.join(cfg['io']['data_dir'], cfg['io']['train_dir'])
 paths = []
 for data_file in cfg['io']['train_data']:
     paths.append(os.path.join(data_dir, data_file))
-data = KCostDataSetSplit(cfg, paths)
-val_len = int(len(data) * cfg['train']['validate_frac'])
+data = KCostDataSet(cfg, paths)
+val_len = int(len(data) * cfg['validate']['percent'])
 train_len = len(data) - val_len
 
 log.info(f'Splitting dataset train: {train_len}, val: {val_len}')
 train, val = torch.utils.data.random_split(data, [train_len, val_len])
 train = DataLoader(
         train,
-        batch_size=cfg['train']['train_batch_size'],
-        shuffle=True)
+        batch_size=cfg['train']['batch_size'],
+        shuffle=cfg["train"]["shuffle"])
 val = DataLoader(
         val,
-        batch_size=cfg['train']['val_batch_size'],
-        shuffle=False)
+        batch_size=cfg['validate']['batch_size'],
+        shuffle=cfg["validate"]["shuffle"])
 
 loss_fn = nn.MSELoss()
-model = KCostModel(cfg)
+model = KCostModelAlpha(cfg)
 log.info(f"Model params: {cfg['hyper_params']}")
 log.info(f"Training params: {cfg['train']}")
 optimizer = torch.optim.SGD(
@@ -83,14 +83,14 @@ optimizer = torch.optim.SGD(
         lr=cfg['train']['learning_rate'])
 scheduler = torch.optim.lr_scheduler.ExponentialLR(
         optimizer,
-        gamma=cfg['train']['lr_schedule_gamma'])
+        gamma=cfg['train']['learning_rate_decay'])
 
 MAX_EPOCHS = cfg['train']['max_epochs']
 prev_loss = loss_min = float('inf')
 no_improvement = 0
 for t in range(MAX_EPOCHS):
     log.info(f'Epoch [{t+1}/{MAX_EPOCHS}]'
-             f'Early stop [{no_improvement}/{cfg["early_stop_num"]}]')
+             f'Early stop [{no_improvement}/{cfg["train"]["early_stop_num"]}]')
     train_loop(train, model, loss_fn, optimizer)
     scheduler.step()
     curr_loss = test_loop(val, model, loss_fn)
@@ -109,7 +109,7 @@ for t in range(MAX_EPOCHS):
         'optimizer_state_dict': optimizer.state_dict(),
         'loss': curr_loss}
     torch.save(save_pt, os.path.join(model_dir, 'checkpoint.pt'))
-    if no_improvement > cfg['early_stop_num']:
+    if no_improvement > cfg["train"]['early_stop_num']:
         log.info('Early termination, exiting...')
         break
     prev_loss = curr_loss
