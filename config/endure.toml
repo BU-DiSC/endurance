@@ -1,7 +1,6 @@
 [project]
 name = "ENDURE"
 log_level = "INFO"
-data_dir = "/Users/ndhuynh/sandbox/data"
 experiments = [
     #'Exp01',
     'CostSurfaceEp']
@@ -11,8 +10,8 @@ experiments = [
 #   Generic IO settings for experiments, saving data, etc
 # =============================================================================
 [io]
-data_dir = "/scratchNVM0/ndhuynh/data"
-cold_data_dir = "/scratchHDDa/ndhuynh/data-cold"
+data_dir = "/data"
+cold_data_dir = "/data"
 
 # =============================================================================
 # HEADER SYSTEM

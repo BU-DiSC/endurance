@@ -9,7 +9,7 @@ from itertools import combinations_with_replacement
 from data.io import Reader
 import lsm.cost as CostFunc
 
-NUM_FILES = 100
+NUM_FILES = 25
 TMAX = 50
 TLOW = 2
 MAX_LEVELS = 16
@@ -17,7 +17,7 @@ HMAX = 9.5
 HLOW = 0
 WL_DIM = 4
 PRECISION = 3
-SAMPLES = 2**20
+SAMPLES = 2**16
 
 config = Reader.read_config("config/endure.toml")
 reader = Reader(config)

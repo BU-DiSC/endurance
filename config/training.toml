@@ -5,8 +5,9 @@ level = "INFO"
 name = "endure"
 
 [io]
-data_dir = "/scratchHDDa/ndhuynh/data-cold"
+data_dir = "/data"
 train_dir = "training_data"
+model_dir = "models"
 train_data = [
     "train_0000.feather",
     "train_0001.feather",
@@ -24,8 +25,16 @@ train_data = [
     "train_0013.feather",
     "train_0014.feather",
     "train_0015.feather",
+    "train_0016.feather",
+    "train_0017.feather",
+    "train_0018.feather",
+    "train_0019.feather",
 ]
-test_data = ["train_20.feather"]
+test_data = [
+    "train_20.feather",
+    "train_21.feather",
+    "train_22.feather",
+]
 
 [static_params]
 max_levels = 16
