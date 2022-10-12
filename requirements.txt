@@ -7,3 +7,5 @@ tqdm
 torch
 pandas
 joblib
+pyarrow
+torchdata
