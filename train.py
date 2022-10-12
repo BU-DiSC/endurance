@@ -77,8 +77,7 @@ val = DataLoader(
         shuffle=cfg["validate"]["shuffle"])
 
 loss_fn = nn.MSELoss()
-model = KCostModelAlpha(cfg)
-model = model.to(device)
+model = KCostModelAlpha(cfg, device=device).to(device)
 log.info(f"Model params: {cfg['hyper_params']}")
 log.info(f"Training params: {cfg['train']}")
 optimizer = torch.optim.SGD(

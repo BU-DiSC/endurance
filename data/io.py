@@ -1,6 +1,7 @@
 import os
 import logging
 import toml
+import torch
 import pandas as pd
 import dill
 
@@ -57,6 +58,7 @@ class Reader(object):
         :param config:
         """
         self.config = config
+        self.data_dir = self.config['project']['data_dir']
         self.log = logging.getLogger('endure')
 
     @classmethod
@@ -74,8 +76,7 @@ class Reader(object):
 
         :param filename:
         """
-        DATA_DIR = self.config['project']['data_dir']
-        csv_path = os.path.join(DATA_DIR, filename)
+        csv_path = os.path.join(self.data_dir, filename)
         df = pd.read_csv(csv_path,
                          header=0,
                          index_col=False,
@@ -88,8 +89,7 @@ class Reader(object):
 
         :param filename:
         """
-        DATA_DIR = self.config['project']['data_dir']
-        dill_path = os.path.join(DATA_DIR, filename)
+        dill_path = os.path.join(self.data_dir, filename)
 
         with open(dill_path, 'rb') as f:
             data = dill.load(f)

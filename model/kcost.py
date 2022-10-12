@@ -1,18 +1,17 @@
 import torch
 from torch import nn
 
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class Normalize(nn.Module):
-    def __init__(self, mean, std, padding_shape=None):
+    def __init__(self, mean, std, padding_shape=None, device='cpu'):
         super().__init__()
         if padding_shape is not None:
             mean = torch.nn.functional.pad(
                 mean, padding_shape, mode="constant", value=0)
             std = torch.nn.functional.pad(
                 std, padding_shape, mode="constant", value=1)
-        self.mean = mean.to(DEVICE)
-        self.std = std.to(DEVICE)
+        self.mean = mean.to(device)
+        self.std = std.to(device)
 
     def forward(self, x):
         x = x - self.mean
@@ -21,7 +20,7 @@ class Normalize(nn.Module):
 
 
 class KCostModel(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, device='cpu'):
         super().__init__()
         self.params = config["hyper_params"] | config["static_params"]
 
@@ -59,7 +58,7 @@ class KCostModel(nn.Module):
 
 
 class KCostModelAlpha(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, device='cpu'):
         super().__init__()
         self.params = config["hyper_params"] | config["static_params"]
 
