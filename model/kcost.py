@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class Normalize(nn.Module):
     def __init__(self, mean, std, padding_shape=None):
@@ -10,8 +11,8 @@ class Normalize(nn.Module):
                 mean, padding_shape, mode="constant", value=0)
             std = torch.nn.functional.pad(
                 std, padding_shape, mode="constant", value=1)
-        self.mean = mean
-        self.std = std
+        self.mean = mean.to(DEVICE)
+        self.std = std.to(DEVICE)
 
     def forward(self, x):
         x = x - self.mean

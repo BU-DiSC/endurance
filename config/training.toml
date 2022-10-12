@@ -6,35 +6,9 @@ name = "endure"
 
 [io]
 data_dir = "/data"
-train_dir = "training_data"
+train_dir = "train_data"
+test_dir = "test_data"
 model_dir = "models"
-train_data = [
-    "train_0000.feather",
-    "train_0001.feather",
-    "train_0002.feather",
-    "train_0003.feather",
-    "train_0004.feather",
-    "train_0005.feather",
-    "train_0006.feather",
-    "train_0007.feather",
-    "train_0008.feather",
-    "train_0009.feather",
-    "train_0010.feather",
-    "train_0011.feather",
-    "train_0012.feather",
-    "train_0013.feather",
-    "train_0014.feather",
-    "train_0015.feather",
-    "train_0016.feather",
-    "train_0017.feather",
-    "train_0018.feather",
-    "train_0019.feather",
-]
-test_data = [
-    "train_20.feather",
-    "train_21.feather",
-    "train_22.feather",
-]
 
 [static_params]
 max_levels = 16
@@ -52,7 +26,7 @@ embedding_size = 17
 
 [train]
 max_epochs = 128
-batch_size = 32
+batch_size = 1024
 learning_rate = 0.001
 # If training is via SGD, this will be the gamma decay parameter for learning
 learning_rate_decay = 0.9
@@ -60,6 +34,6 @@ early_stop_num = 2
 shuffle = true
 
 [validate]
-batch_size = 8192
+batch_size = 16384
 percent = 0.1
 shuffle = false

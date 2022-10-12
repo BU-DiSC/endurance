@@ -8,8 +8,9 @@ from tqdm import tqdm
 from itertools import combinations_with_replacement
 from data.io import Reader
 import lsm.cost as CostFunc
+import multiprocessing as mp
 
-NUM_FILES = 25
+NUM_FILES = 256
 TMAX = 50
 TLOW = 2
 MAX_LEVELS = 16
@@ -24,9 +25,9 @@ reader = Reader(config)
 cf = CostFunc.EndureKHybridCost(**config["system"])
 
 
-# See the stackoverflow thread for why the simple solution is not uniform
-# https://stackoverflow.com/questions/8064629/random-numbers-that-add-to-100-matlab
 def gen_workload(dim: int, max_val: float) -> list:
+    # See the stackoverflow thread for why the simple solution is not uniform
+    # https://stackoverflow.com/questions/8064629/random-numbers-that-add-to-100-matlab
     wl = list(np.random.rand(dim - 1)) + [0, 1]
     wl.sort()
     return [b - a for a, b in zip(wl, wl[1:])]
@@ -67,9 +68,15 @@ def create_row(h, T, K, z0, z1, q, w) -> dict:
     return row
 
 
-def generate_random_list() -> list:
+def gen_file(idx: int) -> int:
+    output_dir = os.path.join(
+        config['io']['cold_data_dir'],
+        config['io']['train_dir_name'])
+    fname = f'train_{idx:03}.feather'
+
     df = []
-    for _ in tqdm(range(SAMPLES), ncols=80):
+    pos = mp.current_process()._identity[0] - 1
+    for _ in tqdm(range(SAMPLES), desc=fname, position=pos, ncols=80):
         z0, z1, q, w = gen_workload(WL_DIM, 1)
         T = np.random.randint(low=TLOW, high=TMAX)
         h = np.around(HMAX * np.random.rand(), PRECISION)
@@ -80,19 +87,27 @@ def generate_random_list() -> list:
         row = create_row(h, T, K, z0, z1, q, w)
         df.append(row)
 
-    return df
+    df = pd.DataFrame(df)
+    df.to_feather(os.path.join(output_dir, fname))
+
+    return idx
 
 
 def gen_files() -> None:
-    output_dir = os.path.join(config["io"]["cold_data_dir"], "training_data")
+    output_dir = os.path.join(
+        config["io"]["cold_data_dir"],
+        config["io"]["train_dir_name"])
+    print(f'Writing all files to {output_dir}')
     os.makedirs(output_dir, exist_ok=True)
-    for idx in range(NUM_FILES):
-        fname = os.path.join(output_dir, f"train_{idx:04}.feather")
-        print(f"Generating file: {fname}")
+    inputs = list(range(NUM_FILES))
+    with mp.Pool(
+        mp.cpu_count(),
+        initializer=tqdm.set_lock,
+        initargs=(tqdm.get_lock(), )
+    ) as p:
+        p.map(gen_file, inputs)
 
-        df = pd.DataFrame(generate_random_list())
-        df.to_feather(fname)
-        del df
+    return
 
 
 if __name__ == "__main__":

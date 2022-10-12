@@ -12,6 +12,8 @@ experiments = [
 [io]
 data_dir = "/data"
 cold_data_dir = "/data"
+train_dir_name = "train_data"
+test_dir_name = "test_data"
 
 # =============================================================================
 # HEADER SYSTEM

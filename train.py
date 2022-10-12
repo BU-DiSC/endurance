@@ -1,3 +1,4 @@
+import glob
 import os
 import torch
 import logging
@@ -8,13 +9,14 @@ from torch.utils.data import DataLoader
 from model.kcost import KCostModelAlpha
 from data.kcost_dataset import KCostDataSet
 
-
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s]: %(message)s',
     datefmt='%H:%M:%S'
 )
 log = logging.getLogger()
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+log.info("Device: %s", device)
 cfg = toml.load('config/training.toml')
 model_dir = os.path.join(cfg['io']['data_dir'], cfg['io']['model_dir'])
 os.makedirs(model_dir, exist_ok=True)
@@ -26,6 +28,7 @@ def train_loop(dataloader, model, loss_fn, optimizer):
     model.train()
     pbar = tqdm(dataloader, ncols=80)
     for batch, (X, y) in enumerate(pbar):
+        X, y = X.to(device), y.to(device)
         pred = model(X)
         loss = loss_fn(pred, y)
 
@@ -45,6 +48,7 @@ def test_loop(dataloader, model, loss_fn):
     model.eval()
     with torch.no_grad():
         for X, y in tqdm(dataloader, desc='validate model', ncols=80):
+            X, y = X.to(device), y.to(device)
             pred = model(X)
             test_loss += loss_fn(pred, y).item()
 
@@ -56,9 +60,7 @@ def test_loop(dataloader, model, loss_fn):
 
 log.info('Reading data')
 data_dir = os.path.join(cfg['io']['data_dir'], cfg['io']['train_dir'])
-paths = []
-for data_file in cfg['io']['train_data']:
-    paths.append(os.path.join(data_dir, data_file))
+paths = list(glob.glob(os.path.join(data_dir, "*.feather")))
 data = KCostDataSet(cfg, paths)
 val_len = int(len(data) * cfg['validate']['percent'])
 train_len = len(data) - val_len
@@ -76,6 +78,7 @@ val = DataLoader(
 
 loss_fn = nn.MSELoss()
 model = KCostModelAlpha(cfg)
+model = model.to(device)
 log.info(f"Model params: {cfg['hyper_params']}")
 log.info(f"Training params: {cfg['train']}")
 optimizer = torch.optim.SGD(
