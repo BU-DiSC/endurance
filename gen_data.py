@@ -99,7 +99,7 @@ def gen_files() -> None:
         config["io"]["train_dir_name"])
     print(f'Writing all files to {output_dir}')
     os.makedirs(output_dir, exist_ok=True)
-    inputs = list(range(NUM_FILES))
+    inputs = list(range(NUM_FILES, 3 * NUM_FILES))
     with mp.Pool(
         mp.cpu_count(),
         initializer=tqdm.set_lock,

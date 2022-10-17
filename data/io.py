@@ -58,7 +58,7 @@ class Reader(object):
         :param config:
         """
         self.config = config
-        self.data_dir = self.config['project']['data_dir']
+        self.data_dir = self.config['io']['data_dir']
         self.log = logging.getLogger('endure')
 
     @classmethod
