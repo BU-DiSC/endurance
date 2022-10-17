@@ -10,10 +10,47 @@ experiments = [
 #   Generic IO settings for experiments, saving data, etc
 # =============================================================================
 [io]
-data_dir = "/data"
-cold_data_dir = "/data"
-train_dir_name = "train_data"
-test_dir_name = "test_data"
+data_dir = "/Users/ndhuynh/sandbox/data"
+cold_data_dir = "/Users/ndhuynh/sandbox/data"
+
+# =============================================================================
+# HEADER train
+#   Configuration parameters for training a model including which model
+# =============================================================================
+[train]
+model = "KCostModelAlpha"
+train_dir = "train_data"
+test_dir = "test_data"
+
+[train.params]
+max_levels = 16
+max_size_ratio = 50
+# h, z0, z1, q, w
+mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
+std_bias =  [2.74,  0.3, 0.3, 0.3, 0.3]
+out_dims = 4
+
+# Number of continuous variables the NN will take in
+num_cont_vars = 5
+# Number of categorical variables we will need to encode
+num_cate_vars = 17
+
+hidden_layers = 2
+embedding_input = 17
+embedding_output = 17
+
+max_epochs = 128
+batch_size = 1024
+learning_rate = 0.001
+# If training is via SGD, this will be the gamma decay parameter for learning
+learning_rate_decay = 0.9
+early_stop_num = 2
+shuffle = true
+
+[train.validate]
+batch_size = 16384
+percent = 0.1
+shuffle = false
 
 # =============================================================================
 # HEADER SYSTEM
@@ -46,16 +83,8 @@ H = 10
 N = 100000000
 
 # =============================================================================
-# HEADER EXPERIMENT CONFIG
-#     Specific experiment configurations will be listed below
-# =============================================================================
-[exp_config]
-    [exp_config.Exp01]
-    wl_ids = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-
-# =============================================================================
 # HEADER WORKLOADS
-#     List of workloads we will be looking at
+#     List of representative workloads
 # =============================================================================
 [[workloads]]
 id = 0
