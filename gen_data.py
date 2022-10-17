@@ -10,7 +10,7 @@ from data.io import Reader
 import lsm.cost as CostFunc
 import multiprocessing as mp
 
-NUM_FILES = 256
+NUM_FILES = 8
 TMAX = 50
 TLOW = 2
 MAX_LEVELS = 16
@@ -44,23 +44,16 @@ def create_row(h, T, K, z0, z1, q, w) -> dict:
     q_cost = q * cf.Q(h, T, K)
     w_cost = w * cf.W(h, T, K)
     row = {
-        "h": h,
-        "T": T,
-        "z0": z0,
-        "z1": z1,
-        "q": q,
-        "w": w,
-        "B": config["system"]["B"],
-        "phi": config["system"]["phi"],
-        "s": config["system"]["s"],
-        "E": config["system"]["E"],
-        "H": config["system"]["H"],
-        "N": config["system"]["N"],
         "z0_cost": z0_cost,
         "z1_cost": z1_cost,
         "q_cost": q_cost,
         "w_cost": w_cost,
-        "k_cost": z0_cost + z1_cost + q_cost + w_cost,
+        "h": h,
+        "z0": z0,
+        "z1": z1,
+        "q": q,
+        "w": w,
+        "T": T,
     }
     for level_idx in range(MAX_LEVELS):
         row[f"K_{level_idx}"] = K[level_idx]
@@ -70,9 +63,9 @@ def create_row(h, T, K, z0, z1, q, w) -> dict:
 
 def gen_file(idx: int) -> int:
     output_dir = os.path.join(
-        config['io']['cold_data_dir'],
+        config['io']['data_dir'],
         config['io']['train_dir_name'])
-    fname = f'train_{idx:03}.feather'
+    fname = f'train_{idx:03}.csv'
 
     df = []
     pos = mp.current_process()._identity[0] - 1
@@ -88,22 +81,22 @@ def gen_file(idx: int) -> int:
         df.append(row)
 
     df = pd.DataFrame(df)
-    df.to_feather(os.path.join(output_dir, fname))
+    df.to_csv(os.path.join(output_dir, fname))
 
     return idx
 
 
 def gen_files() -> None:
     output_dir = os.path.join(
-        config["io"]["cold_data_dir"],
+        config["io"]["data_dir"],
         config["io"]["train_dir_name"])
     print(f'Writing all files to {output_dir}')
     os.makedirs(output_dir, exist_ok=True)
-    inputs = list(range(NUM_FILES, 3 * NUM_FILES))
+    inputs = list(range(0, NUM_FILES))
     with mp.Pool(
         mp.cpu_count(),
         initializer=tqdm.set_lock,
-        initargs=(tqdm.get_lock(), )
+        initargs=(mp.RLock(), )
     ) as p:
         p.map(gen_file, inputs)
 
