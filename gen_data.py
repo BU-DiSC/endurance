@@ -95,7 +95,7 @@ class DataGenerator:
             df.append(row)
 
         df = pd.DataFrame(df)
-        df.to_csv(os.path.join(self.output_dir, fname))
+        df.to_csv(os.path.join(self.output_dir, fname), index=False)
 
         return idx
 

@@ -10,7 +10,8 @@ experiments = [
 #   Generic IO settings for experiments, saving data, etc
 # =============================================================================
 [log]
-format = "%(levelname)s][%(asctime)-15s][%(filename)s] %(message)s"
+name = 'endure-logger'
+format = "[%(levelname)s][%(asctime)-15s][%(filename)s] %(message)s"
 datefmt = '%d-%m-%y:%H:%M:%S'
 level = "INFO"
 
@@ -43,11 +44,11 @@ min = 0
 # =============================================================================
 [data_gen]
 cost_function = "EndureKHybridCost"
-dir = "train_data"
+dir = "test_data"
 file_prefix = "endure-k"
 # Parallel workers, -1 will force all cores to be used
 num_workers = 4
-num_files = 8
+num_files = 4
 precision = 3
 samples = 65536
 
@@ -57,7 +58,10 @@ samples = 65536
 # =============================================================================
 [model]
 # Architecture to pick
-model = "KCostModelAlpha"
+arch = "KCostModel"
+
+# Name to save the model
+dir = 'kcostmodel'
 
 # Output dimensions, should match whatever the cost function outputs
 out_dims = 4
@@ -73,9 +77,11 @@ num_cate_vars = 17
 # Hidden layers between the continous inputs + embedding to output
 hidden_layers = 2
 
-# Configuration for the embedding layer for categorical variables
-embedding_input = 17
-embedding_output = 17
+# Size of our cateogrical variable embedding, our overall cost-model network
+# input will be
+#   num_cont_vars + (num_cate_vars * embedding_size)
+# As each categorical variable will be embedded down to size `embedding_size`
+embedding_size = 2
 
 [train]
 # directory for data used for testing and training
@@ -96,11 +102,13 @@ learning_rate = 0.001
 
 # data set specfic configurations
 batch_size = 1024
+drop_last = true
 shuffle = true
 
 [test]
 dir = "test_data"
 batch_size = 16384
+drop_last = true
 shuffle = false
 
 # =============================================================================
