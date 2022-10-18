@@ -20,8 +20,8 @@ level = "INFO"
 #   Generic IO settings for experiments, saving data, etc
 # =============================================================================
 [io]
-data_dir = "/Users/ndhuynh/sandbox/data"
-cold_data_dir = "/Users/ndhuynh/sandbox/data"
+data_dir = "/data"
+cold_data_dir = "/data"
 
 # =============================================================================
 # HEADER LSM
@@ -44,12 +44,13 @@ min = 0
 # =============================================================================
 [data_gen]
 cost_function = "EndureKHybridCost"
-dir = "test_data"
+dir = "train_data"
 file_prefix = "endure-k"
 # Parallel workers, -1 will force all cores to be used
-num_workers = 4
-num_files = 4
+num_workers = -1
+num_files = 512
 precision = 3
+# Per file sample
 samples = 65536
 
 # =============================================================================

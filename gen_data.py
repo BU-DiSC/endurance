@@ -12,7 +12,6 @@ from itertools import combinations_with_replacement
 from data.io import Reader
 import lsm.cost as CostFunc
 
-<<<<<<< Updated upstream
 
 class DataGenerator:
     def __init__(self, config):
@@ -30,8 +29,8 @@ class DataGenerator:
         }
         cf = cost_functions.get(cost_function_choice, None)
         if cf is None:
-            self.log.error(
-                'Invalid cost function choice, defaulting to EndureKHybridCost')
+            self.log.error('Invalid cost function choice. '
+                           'Defaulting to EndureKHybridCost')
             cf = CostFunc.EndureKHybridCost(**system)
 
         return cf
