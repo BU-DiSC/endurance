@@ -6,6 +6,15 @@ experiments = [
     'CostSurfaceEp']
 
 # =============================================================================
+# HEADER LOGGER
+#   Generic IO settings for experiments, saving data, etc
+# =============================================================================
+[log]
+format = "%(levelname)s][%(asctime)-15s][%(filename)s] %(message)s"
+datefmt = '%d-%m-%y:%H:%M:%S'
+level = "INFO"
+
+# =============================================================================
 # HEADER IO
 #   Generic IO settings for experiments, saving data, etc
 # =============================================================================
@@ -14,42 +23,84 @@ data_dir = "/Users/ndhuynh/sandbox/data"
 cold_data_dir = "/Users/ndhuynh/sandbox/data"
 
 # =============================================================================
-# HEADER train
-#   Configuration parameters for training a model including which model
+# HEADER LSM
+#   Bounds for searching the LSM space
 # =============================================================================
-[train]
-model = "KCostModelAlpha"
-train_dir = "train_data"
-test_dir = "test_data"
-
-[train.params]
+[lsm]
 max_levels = 16
-max_size_ratio = 50
-# h, z0, z1, q, w
-mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
-std_bias =  [2.74,  0.3, 0.3, 0.3, 0.3]
+
+[lsm.size_ratio]
+max = 50
+min = 2
+
+[lsm.bits_per_elem]
+max = 9.5
+min = 0
+
+# =============================================================================
+# HEADER DATAGEN
+#   Generating data to be used for learning
+# =============================================================================
+[data_gen]
+cost_function = "EndureKHybridCost"
+dir = "train_data"
+file_prefix = "endure-k"
+# Parallel workers, -1 will force all cores to be used
+num_workers = 4
+num_files = 8
+precision = 3
+samples = 65536
+
+# =============================================================================
+# HEADER MODEL
+#   Configuration parameters for creating, trainig, and validating a model
+# =============================================================================
+[model]
+# Architecture to pick
+model = "KCostModelAlpha"
+
+# Output dimensions, should match whatever the cost function outputs
 out_dims = 4
 
-# Number of continuous variables the NN will take in
+# Number of continuous variables the NN will take, referring to bits per
+# element, workload, etc
 num_cont_vars = 5
-# Number of categorical variables we will need to encode
+
+# Number of categorical variables we will need to encode, referring to size
+# ratios and number of files per level (if using that cost-model)
 num_cate_vars = 17
 
+# Hidden layers between the continous inputs + embedding to output
 hidden_layers = 2
+
+# Configuration for the embedding layer for categorical variables
 embedding_input = 17
 embedding_output = 17
 
+[train]
+# directory for data used for testing and training
+dir = "train_data"
+
+# h, z0, z1, q, w
+mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
+std_bias =  [2.74,  0.3, 0.3, 0.3, 0.3]
+
+# Number of iterations of non-improvement to trigger and early stop of training
+early_stop_num = 2
+# Maximum number of epochs we will train over
 max_epochs = 128
-batch_size = 1024
-learning_rate = 0.001
+
 # If training is via SGD, this will be the gamma decay parameter for learning
 learning_rate_decay = 0.9
-early_stop_num = 2
+learning_rate = 0.001
+
+# data set specfic configurations
+batch_size = 1024
 shuffle = true
 
-[train.validate]
+[test]
+dir = "test_data"
 batch_size = 16384
-percent = 0.1
 shuffle = false
 
 # =============================================================================

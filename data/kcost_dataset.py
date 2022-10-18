@@ -2,6 +2,7 @@ import torch
 import pandas as pd
 from torch import nn
 from torch.utils.data import Dataset
+import torchdata.datapipes as DataPipe
 
 
 class KCostDataSetSplit(Dataset):
@@ -100,3 +101,20 @@ class KCostDataSet(Dataset):
         label = self.outputs[idx]
 
         return inputs, label
+
+
+class KCostDataPipeGenerator():
+    def __init__(self, config):
+        self.config = config
+
+    @staticmethod
+    def build_datapipe(data_dir, file_filter, process_fn):
+        datapipe = (DataPipe
+                    .iter
+                    .FileLister(data_dir)
+                    .filter(filter_fn=file_filter)
+                    .open_files(mode='rt')
+                    .parse_csv(delimiter=',', skip_lines=1)
+                    .shuffle()
+                    .map(process_fn))
+        return datapipe
