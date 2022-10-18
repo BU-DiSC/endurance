@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 import logging
 import multiprocessing as mp
 import numpy as np

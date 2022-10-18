@@ -1,159 +1,210 @@
+#!/usr/bin/env python
 import os
 import torch
 import logging
-import toml
 import numpy as np
 from tqdm import tqdm
-from torch import nn
+
 from torch.utils.data import DataLoader
-from model.kcost import KCostModel
 import torchdata.datapipes as DataPipe
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-cfg = toml.load('endure.toml')
-
-logging.basicConfig(
-    level=logging.INFO,
-    format=cfg['log']['format'],
-    datefmt=cfg['log']['datefmt'])
-log = logging.getLogger(cfg['log']['name'])
-log.info(f'Running with {device=}')
-
-model_dir = os.path.join(cfg['io']['data_dir'], cfg['model']['dir'])
-os.makedirs(model_dir, exist_ok=True)
-with open(os.path.join(model_dir, 'endure.toml'), 'w') as fid:
-    toml.dump(cfg, fid)
+from data.io import Reader
+from model.kcost import KCostModel
 
 
-def train_loop(dataloader, model, loss_fn, optimizer):
-    model.train()
-    pbar = tqdm(dataloader, ncols=80)
-    for batch, data in enumerate(pbar):
-        label = data['label'].to(device)
-        input = data['feature'].to(device)
-        pred = model(input)
-        loss = loss_fn(pred, label)
+class Trainer:
+    def __init__(self, config):
+        self.config = config
+        self.log = logging.getLogger(self.config['log']['name'])
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        if batch % (1000) == 0:
-            pbar.set_description(f'loss {loss:>5f}')
+    def prep_training(self):
+        if torch.cuda.is_available():
+            self.device = torch.device('cuda')
+        else:
+            self.device = torch.device('cpu')
 
-    return
+        self.model = self._build_model()
+        self.model = self.model.to(self.device)
+        self.optimizer, self.scheduler = self._build_optimizer(self.model)
+        self.train_data, self.test_data = self._build_data()
+        self.train_len = self.test_len = 0
+        self.loss_fn = torch.nn.MSELoss()
 
+    def _build_model(self):
+        choice = self.config['model']['arch']
+        self.log.info(f'Building model: {choice}')
+        models = {
+            'KCostModel': KCostModel,
+        }
+        model = models.get(choice, None)
+        if model is None:
+            self.log.warn('Invalid model arch. Defaulting to KCostModel')
+            model = KCostModel
+        model = model(self.config)
 
-def test_loop(dataloader, model, loss_fn):
-    test_loss = 0
+        return model
 
-    model.eval()
-    pbar = tqdm(dataloader, desc='validate model', ncols=80)
-    with torch.no_grad():
+    def _build_optimizer(self, model):
+        optimizer = torch.optim.SGD(
+                model.parameters(),
+                lr=self.config['train']['learning_rate'])
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(
+                optimizer,
+                gamma=self.config['train']['learning_rate_decay'])
+
+        return optimizer, scheduler
+
+    def _process_row(self, row):
+        labels = torch.from_numpy(np.array(row[0:4], np.float32))
+        features = np.array(row[4:], np.float32)
+
+        # First 4 are h, z0, z1, w, q
+        # TODO: Streamline this process
+        continuous_data = features[0:5]
+        continuous_data -= np.array(
+                self.config['train']['mean_bias'], np.float32)
+        continuous_data /= np.array(
+                self.config['train']['std_bias'], np.float32)
+        continuous_data = torch.from_numpy(continuous_data)
+
+        # Remaining will be T and Ks
+        categorical_data = torch.from_numpy(features[5:])
+        features = torch.cat((continuous_data, categorical_data))
+
+        return {'label': labels, 'feature': features}
+
+    def _build_data(self):
+        train_dir = os.path.join(
+                self.config['io']['data_dir'],
+                self.config['train']['dir'])
+        test_dir = os.path.join(
+                self.config['io']['data_dir'],
+                self.config['test']['dir'])
+
+        dp_train = (DataPipe
+                    .iter
+                    .FileLister(train_dir)
+                    .filter(filter_fn=lambda fname: fname.endswith('.csv'))
+                    .open_files(mode='rt')
+                    .parse_csv(delimiter=',', skip_lines=1)
+                    .map(self._process_row))
+        if self.config['train']['shuffle'] is True:
+            dp_train = dp_train.shuffle()
+
+        dp_test = (DataPipe
+                   .iter
+                   .FileLister(test_dir)
+                   .filter(filter_fn=lambda fname: fname.endswith('.csv'))
+                   .open_files(mode='rt')
+                   .parse_csv(delimiter=',', skip_lines=1)
+                   .map(self._process_row))
+        if self.config['test']['shuffle'] is True:
+            dp_test = dp_test.shuffle()
+
+        train = DataLoader(
+                dp_train,
+                batch_size=self.config['train']['batch_size'],
+                drop_last=self.config['train']['drop_last'])
+        test = DataLoader(
+                dp_test,
+                batch_size=self.config['test']['batch_size'],
+                drop_last=self.config['test']['drop_last'])
+
+        return train, test
+
+    def _train_loop(self):
+        self.model.train()
+        if self.train_len == 0:
+            pbar = tqdm(self.train_data, ncols=80)
+        else:
+            pbar = tqdm(self.train_data, ncols=80, total=self.train_len)
         for batch, data in enumerate(pbar):
-            label = data['label'].to(device)
-            feature = data['feature'].to(device)
-            pred = model(feature)
-            test_loss += loss_fn(pred, label).item()
+            label = data['label'].to(self.device)
+            input = data['feature'].to(self.device)
+            pred = self.model(input)
+            loss = self.loss_fn(pred, label)
 
-    test_loss /= batch
-    log.info(f'validation loss: {test_loss:>8f}')
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+            if batch % (1000) == 0:
+                pbar.set_description(f'loss {loss:>5f}')
 
-    return test_loss
+        if self.train_len == 0:
+            self.train_len = batch + 1
 
+    def _test_loop(self):
+        self.model.eval()
+        test_loss = 0
+        if self.test_len == 0:
+            pbar = tqdm(self.test_data, desc='testing', ncols=80)
+        else:
+            pbar = tqdm(self.test_data, desc='testing',
+                        ncols=80, total=self.test_len)
+        with torch.no_grad():
+            for batch, data in enumerate(pbar):
+                label = data['label'].to(self.device)
+                feature = data['feature'].to(self.device)
+                pred = self.model(feature)
+                test_loss += self.loss_fn(pred, label).item()
 
-def process_row(row: str) -> dict:
-    labels = torch.from_numpy(np.array(row[0:4], np.float32))
-    features = np.array(row[4:], np.float32)
+        if self.test_len == 0:
+            self.test_len = batch + 1  # Last batch will correspond to total
 
-    # First 4 are h, z0, z1, w, q
-    # TODO: Streamline this process
-    continuous_data = features[0:5]
-    continuous_data -= np.array(cfg['train']['mean_bias'], np.float32)
-    continuous_data /= np.array(cfg['train']['std_bias'], np.float32)
-    continuous_data = torch.from_numpy(continuous_data)
+        return test_loss
 
-    # Remaining will be T and Ks
-    categorical_data = torch.from_numpy(features[5:])
-    features = torch.cat((continuous_data, categorical_data))
+    def _checkpoint(self, epoch, loss):
+        save_dir = os.path.join(self.config['io']['data_dir'],
+                                self.config['model']['dir'])
+        os.makedirs(save_dir, exist_ok=True)
+        save_pt = {'epoch': epoch,
+                   'model_state_dict': self.model.state_dict(),
+                   'optimizer_state_dict': self.optimizer.state_dict(),
+                   'loss': loss}
+        torch.save(save_pt, os.path.join(save_dir, 'checkpoint.pt'))
 
-    return {'label': labels, 'feature': features}
+    def _save_model(self):
+        save_dir = os.path.join(self.config['io']['data_dir'],
+                                self.config['model']['dir'])
+        os.makedirs(save_dir, exist_ok=True)
+        torch.save(self.model.state_dict(),
+                   os.path.join(save_dir, 'kcost_min.model'))
 
-
-def file_filter(fname: str) -> bool:
-    return fname.endswith('.csv')
-
-
-train_dir = os.path.join(cfg['io']['data_dir'], cfg['train']['dir'])
-test_dir = os.path.join(cfg['io']['data_dir'], cfg['test']['dir'])
-
-dp_train = (DataPipe
-            .iter
-            .FileLister(train_dir)
-            .filter(filter_fn=file_filter)
-            .open_files(mode='rt')
-            .parse_csv(delimiter=',', skip_lines=1)
-            .map(process_row))
-if cfg['train']['shuffle'] is True:
-    dp_train = dp_train.shuffle()
-
-dp_test = (DataPipe
-           .iter
-           .FileLister(train_dir)
-           .filter(filter_fn=file_filter)
-           .open_files(mode='rt')
-           .parse_csv(delimiter=',', skip_lines=1)
-           .map(process_row))
-if cfg['train']['shuffle'] is True:
-    dp_train = dp_train.shuffle()
-
-train = DataLoader(
-        dp_train,
-        batch_size=cfg['train']['batch_size'],
-        drop_last=cfg['train']['drop_last'])
-test = DataLoader(
-        dp_test,
-        batch_size=cfg['test']['batch_size'],
-        drop_last=cfg['test']['drop_last'])
-
-loss_fn = nn.MSELoss()
-model = KCostModel(cfg).to(device)
-
-log.info(f'Model: {cfg["model"]}')
-log.info(f'Training params: {cfg["train"]}')
-
-optimizer = torch.optim.SGD(
-        model.parameters(),
-        lr=cfg['train']['learning_rate'])
-scheduler = torch.optim.lr_scheduler.ExponentialLR(
-        optimizer,
-        gamma=cfg['train']['learning_rate_decay'])
-
-MAX_EPOCHS = cfg['train']['max_epochs']
-prev_loss = loss_min = float('inf')
-no_improvement = 0
-for t in range(MAX_EPOCHS):
-    log.info(f'Epoch [{t+1}/{MAX_EPOCHS}] '
-             f'Early stop [{no_improvement}/{cfg["train"]["early_stop_num"]}]')
-    train_loop(train, model, loss_fn, optimizer)
-    scheduler.step()
-    curr_loss = test_loop(test, model, loss_fn)
-    if curr_loss < loss_min:
-        loss_min = curr_loss
-        torch.save(
-            model.state_dict(),
-            os.path.join(model_dir, 'kcost_min.model'))
+    def train(self):
+        loss_min = float('inf')
         no_improvement = 0
-    else:
-        no_improvement += 1
+        early_stop_num = self.config['train']['early_stop_num']
+        max_epochs = self.config['train']['max_epochs']
 
-    save_pt = {
-        'epoch': t,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'loss': curr_loss}
-    torch.save(save_pt, os.path.join(model_dir, 'checkpoint.pt'))
-    if no_improvement > cfg["train"]['early_stop_num']:
-        log.info('Early termination, exiting...')
-        break
-    prev_loss = curr_loss
+        for epoch in range(max_epochs):
+            self.log.info(f'Epoch ({epoch+1}/{max_epochs}) '
+                          f'No improvement ({no_improvement}/{early_stop_num})')
+            self._train_loop()
+            self.scheduler.step()
+            curr_loss = self._test_loop()
+            self._checkpoint(epoch, curr_loss)
+            if curr_loss < loss_min:
+                loss_min = curr_loss
+                self._save_model()
+                no_improvement = 0
+            else:
+                no_improvement += 1
+
+            if no_improvement > early_stop_num:
+                self.log.info('Early termination, exiting...')
+                break
+        self.log.info('Training finished')
+
+
+if __name__ == '__main__':
+    config = Reader.read_config('endure.toml')
+
+    logging.basicConfig(format=config['log']['format'],
+                        datefmt=config['log']['datefmt'])
+
+    log = logging.getLogger(config['log']['name'])
+    log.setLevel(config['log']['level'])
+
+    a = Trainer(config)
+    a.prep_training()
+    a.train()
