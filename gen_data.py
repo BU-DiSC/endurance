@@ -12,6 +12,7 @@ from itertools import combinations_with_replacement
 from data.io import Reader
 import lsm.cost as CostFunc
 
+<<<<<<< Updated upstream
 
 class DataGenerator:
     def __init__(self, config):
