@@ -182,6 +182,7 @@ class Trainer:
             self._train_loop()
             self.scheduler.step()
             curr_loss = self._test_loop()
+            self.log(f'Test loss = {curr_loss}')
             self._checkpoint(epoch, curr_loss)
             if curr_loss < loss_min:
                 loss_min = curr_loss
