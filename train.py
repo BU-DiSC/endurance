@@ -150,6 +150,7 @@ class Trainer:
 
         if self.test_len == 0:
             self.test_len = batch + 1  # Last batch will correspond to total
+        test_loss /= (batch + 1)
 
         return test_loss
 
@@ -182,7 +183,7 @@ class Trainer:
             self._train_loop()
             self.scheduler.step()
             curr_loss = self._test_loop()
-            self.log(f'Test loss = {curr_loss}')
+            self.log.info(f'Test loss = {curr_loss}')
             self._checkpoint(epoch, curr_loss)
             if curr_loss < loss_min:
                 loss_min = curr_loss
