@@ -22,6 +22,7 @@ class Trainer:
             self.device = torch.device('cuda')
         else:
             self.device = torch.device('cpu')
+        self.log.info(f'Using device: {self.device}')
 
         self.model = self._build_model()
         self.model = self.model.to(self.device)
@@ -87,7 +88,8 @@ class Trainer:
                     .filter(filter_fn=lambda fname: fname.endswith('.csv'))
                     .open_files(mode='rt')
                     .parse_csv(delimiter=',', skip_lines=1)
-                    .map(self._process_row))
+                    .map(self._process_row)
+                    .sharding_filter())
         if self.config['train']['shuffle'] is True:
             dp_train = dp_train.shuffle()
 
@@ -97,18 +99,24 @@ class Trainer:
                    .filter(filter_fn=lambda fname: fname.endswith('.csv'))
                    .open_files(mode='rt')
                    .parse_csv(delimiter=',', skip_lines=1)
-                   .map(self._process_row))
+                   .map(self._process_row)
+                   .sharding_filter())
         if self.config['test']['shuffle'] is True:
             dp_test = dp_test.shuffle()
 
         train = DataLoader(
                 dp_train,
                 batch_size=self.config['train']['batch_size'],
-                drop_last=self.config['train']['drop_last'])
+                drop_last=self.config['train']['drop_last'],
+                # Unsure if needed but to be safe
+                shuffle=self.config['train']['shuffle'],
+                num_workers=0)
         test = DataLoader(
                 dp_test,
                 batch_size=self.config['test']['batch_size'],
-                drop_last=self.config['test']['drop_last'])
+                drop_last=self.config['test']['drop_last'],
+                shuffle=self.config['test']['shuffle'],
+                num_workers=0)
 
         return train, test
 
@@ -173,28 +181,37 @@ class Trainer:
 
     def train(self):
         loss_min = float('inf')
-        no_improvement = 0
         early_stop_num = self.config['train']['early_stop_num']
         max_epochs = self.config['train']['max_epochs']
+        losses = [float('inf')] * early_stop_num
+        self.log.info('Model parameters')
+        for key in self.config['model'].keys():
+            self.log.info(f'{key} = {self.config["model"][key]}')
+        self.log.info('Training parameters')
+        for key in self.config['train'].keys():
+            self.log.info(f'{key} = {self.config["train"][key]}')
 
         for epoch in range(max_epochs):
-            self.log.info(f'Epoch ({epoch+1}/{max_epochs}) '
-                          f'No improvement ({no_improvement}/{early_stop_num})')
+            self.log.info(f'Epoch ({epoch+1}/{max_epochs})')
             self._train_loop()
             self.scheduler.step()
             curr_loss = self._test_loop()
-            self.log.info(f'Test loss = {curr_loss}')
+            self.log.info(f'Test loss: {curr_loss}')
             self._checkpoint(epoch, curr_loss)
             if curr_loss < loss_min:
                 loss_min = curr_loss
+                self.log.info('New minmum loss, saving...')
                 self._save_model()
-                no_improvement = 0
-            else:
-                no_improvement += 1
 
-            if no_improvement > early_stop_num:
-                self.log.info('Early termination, exiting...')
+            losses.pop(0)
+            losses.append(curr_loss)
+            loss_improve = [y - x < 1e-6 for x, y in zip(losses, losses[1:])]
+            self.log.info(f'Past losses ({losses})')
+            if any(loss_improve):
+                self.log.info('Loss has not improved for the last '
+                              f'{early_stop_num} epochs. Terminating...')
                 break
+
         self.log.info('Training finished')
 
 
