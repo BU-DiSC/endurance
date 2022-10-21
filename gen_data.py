@@ -5,6 +5,7 @@ import numpy as np
 import os
 import pandas as pd
 import random
+import csv
 from tqdm import tqdm
 from itertools import combinations_with_replacement
 
@@ -48,53 +49,51 @@ class DataGenerator:
 
         return list(arr)
 
-    def create_row(self, cf, h, T, K, z0, z1, q, w) -> dict:
-        z0_cost = z0 * cf.Z0(h, T, K)
-        z1_cost = z1 * cf.Z1(h, T, K)
-        q_cost = q * cf.Q(h, T, K)
-        w_cost = w * cf.W(h, T, K)
-        row = {
-            'z0_cost': z0_cost,
-            'z1_cost': z1_cost,
-            'q_cost': q_cost,
-            'w_cost': w_cost,
-            'h': h,
-            'z0': z0,
-            'z1': z1,
-            'q': q,
-            'w': w,
-            'T': T,
-        }
+    def create_row(self, cf, h, T, K, z0, z1, q, w) -> list:
+        line = [
+            z0 * cf.Z0(h, T, K),
+            z1 * cf.Z1(h, T, K),
+            q * cf.Q(h, T, K),
+            w * cf.W(h, T, K),
+            h,
+            z0,
+            z1,
+            q,
+            w,
+            T,
+        ]
         for level_idx in range(self.cfg['lsm']['max_levels']):
-            row[f'K_{level_idx}'] = K[level_idx]
+            line.append(K[level_idx])
 
-        return row
+        return line
 
     def gen_file(self, idx: int) -> int:
-        df = []
         cf = self._generate_cost_function()
         fname_prefix = self.cfg['data_gen']['file_prefix']
         fname = f'{fname_prefix}-{idx:04}.csv'
+        header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
+                  'h', 'z0', 'z1', 'q', 'w', 'T']
+        header += [f'K_{i}' for i in range(self.cfg['lsm']['max_levels'])]
 
-        samples = range(int(self.cfg['data_gen']['samples']))
-        pos = mp.current_process()._identity[0] - 1
-        for _ in tqdm(samples, desc=fname, position=pos, ncols=80):
-            z0, z1, q, w = self.gen_workload(4)
-            T = np.random.randint(
-                low=self.cfg['lsm']['size_ratio']['min'],
-                high=self.cfg['lsm']['size_ratio']['max'])
-            h = np.around(
-                self.cfg['lsm']['bits_per_elem']['max'] * np.random.rand(),
-                self.cfg['data_gen']['precision'])
+        with open(os.path.join(self.output_dir, fname), 'w') as fid:
+            writer = csv.writer(fid)
+            writer.writerow(header)
+            samples = range(int(self.cfg['data_gen']['samples']))
+            pos = mp.current_process()._identity[0] - 1
+            for _ in tqdm(samples, desc=fname, position=pos, ncols=80):
+                z0, z1, q, w = self.gen_workload(4)
+                T = np.random.randint(
+                    low=self.cfg['lsm']['size_ratio']['min'],
+                    high=self.cfg['lsm']['size_ratio']['max'])
+                h = np.around(
+                    self.cfg['lsm']['bits_per_elem']['max'] * np.random.rand(),
+                    self.cfg['data_gen']['precision'])
 
-            levels = int(cf.L(h, T, True))
-            K = random.sample(self.create_k_levels(levels, T - 1), 1)[0]
-            K = np.pad(K, (0, self.cfg['lsm']['max_levels'] - len(K)))
-            row = self.create_row(cf, h, T, K, z0, z1, q, w)
-            df.append(row)
-
-        df = pd.DataFrame(df)
-        df.to_csv(os.path.join(self.output_dir, fname), index=False)
+                levels = int(cf.L(h, T, True))
+                K = random.sample(self.create_k_levels(levels, T - 1), 1)[0]
+                K = np.pad(K, (0, self.cfg['lsm']['max_levels'] - len(K)))
+                row = self.create_row(cf, h, T, K, z0, z1, q, w)
+                writer.writerow(row)
 
         return idx
 
