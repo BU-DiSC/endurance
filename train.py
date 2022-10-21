@@ -183,7 +183,7 @@ class Trainer:
         loss_min = float('inf')
         early_stop_num = self.config['train']['early_stop_num']
         max_epochs = self.config['train']['max_epochs']
-        losses = [float('inf')] * early_stop_num
+        losses = [float('inf')] * (early_stop_num + 1)
         self.log.info('Model parameters')
         for key in self.config['model'].keys():
             self.log.info(f'{key} = {self.config["model"][key]}')
@@ -205,7 +205,7 @@ class Trainer:
 
             losses.pop(0)
             losses.append(curr_loss)
-            loss_improve = [y - x < 1e-6 for x, y in zip(losses, losses[1:])]
+            loss_improve = [y - x > 1e-6 for x, y in zip(losses, losses[1:])]
             self.log.info(f'Past losses ({losses})')
             if any(loss_improve):
                 self.log.info('Loss has not improved for the last '
