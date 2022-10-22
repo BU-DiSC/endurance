@@ -30,6 +30,8 @@ class Trainer:
         self.train_data, self.test_data = self._build_data()
         self.train_len = self.test_len = 0
         self.loss_fn = torch.nn.MSELoss()
+        self.mean = np.array(self.config['train']['mean_bias'], np.float32)
+        self.std = np.array(self.config['train']['std_bias'], np.float32)
 
     def _build_model(self):
         choice = self.config['model']['arch']
@@ -56,21 +58,18 @@ class Trainer:
         return optimizer, scheduler
 
     def _process_row(self, row):
-        labels = torch.from_numpy(np.array(row[0:4], np.float32))
+        labels = np.array(row[0:4], np.float32)
         features = np.array(row[4:], np.float32)
 
         # First 4 are h, z0, z1, w, q
         # TODO: Streamline this process
         continuous_data = features[0:5]
-        continuous_data -= np.array(
-                self.config['train']['mean_bias'], np.float32)
-        continuous_data /= np.array(
-                self.config['train']['std_bias'], np.float32)
-        continuous_data = torch.from_numpy(continuous_data)
+        continuous_data -= self.mean
+        continuous_data /= self.std
 
         # Remaining will be T and Ks
-        categorical_data = torch.from_numpy(features[5:])
-        features = torch.cat((continuous_data, categorical_data))
+        categorical_data = features[5:]
+        features = np.concatenate((continuous_data, categorical_data))
 
         return {'label': labels, 'feature': features}
 
@@ -205,7 +204,7 @@ class Trainer:
 
             losses.pop(0)
             losses.append(curr_loss)
-            loss_improve = [y - x > 1e-6 for x, y in zip(losses, losses[1:])]
+            loss_improve = [y - x > 0 for x, y in zip(losses, losses[1:])]
             self.log.info(f'Past losses ({losses})')
             if any(loss_improve):
                 self.log.info('Loss has not improved for the last '
