@@ -44,14 +44,14 @@ min = 0
 # =============================================================================
 [data_gen]
 cost_function = "EndureKHybridCost"
-dir = "train_data"
-file_prefix = "endure-k"
+dir = "test_data"
+file_prefix = "test-k"
 # Parallel workers, -1 will force all cores to be used
 num_workers = -1
-num_files = 512
+num_files = 8
 precision = 3
 # Per file sample
-samples = 65536
+samples = 1048576
 
 # =============================================================================
 # HEADER MODEL
@@ -62,7 +62,7 @@ samples = 65536
 arch = "KCostModel"
 
 # Name to save the model
-dir = 'kcostmodel'
+dir = 'kcostmodel-10-23'
 
 # Output dimensions, should match whatever the cost function outputs
 out_dims = 4
@@ -94,12 +94,14 @@ std_bias =  [2.74,  0.3, 0.3, 0.3, 0.3]
 
 # Number of iterations of non-improvement to trigger and early stop of training
 early_stop_num = 2
+# Delta between losses to count as a non-improvement
+epsilon = 1e-4
 # Maximum number of epochs we will train over
 max_epochs = 128
 
 # If training is via SGD, this will be the gamma decay parameter for learning
 learning_rate_decay = 0.9
-learning_rate = 0.001
+learning_rate = 0.1
 
 # data set specfic configurations
 batch_size = 1024

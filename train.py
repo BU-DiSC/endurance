@@ -181,6 +181,7 @@ class Trainer:
     def train(self):
         loss_min = float('inf')
         early_stop_num = self.config['train']['early_stop_num']
+        epsilon = self.config['train']['epsilon']
         max_epochs = self.config['train']['max_epochs']
         losses = [float('inf')] * (early_stop_num + 1)
         self.log.info('Model parameters')
@@ -204,10 +205,10 @@ class Trainer:
 
             losses.pop(0)
             losses.append(curr_loss)
-            loss_improve = [y - x > 0 for x, y in zip(losses, losses[1:])]
+            loss_deltas = [y - x for x, y in zip(losses, losses[1:])]
             self.log.info(f'Past losses ({losses})')
-            if any(loss_improve):
-                self.log.info('Loss has not improved for the last '
+            if any([(x < epsilon and x > -epsilon) for x in loss_deltas]):
+                self.log.info(f'Loss has only changed by {epsilon} for '
                               f'{early_stop_num} epochs. Terminating...')
                 break
 
