@@ -70,6 +70,7 @@ class Trainer:
 
         # Remaining will be T and Ks
         categorical_data = features[5:]
+        categorical_data[0] -= self.config['lsm']['size_ratio']['min']
         features = np.concatenate((continuous_data, categorical_data))
 
         return {'label': labels, 'feature': features}
