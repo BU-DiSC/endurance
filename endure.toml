@@ -1,9 +1,9 @@
-[project]
+[app]
 name = "ENDURE"
-log_level = "INFO"
-experiments = [
-    #'Exp01',
-    'CostSurfaceEp']
+jobs = [
+    'DataGen',
+    # 'Train',
+]
 
 # =============================================================================
 # HEADER LOGGER
@@ -20,8 +20,7 @@ level = "INFO"
 #   Generic IO settings for experiments, saving data, etc
 # =============================================================================
 [io]
-data_dir = "/data"
-cold_data_dir = "/data"
+data_dir = "/Users/ndhuynh/sandbox/data"
 
 # =============================================================================
 # HEADER LSM
@@ -43,11 +42,11 @@ min = 0
 #   Generating data to be used for learning
 # =============================================================================
 [data_gen]
-cost_function = "EndureKHybridCost"
+generator = "KHybridCost"
 dir = "test_data"
 file_prefix = "test-k"
 # Parallel workers, -1 will force all cores to be used
-num_workers = -1
+num_workers = 5
 num_files = 10
 precision = 3
 # Per file sample

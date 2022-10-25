@@ -1,22 +1,23 @@
 #!/usr/bin/env python
 import os
 import torch
-import toml
 import logging
 import numpy as np
-from tqdm import tqdm
 
 from torch.utils.data import DataLoader
 import torchdata.datapipes as DataPipe
 
 from data.io import Reader
 from model.kcost import KCostModel
+from model.trainer import Trainer
 
 
-class Trainer:
+class TrainJob:
     def __init__(self, config):
         self.config = config
         self.log = logging.getLogger(self.config['log']['name'])
+        self.log.info('Running Training Job')
+        self.prep_training()
 
     def prep_training(self):
         if torch.cuda.is_available():
@@ -73,7 +74,7 @@ class Trainer:
         categorical_data[0] -= self.config['lsm']['size_ratio']['min']
         features = np.concatenate((continuous_data, categorical_data))
 
-        return {'label': labels, 'feature': features}
+        return (labels, features)
 
     def _build_train(self):
         train_dir = os.path.join(
@@ -89,7 +90,6 @@ class Trainer:
                     .sharding_filter())
         if self.config['train']['shuffle'] is True:
             dp_train = dp_train.shuffle()
-
         train = DataLoader(
                 dp_train,
                 batch_size=self.config['train']['batch_size'],
@@ -97,7 +97,6 @@ class Trainer:
                 # Unsure if needed but to be safe
                 shuffle=self.config['train']['shuffle'],
                 num_workers=0)
-
         return train
 
     def _build_test(self):
@@ -120,7 +119,6 @@ class Trainer:
                 drop_last=self.config['test']['drop_last'],
                 shuffle=self.config['test']['shuffle'],
                 num_workers=0)
-
         return test
 
     def _build_data(self):
@@ -129,102 +127,17 @@ class Trainer:
 
         return train, test
 
-    def _train_loop(self):
-        self.model.train()
-        if self.train_len == 0:
-            pbar = tqdm(self.train_data, ncols=80)
-        else:
-            pbar = tqdm(self.train_data, ncols=80, total=self.train_len)
-        for batch, data in enumerate(pbar):
-            label = data['label'].to(self.device)
-            input = data['feature'].to(self.device)
-            pred = self.model(input)
-            loss = self.loss_fn(pred, label)
+    def run(self) -> Trainer:
+        trainer = Trainer(
+            config=self.config,
+            model=self.model,
+            optimizer=self.optimizer,
+            loss_fn=self.loss_fn,
+            train_data=self.train_data,
+            test_data=self.test_data)
+        trainer.run()
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
-            if batch % (1000) == 0:
-                pbar.set_description(f'loss {loss:>5f}')
-
-        if self.train_len == 0:
-            self.train_len = batch + 1
-
-    def _test_loop(self):
-        self.model.eval()
-        test_loss = 0
-        if self.test_len == 0:
-            pbar = tqdm(self.test_data, desc='testing', ncols=80)
-        else:
-            pbar = tqdm(self.test_data, desc='testing',
-                        ncols=80, total=self.test_len)
-        with torch.no_grad():
-            for batch, data in enumerate(pbar):
-                label = data['label'].to(self.device)
-                feature = data['feature'].to(self.device)
-                pred = self.model(feature)
-                test_loss += self.loss_fn(pred, label).item()
-
-        if self.test_len == 0:
-            self.test_len = batch + 1  # Last batch will correspond to total
-        test_loss /= (batch + 1)
-
-        return test_loss
-
-    def _dumpconfig(self, save_dir):
-        with open(os.path.join(save_dir, 'config.toml'), 'w') as fid:
-            toml.dump(self.config, fid)
-
-    def _checkpoint(self, save_dir, epoch, loss):
-        save_pt = {'epoch': epoch,
-                   'model_state_dict': self.model.state_dict(),
-                   'optimizer_state_dict': self.optimizer.state_dict(),
-                   'loss': loss}
-        torch.save(save_pt, os.path.join(save_dir, 'checkpoint.pt'))
-
-    def _save_model(self, save_dir):
-        torch.save(self.model.state_dict(),
-                   os.path.join(save_dir, 'kcost_min.model'))
-
-    def train(self):
-        save_dir = os.path.join(self.config['io']['data_dir'],
-                                self.config['model']['dir'])
-        os.makedirs(save_dir, exist_ok=True)
-        self._dumpconfig(save_dir)
-
-        loss_min = float('inf')
-        early_stop_num = self.config['train']['early_stop_num']
-        epsilon = self.config['train']['epsilon']
-        max_epochs = self.config['train']['max_epochs']
-        losses = [float('inf')] * (early_stop_num + 1)
-        self.log.info('Model parameters')
-        for key in self.config['model'].keys():
-            self.log.info(f'{key} = {self.config["model"][key]}')
-        self.log.info('Training parameters')
-        for key in self.config['train'].keys():
-            self.log.info(f'{key} = {self.config["train"][key]}')
-
-        for epoch in range(max_epochs):
-            self.log.info(f'Epoch ({epoch+1}/{max_epochs})')
-            self._train_loop()
-            curr_loss = self._test_loop()
-            self.log.info(f'Test loss: {curr_loss}')
-            self._checkpoint(save_dir, epoch, curr_loss)
-            if curr_loss < loss_min:
-                loss_min = curr_loss
-                self.log.info('New minmum loss, saving...')
-                self._save_model(save_dir)
-
-            losses.pop(0)
-            losses.append(curr_loss)
-            loss_deltas = [y - x for x, y in zip(losses, losses[1:])]
-            self.log.info(f'Past losses ({losses})')
-            if any([(x < epsilon and x > -epsilon) for x in loss_deltas]):
-                self.log.info(f'Loss has only changed by {epsilon} for '
-                              f'{early_stop_num} epochs. Terminating...')
-                break
-
-        self.log.info('Training finished')
+        return trainer
 
 
 if __name__ == '__main__':
@@ -236,6 +149,5 @@ if __name__ == '__main__':
     log = logging.getLogger(config['log']['name'])
     log.setLevel(config['log']['level'])
 
-    a = Trainer(config)
-    a.prep_training()
-    a.train()
+    a = TrainJob(config)
+    a.run()

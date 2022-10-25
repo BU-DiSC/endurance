@@ -1,85 +1,127 @@
+import os
+import toml
 import logging
 import torch
 from tqdm import tqdm
 
 
-class Trainer():
-    def __init__(self, env_config, dataloader, model, optimizer, loss_fn,
-                 validate_percentage=0.1, batch_size=32, early_term_iter=4):
-        self.env_config = env_config
-        self.log = logging.getLogger(env_config['log_name'])
-        self.dataloader = dataloader
+class Trainer:
+    def __init__(self, config, model, optimizer, loss_fn, train_data,
+                 test_data):
+        self.config = config
+        self.log = logging.getLogger(self.config['log']['name'])
         self.model = model
         self.optimizer = optimizer
         self.loss_fn = loss_fn
-        self.validate_percentage = validate_percentage
+        self.train_data = train_data
+        self.test_data = test_data
+        self.train_len = self.test_len = 0
 
-        val_len = int(validate_percentage * len(dataloader))
-        train_len = len(dataloader) - val_len
-        train, val = torch.utils.random_split(dataloader, (train_len, val_len))
-        self.train = torch.utils.data.DataLoader(
-                train,
-                batch_size=batch_size,
-                shuffle=True)
-        self.val = torch.utils.data.DataLoader(
-                val,
-                batch_size=batch_size,
-                shuffle=False)
+    def _train_step(self, label, features) -> float:
+        self.optimizer.zero_grad()
 
-    def _train_loop(self, disp_pbar=False):
+        pred = self.model(features)
+        loss = self.loss_fn(pred, label)
+        loss.backward()
+        self.optimizer.step()
+
+        return loss
+
+    def _train_loop(self):
         self.model.train()
-        if disp_pbar:
-            pbar = tqdm(
-                    self.train,
-                    bar_format='{l_bar}{bar:50}{r_bar}{bar:-10b}')
+        if self.train_len == 0:
+            pbar = tqdm(self.train_data, ncols=80)
         else:
-            pbar = self.train
+            pbar = tqdm(self.train_data, ncols=80, total=self.train_len)
 
-        for batch, (x, y) in enumerate(pbar):
-            pred = self.model(x)
-            loss = self.loss_fn(pred, y)
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+        for batch, (labels, features) in enumerate(pbar):
+            loss = self._train_step(labels, features)
+            if batch % (1024) == 0:
+                pbar.set_description(f'loss {loss:>5f}')
 
-            if (batch % (10000) == 0) and (disp_pbar):
-                pbar.set_description(f'loss: {loss:>7f}')
+        if self.train_len == 0:
+            self.train_len = batch + 1
 
-    def _validate_loop(self):
-        num_batches = len(self.val)
-        test_loss = 0
+        return loss
 
-        self.model.eval()
+    def _test_step(self, labels, features):
         with torch.no_grad():
-            for x, y in self.val:
-                pred = self.model(x)
-                test_loss += self.loss_fn(pred, y).item()
-
-        test_loss /= num_batches
-        self.log.info(f'validation loss: {test_loss:>8f}')
+            labels = labels.to(self.device)
+            features = features.to(self.device)
+            pred = self.model(features)
+            test_loss = self.loss_fn(pred, labels).item()
 
         return test_loss
 
-    def train(self, max_epochs, disp_pbar=False):
-        prev_loss = float('inf')
-        for t in range(max_epochs):
-            self.log.info(f"Epoch {t+1}/{max_epochs}")
-            self._train_loop(disp_pbar)
-            curr_loss = self._validate_loop()
+    def _test_loop(self):
+        self.model.eval()
+        test_loss = 0
+        if self.test_len == 0:
+            pbar = tqdm(self.test_data, desc='testing', ncols=80)
+        else:
+            pbar = tqdm(self.test_data, desc='testing',
+                        ncols=80, total=self.test_len)
+        for batch, (labels, features) in enumerate(pbar):
+            test_loss += self._test_step(labels, features)
 
-            # TODO: implment better early stop
-            if curr_loss > prev_loss:
-                self.log.info('Loss increasing, stopping and saving model')
-                torch.save(self.model.state_dict(), 'kcost.model')
+        if self.test_len == 0:
+            self.test_len = batch + 1  # Last batch will correspond to total
+        test_loss /= (batch + 1)
+
+        return test_loss
+
+    def _dumpconfig(self, save_dir):
+        with open(os.path.join(save_dir, 'config.toml'), 'w') as fid:
+            toml.dump(self.config, fid)
+
+    def _checkpoint(self, save_dir, epoch, loss):
+        save_pt = {'epoch': epoch,
+                   'model_state_dict': self.model.state_dict(),
+                   'optimizer_state_dict': self.optimizer.state_dict(),
+                   'loss': loss}
+        torch.save(save_pt, os.path.join(save_dir, 'checkpoint.pt'))
+
+    def _save_model(self, save_dir):
+        torch.save(self.model.state_dict(),
+                   os.path.join(save_dir, 'kcost_min.model'))
+
+    def run(self):
+        early_stop_num = self.config['train']['early_stop_num']
+        epsilon = self.config['train']['epsilon']
+        max_epochs = self.config['train']['max_epochs']
+        save_dir = os.path.join(self.config['io']['data_dir'],
+                                self.config['model']['dir'])
+
+        os.makedirs(save_dir, exist_ok=True)
+        self._dumpconfig(save_dir)
+
+        loss_min = float('inf')
+        losses = [float('inf')] * (early_stop_num + 1)
+        self.log.info('Model parameters')
+        for key in self.config['model'].keys():
+            self.log.info(f'{key} = {self.config["model"][key]}')
+        self.log.info('Training parameters')
+        for key in self.config['train'].keys():
+            self.log.info(f'{key} = {self.config["train"][key]}')
+
+        for epoch in range(max_epochs):
+            self.log.info(f'Epoch ({epoch+1}/{max_epochs})')
+            self._train_loop()
+            curr_loss = self._test_loop()
+            self.log.info(f'Test loss: {curr_loss}')
+            self._checkpoint(save_dir, epoch, curr_loss)
+            if curr_loss < loss_min:
+                loss_min = curr_loss
+                self.log.info('New minmum loss, saving...')
+                self._save_model(save_dir)
+
+            losses.pop(0)
+            losses.append(curr_loss)
+            loss_deltas = [y - x for x, y in zip(losses, losses[1:])]
+            self.log.info(f'Past losses ({losses})')
+            if any([(x < epsilon and x > -epsilon) for x in loss_deltas]):
+                self.log.info(f'Loss has only changed by {epsilon} for '
+                              f'{early_stop_num} epochs. Terminating...')
                 break
-            self.log.info('Check pointing')
-            torch.save({
-                'epoch': t,
-                'model_state_dict': self.model.state_dict(),
-                'optimizer_state_dict': self.optimizer.state_dict(),
-                'loss': curr_loss,
-                },
-                'kcost.pt')
-            prev_loss = curr_loss
 
-        return
+        self.log.info('Training finished')
