@@ -4,7 +4,7 @@ import os
 import toml
 import sys
 
-from jobs.gen_data import DataGenJob
+from jobs.data_gen import DataGenJob
 from jobs.train import TrainJob
 
 
