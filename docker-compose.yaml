@@ -1,0 +1,16 @@
+---
+version: "1"
+services:
+  endure:
+    image: ndhuynh/endure
+    container_name: endure
+    user: "${UID}:${GID}"
+    environment:
+      - TZ=America/New_York
+    tty: true
+    stdin_open: true
+
+    volumes:
+      - /scratchHDDa/ndhuynh/data:/data
+      - /scratchNVM0/ndhuynh/endure-torch:/endure
+

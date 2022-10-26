@@ -9,6 +9,7 @@ import torchdata.datapipes as DataPipe
 
 from data.io import Reader
 from model.kcost import KCostModel
+from model.tierlevelcost import TierLevelCost
 from model.trainer import Trainer
 
 
@@ -40,6 +41,7 @@ class TrainJob:
         self.log.info(f'Building model: {choice}')
         models = {
             'KCostModel': KCostModel,
+            'TierLevelCost': TierLevelCost,
         }
         model = models.get(choice, None)
         if model is None:
@@ -87,6 +89,7 @@ class TrainJob:
                     .open_files(mode='rt')
                     .parse_csv(delimiter=',', skip_lines=1)
                     .map(self._process_row)
+                    .in_memory_cache(size=2*8192)
                     .sharding_filter())
         if self.config['train']['shuffle'] is True:
             dp_train = dp_train.shuffle()
@@ -96,7 +99,7 @@ class TrainJob:
                 drop_last=self.config['train']['drop_last'],
                 # Unsure if needed but to be safe
                 shuffle=self.config['train']['shuffle'],
-                num_workers=0)
+                num_workers=4)
         return train
 
     def _build_test(self):
@@ -117,8 +120,7 @@ class TrainJob:
                 dp_test,
                 batch_size=self.config['test']['batch_size'],
                 drop_last=self.config['test']['drop_last'],
-                shuffle=self.config['test']['shuffle'],
-                num_workers=0)
+                shuffle=self.config['test']['shuffle'])
         return test
 
     def _build_data(self):

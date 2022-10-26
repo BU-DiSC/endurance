@@ -16,6 +16,11 @@ class Trainer:
         self.train_data = train_data
         self.test_data = test_data
         self.train_len = self.test_len = 0
+        if torch.cuda.is_available():
+            self.device = torch.device('cuda')
+        else:
+            self.device = torch.device('cpu')
+        self.log.info(f'Training on device: {self.device}')
 
     def _train_step(self, label, features) -> float:
         self.optimizer.zero_grad()
@@ -35,8 +40,10 @@ class Trainer:
             pbar = tqdm(self.train_data, ncols=80, total=self.train_len)
 
         for batch, (labels, features) in enumerate(pbar):
+            labels = labels.to(self.device)
+            features = features.to(self.device)
             loss = self._train_step(labels, features)
-            if batch % (1024) == 0:
+            if batch % (10) == 0:
                 pbar.set_description(f'loss {loss:>5f}')
 
         if self.train_len == 0:
