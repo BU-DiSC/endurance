@@ -5,8 +5,8 @@
 [app]
 name = "ENDURE"
 jobs = [
-    # 'DataGen'
-    'Train',
+    'DataGen'
+    # 'Train',
 ]
 
 # =============================================================================
@@ -46,12 +46,13 @@ min = 0
 #   Generating data to be used for learning
 # =============================================================================
 [data_gen]
+format = 'parquet'
 generator = "LevelCost"
-dir = "test_data/level"
-file_prefix = "test-level"
+dir = "train-data/level-parquet"
+file_prefix = "train-level"
 # Parallel workers, -1 will force all cores to be used
-num_workers = 8
-num_files = 8
+num_workers = 64
+num_files = 64
 precision = 3
 # Per file sample
 samples = 1048576
@@ -65,7 +66,7 @@ samples = 1048576
 arch = "TierLevelCost"
 
 # Name to save the model
-dir = 'levelcost-10-26'
+dir = 'levelcost-10-27'
 
 # Output dimensions, should match whatever the cost function outputs
 out_dims = 4
@@ -79,17 +80,17 @@ num_cont_vars = 5
 num_cate_vars = 1
 
 # Hidden layers between the continous inputs + embedding to output
-hidden_layers = 2
+hidden_layers = 3
 
 # Size of our cateogrical variable embedding, our overall cost-model network
 # input will be
 #   num_cont_vars + (num_cate_vars * embedding_size)
 # As each categorical variable will be embedded down to size `embedding_size`
-embedding_size = 2
+embedding_size = 3
 
 [train]
 # directory for data used for testing and training
-dir = "train_data/level"
+dir = "train-data/level-parquet"
 
 # h, z0, z1, q, w
 mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
@@ -104,15 +105,15 @@ max_epochs = 128
 
 # If training is via SGD, this will be the gamma decay parameter for learning
 learning_rate_decay = 0.99
-learning_rate = 0.01
+learning_rate = 0.001
 
 # data set specfic configurations
-batch_size = 2048
+batch_size = 64
 drop_last = true
 shuffle = true
 
 [test]
-dir = "test_data/level"
+dir = "test-data/level-parquet"
 batch_size = 1048576
 drop_last = true
 shuffle = false

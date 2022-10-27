@@ -52,12 +52,12 @@ class TrainJob:
         return model
 
     def _build_optimizer(self, model):
-        # optimizer = torch.optim.SGD(
-        #         model.parameters(),
-        #         lr=self.config['train']['learning_rate'])
-        optimizer = torch.optim.Adam(
+        optimizer = torch.optim.SGD(
                 model.parameters(),
                 lr=self.config['train']['learning_rate'])
+        # optimizer = torch.optim.Adam(
+        #         model.parameters(),
+        #         lr=self.config['train']['learning_rate'])
 
         return optimizer
 
@@ -90,15 +90,13 @@ class TrainJob:
                     .parse_csv(delimiter=',', skip_lines=1)
                     .map(self._process_row)
                     .in_memory_cache(size=2*8192)
+                    .shuffle()
+                    .set_shuffle(self.config['train']['shuffle'])
                     .sharding_filter())
-        if self.config['train']['shuffle'] is True:
-            dp_train = dp_train.shuffle()
         train = DataLoader(
                 dp_train,
                 batch_size=self.config['train']['batch_size'],
                 drop_last=self.config['train']['drop_last'],
-                # Unsure if needed but to be safe
-                shuffle=self.config['train']['shuffle'],
                 num_workers=4)
         return train
 
@@ -113,14 +111,13 @@ class TrainJob:
                    .open_files(mode='rt')
                    .parse_csv(delimiter=',', skip_lines=1)
                    .map(self._process_row)
+                   .shuffle()
+                   .set_shuffle(self.config['test']['shuffle'])
                    .sharding_filter())
-        if self.config['test']['shuffle'] is True:
-            dp_test = dp_test.shuffle()
         test = DataLoader(
                 dp_test,
                 batch_size=self.config['test']['batch_size'],
-                drop_last=self.config['test']['drop_last'],
-                shuffle=self.config['test']['shuffle'])
+                drop_last=self.config['test']['drop_last'])
         return test
 
     def _build_data(self):

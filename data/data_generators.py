@@ -29,11 +29,28 @@ class DataGenerator:
 
         return [b - a for a, b in zip(workload, workload[1:])]
 
+    def generate_row_csv(self):
+        return []
+
+    def generate_row_parquet(self):
+        header = self.generate_header()
+        row = self.generate_row_csv()
+        line = {}
+        for key, val in zip(header, row):
+            line[key] = val
+
+        return line
+
     def generate_header(self):
-        pass
+        return []
 
     def generate_row(self):
-        pass
+        if self.config['data_gen']['format'] == 'parquet':
+            row = self.generate_row_parquet()
+        else:  # format == 'csv'
+            row = self.generate_row_csv()
+
+        return row
 
 
 class TierLevelGenerator(DataGenerator):
@@ -41,13 +58,13 @@ class TierLevelGenerator(DataGenerator):
         super(TierLevelGenerator, self).__init__(config)
         self.policy = Policy.Tiering
         self.cf = CostFunc.EndureTierLevelCost(**self.config['system'])
+        self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
+                       'h', 'z0', 'z1', 'q', 'w', 'T']
 
     def generate_header(self):
-        header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
-                  'h', 'z0', 'z1', 'q', 'w', 'T']
-        return header
+        return self.header
 
-    def generate_row(self):
+    def generate_row_csv(self):
         z0, z1, q, w = self._sample_workload(4)
         T = self._sample_size_ratio()
         h = self._sample_bloom_filter_bits()
@@ -64,6 +81,10 @@ class KHybridGenerator(DataGenerator):
     def __init__(self, config):
         super(KHybridGenerator, self).__init__(config)
         self.cf = CostFunc.EndureKHybridCost(**self.config['system'])
+        max_levels = self.config['lsm']['max_levels']
+        self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
+                       'h', 'z0', 'z1', 'q', 'w', 'T']
+        self.header += [f'K_{i}' for i in range(max_levels)]
 
     def _gen_k_levels(self, levels: int, max_size_ratio: int) -> list:
         arr = combinations_with_replacement(
@@ -72,12 +93,9 @@ class KHybridGenerator(DataGenerator):
         return list(arr)
 
     def generate_header(self):
-        header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
-                  'h', 'z0', 'z1', 'q', 'w', 'T']
-        header += [f'K_{i}' for i in range(self.config['lsm']['max_levels'])]
-        return header
+        return self.header
 
-    def generate_row(self):
+    def generate_row_csv(self):
         z0, z1, q, w = self._sample_workload(4)
         T = self._sample_size_ratio()
         h = self._sample_bloom_filter_bits()
@@ -90,5 +108,4 @@ class KHybridGenerator(DataGenerator):
                 h, z0, z1, q, w, T]
         for level_idx in range(self.config['lsm']['max_levels']):
             line.append(K[level_idx])
-
         return line

@@ -5,6 +5,10 @@ import os
 import csv
 from tqdm import tqdm
 
+import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+
 from data.io import Reader
 from lsm.lsmtype import Policy
 import data.data_generators as Gen
@@ -32,27 +36,52 @@ class DataGenJob:
             generator = Gen.KHybridGenerator(self.config)
         return generator
 
-    def generate_file(self, idx: int) -> int:
-        pos = 0
-        if len(mp.current_process()._identity) > 0:
-            pos = mp.current_process()._identity[0] - 1
-        generator = self._choose_generator()
-
+    def generate_csv_file(self, generator, idx: int, pos: int) -> int:
         fname_prefix = self.config['data_gen']['file_prefix']
         fname = f'{fname_prefix}-{idx:04}.csv'
         fpath = os.path.join(self.output_dir, fname)
         if os.path.exists(fpath):
             self.log.info(f'{fpath} exists, exiting.')
             return -1
-        header = generator.generate_header()
 
         samples = range(int(self.config['data_gen']['samples']))
+        header = generator.generate_header()
         with open(fpath, 'w') as fid:
             writer = csv.writer(fid)
             writer.writerow(header)
             for _ in tqdm(samples, desc=fname, position=pos, ncols=80):
                 row = generator.generate_row()
                 writer.writerow(row)
+
+        return idx
+
+    def generate_parquet_file(self, generator, idx: int, pos: int) -> int:
+        fname_prefix = self.config['data_gen']['file_prefix']
+        fname = f'{fname_prefix}-{idx:04}.parquet'
+        fpath = os.path.join(self.output_dir, fname)
+        if os.path.exists(fpath):
+            self.log.info(f'{fpath} exists, exiting.')
+            return -1
+
+        samples = range(int(self.config['data_gen']['samples']))
+        table = []
+        for _ in tqdm(samples, desc=fname, position=pos, ncols=80):
+            table.append(generator.generate_row_parquet())
+        table = pa.Table.from_pandas(pd.DataFrame(table))
+        pq.write_table(table, fpath)
+
+        return idx
+
+    def generate_file(self, idx: int) -> int:
+        pos = 0
+        if len(mp.current_process()._identity) > 0:
+            pos = mp.current_process()._identity[0] - 1
+        generator = self._choose_generator()
+
+        if self.config['data_gen']['format'] == 'parquet':
+            self.generate_parquet_file(generator, idx, pos)
+        else:  # format == 'csv'
+            self.generate_csv_file(generator, idx, pos)
 
         return idx
 
