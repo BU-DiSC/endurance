@@ -1,8 +1,12 @@
+# =============================================================================
+# HEADER APP
+#   Logic of app including jobs list to run
+# =============================================================================
 [app]
 name = "ENDURE"
 jobs = [
-    'DataGen',
-    # 'Train',
+    # 'DataGen'
+    'Train',
 ]
 
 # =============================================================================
@@ -20,7 +24,7 @@ level = "INFO"
 #   Generic IO settings for experiments, saving data, etc
 # =============================================================================
 [io]
-data_dir = "/Users/ndhuynh/sandbox/data"
+data_dir = "/data"
 
 # =============================================================================
 # HEADER LSM
@@ -42,12 +46,12 @@ min = 0
 #   Generating data to be used for learning
 # =============================================================================
 [data_gen]
-generator = "KHybridCost"
-dir = "test_data"
-file_prefix = "test-k"
+generator = "LevelCost"
+dir = "test_data/level"
+file_prefix = "test-level"
 # Parallel workers, -1 will force all cores to be used
-num_workers = 5
-num_files = 10
+num_workers = 8
+num_files = 8
 precision = 3
 # Per file sample
 samples = 1048576
@@ -58,10 +62,10 @@ samples = 1048576
 # =============================================================================
 [model]
 # Architecture to pick
-arch = "KCostModel"
+arch = "TierLevelCost"
 
 # Name to save the model
-dir = 'kcostmodel-10-23'
+dir = 'levelcost-10-26'
 
 # Output dimensions, should match whatever the cost function outputs
 out_dims = 4
@@ -72,7 +76,7 @@ num_cont_vars = 5
 
 # Number of categorical variables we will need to encode, referring to size
 # ratios and number of files per level (if using that cost-model)
-num_cate_vars = 17
+num_cate_vars = 1
 
 # Hidden layers between the continous inputs + embedding to output
 hidden_layers = 2
@@ -85,7 +89,7 @@ embedding_size = 2
 
 [train]
 # directory for data used for testing and training
-dir = "train_data"
+dir = "train_data/level"
 
 # h, z0, z1, q, w
 mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
@@ -94,21 +98,21 @@ std_bias =  [2.74,  0.3, 0.3, 0.3, 0.3]
 # Number of iterations of non-improvement to trigger and early stop of training
 early_stop_num = 3
 # Delta between losses to count as a non-improvement
-epsilon = 1e-4
+epsilon = 1e-5
 # Maximum number of epochs we will train over
 max_epochs = 128
 
 # If training is via SGD, this will be the gamma decay parameter for learning
 learning_rate_decay = 0.99
-learning_rate = 0.001
+learning_rate = 0.01
 
 # data set specfic configurations
-batch_size = 4096
+batch_size = 2048
 drop_last = true
 shuffle = true
 
 [test]
-dir = "test_data"
+dir = "test_data/level"
 batch_size = 1048576
 drop_last = true
 shuffle = false
@@ -218,36 +222,36 @@ q = 0.01
 w = 0.49
 
 [[workloads]]
- id = 10
- z0 = 0.01
- z1 = 0.01
- q = 0.49
- w = 0.49
+id = 10
+z0 = 0.01
+z1 = 0.01
+q = 0.49
+w = 0.49
 
- [[workloads]]
- id = 11
- z0 = 0.33
- z1 = 0.33
- q = 0.33
- w = 0.01
+[[workloads]]
+id = 11
+z0 = 0.33
+z1 = 0.33
+q = 0.33
+w = 0.01
 
- [[workloads]]
- id = 12
- z0 = 0.33
- z1 = 0.33
- q = 0.01
- w = 0.33
+[[workloads]]
+id = 12
+z0 = 0.33
+z1 = 0.33
+q = 0.01
+w = 0.33
 
- [[workloads]]
- id = 13
- z0 = 0.33
- z1 = 0.01
- q = 0.33
- w = 0.33
+[[workloads]]
+id = 13
+z0 = 0.33
+z1 = 0.01
+q = 0.33
+w = 0.33
 
- [[workloads]]
- id = 14
- z0 = 0.01
- z1 = 0.33
- q = 0.33
- w = 0.33
+[[workloads]]
+id = 14
+z0 = 0.01
+z1 = 0.33
+q = 0.33
+w = 0.33
