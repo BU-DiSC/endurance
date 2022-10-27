@@ -40,10 +40,14 @@ class DataGenJob:
 
         fname_prefix = self.config['data_gen']['file_prefix']
         fname = f'{fname_prefix}-{idx:04}.csv'
+        fpath = os.path.join(self.output_dir, fname)
+        if os.path.exists(fpath):
+            self.log.info(f'{fpath} exists, exiting.')
+            return -1
         header = generator.generate_header()
 
         samples = range(int(self.config['data_gen']['samples']))
-        with open(os.path.join(self.output_dir, fname), 'w') as fid:
+        with open(fpath, 'w') as fid:
             writer = csv.writer(fid)
             writer.writerow(header)
             for _ in tqdm(samples, desc=fname, position=pos, ncols=80):
