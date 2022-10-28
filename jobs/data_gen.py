@@ -5,7 +5,6 @@ import os
 import csv
 from tqdm import tqdm
 
-import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -67,7 +66,7 @@ class DataGenJob:
         table = []
         for _ in tqdm(samples, desc=fname, position=pos, ncols=80):
             table.append(generator.generate_row_parquet())
-        table = pa.Table.from_pandas(pd.DataFrame(table))
+        table = pa.Table.from_pylist(table)
         pq.write_table(table, fpath)
 
         return idx
@@ -95,10 +94,13 @@ class DataGenJob:
             threads = mp.cpu_count()
         self.log.info(f'{threads=}')
 
-        with mp.Pool(threads,
-                     initializer=tqdm.set_lock,
-                     initargs=(mp.RLock(),)) as p:
-            p.map(self.generate_file, inputs)
+        if threads == 1:
+            self.generate_file(0)
+        else:
+            with mp.Pool(threads,
+                         initializer=tqdm.set_lock,
+                         initargs=(mp.RLock(),)) as p:
+                p.map(self.generate_file, inputs)
 
         return
 
