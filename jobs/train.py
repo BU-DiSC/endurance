@@ -89,7 +89,7 @@ class TrainJob:
                     .open_files(mode='rt')
                     .parse_csv(delimiter=',', skip_lines=1)
                     .map(self._process_row)
-                    .in_memory_cache(size=2*8192)
+                    .in_memory_cache(size=4096)
                     .shuffle()
                     .set_shuffle(self.config['train']['shuffle'])
                     .sharding_filter())
