@@ -13,4 +13,5 @@ services:
     volumes:
       - /scratchHDDa/ndhuynh/data:/data
       - /scratchNVM0/ndhuynh/endure-torch:/endure
-
+    ports:
+      - "8888:8888"

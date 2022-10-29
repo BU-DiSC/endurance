@@ -14,10 +14,12 @@ WORKDIR /endure
 COPY requirements.txt /tmp
 
 USER root
-RUN apt-get update && apt-get install -y vim
+RUN apt-get update && apt-get install -y vim tmux
 
 USER ${CONTAINER_USER}
-RUN echo "export PATH=/home/${CONTAINER_USER}/.local/bin:\$PATH" >> "/home/${CONTAINER_USER}/.bashrc"
+ENV PATH "/home/${CONTAINER_USER}/.local/bin:$PATH"
 RUN pip install -r /tmp/requirements.txt
+
+EXPOSE 8888
 
 ENTRYPOINT ["bash"]

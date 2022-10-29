@@ -27,6 +27,7 @@ class DataGenJob:
         generators = {
             'TierCost': Gen.TierLevelGenerator(self.config, Policy.Tiering),
             'LevelCost': Gen.TierLevelGenerator(self.config, Policy.Leveling),
+            'QCost': Gen.QCostGenerator(self.config),
             'KHybridCost': Gen.KHybridGenerator(self.config)}
         generator = generators.get(choice, None)
         if generator is None:

@@ -29,10 +29,10 @@ class DataGenerator:
 
         return [b - a for a, b in zip(workload, workload[1:])]
 
-    def generate_row_csv(self):
+    def generate_row_csv(self) -> list:
         return []
 
-    def generate_row_parquet(self):
+    def generate_row_parquet(self) -> list:
         header = self.generate_header()
         row = self.generate_row_csv()
         line = {}
@@ -41,10 +41,10 @@ class DataGenerator:
 
         return line
 
-    def generate_header(self):
+    def generate_header(self) -> list:
         return []
 
-    def generate_row(self):
+    def generate_row(self) -> list:
         if self.config['data_gen']['format'] == 'parquet':
             row = self.generate_row_parquet()
         else:  # format == 'csv'
@@ -54,17 +54,17 @@ class DataGenerator:
 
 
 class TierLevelGenerator(DataGenerator):
-    def __init__(self, config, policy):
+    def __init__(self, config: dict, policy: Policy):
         super(TierLevelGenerator, self).__init__(config)
-        self.policy = Policy.Tiering
+        self.policy = policy
         self.cf = CostFunc.EndureTierLevelCost(**self.config['system'])
         self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
                        'h', 'z0', 'z1', 'q', 'w', 'T']
 
-    def generate_header(self):
+    def generate_header(self) -> list:
         return self.header
 
-    def generate_row_csv(self):
+    def generate_row_csv(self) -> list:
         z0, z1, q, w = self._sample_workload(4)
         T = self._sample_size_ratio()
         h = self._sample_bloom_filter_bits()
@@ -78,7 +78,7 @@ class TierLevelGenerator(DataGenerator):
 
 
 class KHybridGenerator(DataGenerator):
-    def __init__(self, config):
+    def __init__(self, config: dict):
         super(KHybridGenerator, self).__init__(config)
         self.cf = CostFunc.EndureKHybridCost(**self.config['system'])
         max_levels = self.config['lsm']['max_levels']
@@ -92,10 +92,10 @@ class KHybridGenerator(DataGenerator):
 
         return list(arr)
 
-    def generate_header(self):
+    def generate_header(self) -> list:
         return self.header
 
-    def generate_row_csv(self):
+    def generate_row_csv(self) -> list:
         z0, z1, q, w = self._sample_workload(4)
         T = self._sample_size_ratio()
         h = self._sample_bloom_filter_bits()
@@ -108,4 +108,34 @@ class KHybridGenerator(DataGenerator):
                 h, z0, z1, q, w, T]
         for level_idx in range(self.config['lsm']['max_levels']):
             line.append(K[level_idx])
+        return line
+
+
+class QCostGenerator(DataGenerator):
+    def __init__(self, config: dict):
+        super(QCostGenerator, self).__init__(config)
+        self.cf = CostFunc.EndureQFixedCost(**self.config['system'])
+        self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
+                       'h', 'z0', 'z1', 'q', 'w', 'T', 'Q']
+
+    def _sample_q(self) -> int:
+        return np.random.randint(
+            low=self.config['lsm']['size_ratio']['min'] - 1,
+            high=self.config['lsm']['size_ratio']['max'] - 1,
+        )
+
+    def generate_header(self) -> list:
+        return self.header
+
+    def generate_row_csv(self) -> list:
+        z0, z1, q, w = self._sample_workload(4)
+        T = self._sample_size_ratio()
+        h = self._sample_bloom_filter_bits()
+        Q = self._sample_q()
+
+        line = [z0 * self.cf.Z0(h, T, Q),
+                z1 * self.cf.Z1(h, T, Q),
+                q * self.cf.Q(h, T, Q),
+                w * self.cf.W(h, T, Q),
+                h, z0, z1, q, w, T, Q]
         return line

@@ -17,7 +17,15 @@ BITS_IN_BYTES = 8
 
 @jitclass(spec)
 class EndureTierLevelCost:
-    def __init__(self, B: float, E: float, H: float, N: float, phi: float, s: float) -> None:
+    def __init__(
+            self,
+            B: float,
+            E: float,
+            H: float,
+            N: float,
+            phi: float,
+            s: float
+    ) -> None:
         self.B, self.E, self.H, self.N = B, E, H, N
         self.phi, self.s = phi, s
 
@@ -29,10 +37,14 @@ class EndureTierLevelCost:
         return np.ceil(level) if ceil else level
 
     def fp(self, h: float, T: float, i: int) -> float:
-        return ((T ** (T / (T - 1))) / (T**(self.L(h, T, ceil=True) + 1 - i))) * np.exp(-h * (np.log(2)**2))
+        alpha = np.exp(-h * (np.log(2)**2))
+        top = (T ** (T / (T - 1)))
+        bot = (T**(self.L(h, T, ceil=True) + 1 - i))
+        return alpha * (top / bot)
 
     def Nfull(self, h: float, T: float, levels: int) -> float:
-        return sum([(T - 1) * (T ** (level - 1)) * self.mbuff(h) / self.E for level in range(1, levels + 1)])
+        return sum([(T - 1) * (T ** (level - 1)) * self.mbuff(h) / self.E
+                   for level in range(1, levels + 1)])
 
     def run_prob(self, level: int, T: float, mbuff: float, Nf: float) -> float:
         return (T - 1) * mbuff * T**(level - 1) / (Nf * self.E)
@@ -46,18 +58,16 @@ class EndureTierLevelCost:
 
     def Z1(self, h: float, T: float, policy: Policy) -> float:
         L = int(self.L(h, T, ceil=True))
-
         z1 = 0
         for i in range(1, L + 1):
             upper_fp = sum([self.fp(h, T, j) for j in range(1, i)])
+            run_prob = self.run_prob(i, T, self.mbuff(h), self.Nfull(h, T, L))
             if policy == Policy.Tiering:
                 upper_fp *= (T - 1)
                 curr_fp = ((T - 2) / 2) * self.fp(h, T, i)
-                z1 += self.run_prob(i, T, self.mbuff(h),
-                                    self.Nfull(h, T, L)) * (1 + upper_fp + curr_fp)
+                z1 += run_prob * (1 + upper_fp + curr_fp)
             else:  # Policy.Leveling
-                z1 += self.run_prob(i, T, self.mbuff(h),
-                                    self.Nfull(h, T, L)) * (1 + upper_fp)
+                z1 += run_prob * (1 + upper_fp)
 
         return z1
 
@@ -75,7 +85,16 @@ class EndureTierLevelCost:
             w *= (T / 2)
         return w
 
-    def calc_cost(self, h: float, T: float, policy: Policy, z0: float, z1: float, q: float, w: float) -> float:
+    def calc_cost(
+        self,
+        h: float,
+        T: float,
+        policy: Policy,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float
+    ) -> float:
         if np.isnan(h) or np.isnan(T):
             return np.finfo(np.float64).max
 
@@ -87,7 +106,15 @@ class EndureTierLevelCost:
 
 @jitclass(spec)
 class EndureQFixedCost():
-    def __init__(self, B, E: float, H: float, N: float, phi: float, s: float) -> None:
+    def __init__(
+        self,
+        B: float,
+        E: float,
+        H: float,
+        N: float,
+        phi: float,
+        s: float
+    ) -> None:
         self.B, self.E, self.H, self.N = B, E, H, N
         self.phi, self.s = phi, s
 
@@ -99,10 +126,14 @@ class EndureQFixedCost():
         return np.ceil(level) if ceil else level
 
     def fp(self, h: float, T: float, i: int) -> float:
-        return ((T ** (T / (T - 1))) / (T**(self.L(h, T, ceil=True) + 1 - i))) * np.exp(-h * (np.log(2)**2))
+        alpha = np.exp(-h * (np.log(2)**2))
+        top = (T ** (T / (T - 1)))
+        bot = (T**(self.L(h, T, ceil=True) + 1 - i))
+        return alpha * (top / bot)
 
     def Nfull(self, h: float, T: float, levels: int) -> float:
-        return sum([(T - 1) * (T ** (level - 1)) * self.mbuff(h) / self.E for level in range(1, levels + 1)])
+        return sum([(T - 1) * (T ** (level - 1)) * self.mbuff(h) / self.E
+                   for level in range(1, levels + 1)])
 
     def run_prob(self, level: int, T: float, mbuff: float, Nf: float) -> float:
         return (T - 1) * mbuff * T**(level - 1) / (Nf * self.E)
@@ -136,7 +167,16 @@ class EndureQFixedCost():
     def W(self, h: float, T: float, Q: float) -> float:
         return self.L(h, T) * (T - 1 + Q) * (1 + self.phi) / (2 * Q * self.B)
 
-    def calc_cost(self, h: float, T: float, Q: float, z0: float, z1: float, q: float, w: float) -> float:
+    def calc_cost(
+        self,
+        h: float,
+        T: float,
+        Q: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float
+    ) -> float:
         if np.isnan(h) or np.isnan(T) or np.isnan(Q):
             return np.finfo(np.float64).max
 
@@ -150,7 +190,15 @@ class EndureQFixedCost():
 
 @jitclass(spec)
 class EndureKHybridCost():
-    def __init__(self, B, E: float, H: float, N: float, phi: float, s: float) -> None:
+    def __init__(
+        self,
+        B: float,
+        E: float,
+        H: float,
+        N: float,
+        phi: float,
+        s: float
+    ) -> None:
         self.B, self.E, self.H, self.N = B, E, H, N
         self.phi, self.s = phi, s
 
@@ -162,10 +210,14 @@ class EndureKHybridCost():
         return np.ceil(level) if ceil else level
 
     def fp(self, h: float, T: float, i: int) -> float:
-        return ((T ** (T / (T - 1))) / (T**(self.L(h, T, ceil=True) + 1 - i))) * np.exp(-h * (np.log(2)**2))
+        alpha = np.exp(-h * (np.log(2)**2))
+        top = (T ** (T / (T - 1)))
+        bot = (T**(self.L(h, T, ceil=True) + 1 - i))
+        return alpha * (top / bot)
 
     def Nfull(self, h: float, T: float, levels: int) -> float:
-        return sum([(T - 1) * (T ** (level - 1)) * self.mbuff(h) / self.E for level in range(1, levels + 1)])
+        return sum([(T - 1) * (T ** (level - 1)) * self.mbuff(h) / self.E
+                   for level in range(1, levels + 1)])
 
     def run_prob(self, level: int, T: float, mbuff: float, Nf: float) -> float:
         return (T - 1) * mbuff * T**(level - 1) / (Nf * self.E)
@@ -179,15 +231,18 @@ class EndureKHybridCost():
 
     def Z1(self, h: float, T: float, K: list[float]) -> float:
         L = int(self.L(h, T, ceil=True))
+        mbuff = self.mbuff(h)
+        nfull = self.Nfull(h, T, L)
 
         z1 = 0
         for level in range(1, L + 1):
             upper_fp = 0
+            run_prob = self.run_prob(level, T, mbuff, nfull)
+            level_fp = self.fp(h, T, level)
             for j in range(1, level):
                 upper_fp += K[j - 1] * self.fp(h, T, j)
-            current_fp = ((K[level - 1] - 1) / 2) * self.fp(h, T, level)
-            z1 += self.run_prob(level, T, self.mbuff(h),
-                                self.Nfull(h, T, L)) * (1 + upper_fp + current_fp)
+            current_fp = ((K[level - 1] - 1) / 2) * level_fp
+            z1 += run_prob * (1 + upper_fp + current_fp)
 
         return z1
 
@@ -203,7 +258,16 @@ class EndureKHybridCost():
         w *= (1 + self.phi) / self.B
         return w
 
-    def calc_cost(self, h: float, T: float, K, z0: float, z1: float, q: float, w: float) -> float:
+    def calc_cost(
+        self,
+        h: float,
+        T: float,
+        K,  # List of values corresponding to file per level
+        z0: float,
+        z1: float,
+        q: float,
+        w: float
+    ) -> float:
         if np.isnan(h) or np.isnan(T):
             return np.finfo(np.float64).max
 
@@ -217,7 +281,15 @@ class EndureKHybridCost():
 
 @jitclass(spec)
 class EndureYZHybridCost():
-    def __init__(self, B, E: float, H: float, N: float, phi: float, s: float) -> None:
+    def __init__(
+        self,
+        B: float,
+        E: float,
+        H: float,
+        N: float,
+        phi: float,
+        s: float
+    ) -> None:
         self.B, self.E, self.H, self.N = B, E, H, N
         self.phi, self.s = phi, s
 
@@ -229,10 +301,14 @@ class EndureYZHybridCost():
         return np.ceil(level) if ceil else level
 
     def fp(self, h: float, T: float, i: int) -> float:
-        return ((T ** (T / (T - 1))) / (T**(self.L(h, T, ceil=True) + 1 - i))) * np.exp(-h * (np.log(2)**2))
+        alpha = np.exp(-h * (np.log(2)**2))
+        top = (T ** (T / (T - 1)))
+        bot = (T**(self.L(h, T, ceil=True) + 1 - i))
+        return alpha * (top / bot)
 
     def Nfull(self, h: float, T: float, levels: int) -> float:
-        return sum([(T - 1) * (T ** (level - 1)) * self.mbuff(h) / self.E for level in range(1, levels + 1)])
+        return sum([(T - 1) * (T ** (level - 1)) * self.mbuff(h) / self.E
+                   for level in range(1, levels + 1)])
 
     def run_prob(self, level: int, T: float, mbuff: float, Nf: float) -> float:
         return (T - 1) * mbuff * T**(level - 1) / (Nf * self.E)
@@ -283,7 +359,17 @@ class EndureYZHybridCost():
 
         return w
 
-    def calc_cost(self, h: float, T: float, Y: float, Z: float, z0: float, z1: float, q: float, w: float) -> float:
+    def calc_cost(
+        self,
+        h: float,
+        T: float,
+        Y: float,
+        Z: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float
+    ) -> float:
         if np.isnan(h) or np.isnan(T) or np.isnan(Y) or np.isnan(Z):
             return np.finfo(np.float64).max
 

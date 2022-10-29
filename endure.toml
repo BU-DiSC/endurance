@@ -46,27 +46,27 @@ min = 0
 #   Generating data to be used for learning
 # =============================================================================
 [data_gen]
-format = 'parquet'
-generator = "LevelCost"
-dir = "train-data/level-parquet"
-file_prefix = "train-level"
+format = 'csv'
+generator = "QCost"
+dir = "test-data/qcost"
+file_prefix = "qcost"
 # Parallel workers, -1 will force all cores to be used
-num_workers = 64
-num_files = 64
+num_workers = 8
+num_files = 8
 precision = 3
 # Per file sample
 samples = 1048576
 
 # =============================================================================
 # HEADER MODEL
-#   Configuration parameters for creating, trainig, and validating a model
+#   Configuration parameters for creating, training, and validating a model
 # =============================================================================
 [model]
 # Architecture to pick
 arch = "TierLevelCost"
 
 # Name to save the model
-dir = 'levelcost-10-27'
+dir = 'levelcost-10-28'
 
 # Output dimensions, should match whatever the cost function outputs
 out_dims = 4
@@ -90,7 +90,7 @@ embedding_size = 3
 
 [train]
 # directory for data used for testing and training
-dir = "train-data/level-parquet"
+dir = "train-data/level"
 
 # h, z0, z1, q, w
 mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
@@ -113,7 +113,7 @@ drop_last = true
 shuffle = true
 
 [test]
-dir = "test-data/level-parquet"
+dir = "test-data/level"
 batch_size = 1048576
 drop_last = true
 shuffle = false
