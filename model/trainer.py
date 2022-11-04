@@ -2,6 +2,7 @@ import os
 import toml
 import logging
 import torch
+import pandas as pd
 from tqdm import tqdm
 
 
@@ -23,10 +24,10 @@ class Trainer:
         self.log.info(f'Training on device: {self.device}')
 
     def _train_step(self, label, features) -> float:
-        self.optimizer.zero_grad()
-
         pred = self.model(features)
         loss = self.loss_fn(pred, label)
+
+        self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
@@ -39,17 +40,19 @@ class Trainer:
         else:
             pbar = tqdm(self.train_data, ncols=80, total=self.train_len)
 
+        total_loss = 0
         for batch, (labels, features) in enumerate(pbar):
             labels = labels.to(self.device)
             features = features.to(self.device)
             loss = self._train_step(labels, features)
             if batch % (100) == 0:
                 pbar.set_description(f'loss {loss:>5f}')
+            total_loss += loss
 
         if self.train_len == 0:
             self.train_len = batch + 1
 
-        return loss
+        return total_loss.item() / self.train_len
 
     def _test_step(self, labels, features):
         with torch.no_grad():
@@ -101,9 +104,6 @@ class Trainer:
 
         os.makedirs(save_dir, exist_ok=True)
         self._dumpconfig(save_dir)
-
-        loss_min = float('inf')
-        losses = [float('inf')] * (early_stop_num + 1)
         self.log.info('Model parameters')
         for key in self.config['model'].keys():
             self.log.info(f'{key} = {self.config["model"][key]}')
@@ -111,24 +111,37 @@ class Trainer:
         for key in self.config['train'].keys():
             self.log.info(f'{key} = {self.config["train"][key]}')
 
+        df = []
+        prev_loss = float('inf')
+        loss_gradients_up = 0
+        loss_min = float('inf')
         for epoch in range(max_epochs):
-            self.log.info(f'Epoch ({epoch+1}/{max_epochs})')
-            self._train_loop()
+            self.log.info(f'Epoch: [{epoch+1}/{max_epochs}]')
+            self.log.info(f'Early Stop: [{loss_gradients_up}/{early_stop_num}]')
+            train_loss = self._train_loop()
             curr_loss = self._test_loop()
+            self.log.info(f'Train loss: {train_loss}')
             self.log.info(f'Test loss: {curr_loss}')
             self._checkpoint(save_dir, epoch, curr_loss)
+
             if curr_loss < loss_min:
                 loss_min = curr_loss
                 self.log.info('New minmum loss, saving...')
                 self._save_model(save_dir)
+            df.append({
+                'epoch': epoch,
+                'train_loss': train_loss,
+                'test_loss': curr_loss})
+            pd.DataFrame(df).to_csv(
+                os.path.join(save_dir, 'losses.csv'),
+                index=False)
 
-            losses.pop(0)
-            losses.append(curr_loss)
-            loss_deltas = [y - x for x, y in zip(losses, losses[1:])]
-            self.log.info(f'Past losses ({losses})')
-            if any([(x < epsilon and x > -epsilon) for x in loss_deltas]):
+            if curr_loss - prev_loss > -epsilon:
+                loss_gradients_up += 1
+            if loss_gradients_up >= early_stop_num:
                 self.log.info(f'Loss has only changed by {epsilon} for '
                               f'{early_stop_num} epochs. Terminating...')
                 break
+            prev_loss = curr_loss
 
         self.log.info('Training finished')

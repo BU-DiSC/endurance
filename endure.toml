@@ -5,8 +5,8 @@
 [app]
 name = "ENDURE"
 jobs = [
-    'DataGen'
-    # 'Train',
+    # 'DataGen'
+    'Train',
 ]
 
 # =============================================================================
@@ -55,7 +55,7 @@ num_workers = 8
 num_files = 8
 precision = 3
 # Per file sample
-samples = 1048576
+samples = 262144
 
 # =============================================================================
 # HEADER MODEL
@@ -63,10 +63,10 @@ samples = 1048576
 # =============================================================================
 [model]
 # Architecture to pick
-arch = "TierLevelCost"
+arch = "QCost"
 
 # Name to save the model
-dir = 'levelcost-10-28'
+dir = 'qcost-11-2'
 
 # Output dimensions, should match whatever the cost function outputs
 out_dims = 4
@@ -77,27 +77,29 @@ num_cont_vars = 5
 
 # Number of categorical variables we will need to encode, referring to size
 # ratios and number of files per level (if using that cost-model)
-num_cate_vars = 1
+num_cate_vars = 2
 
 # Hidden layers between the continous inputs + embedding to output
-hidden_layers = 3
+hidden_layers = 8
 
 # Size of our cateogrical variable embedding, our overall cost-model network
 # input will be
 #   num_cont_vars + (num_cate_vars * embedding_size)
 # As each categorical variable will be embedded down to size `embedding_size`
-embedding_size = 3
+embedding_size = 10
 
 [train]
 # directory for data used for testing and training
-dir = "train-data/level"
+dir = "train-data/qcost"
+# use datapipe implementation (streaming) or dataset (load all in RAM)
+use_dp = false
 
 # h, z0, z1, q, w
 mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
 std_bias =  [2.74,  0.3, 0.3, 0.3, 0.3]
 
 # Number of iterations of non-improvement to trigger and early stop of training
-early_stop_num = 3
+early_stop_num = 5
 # Delta between losses to count as a non-improvement
 epsilon = 1e-5
 # Maximum number of epochs we will train over
@@ -113,8 +115,9 @@ drop_last = true
 shuffle = true
 
 [test]
-dir = "test-data/level"
-batch_size = 1048576
+dir = "test-data/qcost"
+use_dp = true
+batch_size = 8192
 drop_last = true
 shuffle = false
 

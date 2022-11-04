@@ -156,8 +156,8 @@ class EndureQFixedCost():
             for j in range(1, level):
                 upper_fp += Q * self.fp(h, T, j)
             current_fp = ((Q - 1) / 2) * self.fp(h, T, level)
-            z1 += self.run_prob(level, T, mbuff, Nf) * \
-                (1 + upper_fp + current_fp)
+            z1 += (self.run_prob(level, T, mbuff, Nf)
+                   * (1 + upper_fp + current_fp))
 
         return z1
 

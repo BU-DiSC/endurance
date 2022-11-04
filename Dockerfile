@@ -12,6 +12,7 @@ RUN useradd -l -ms /bin/bash ${CONTAINER_USER} -u ${CONTAINER_UID} -g ${CONTAINE
 
 WORKDIR /endure
 COPY requirements.txt /tmp
+COPY notebook/requirements.txt /tmp/jupyter-requirements.txt
 
 USER root
 RUN apt-get update && apt-get install -y vim tmux
@@ -19,6 +20,7 @@ RUN apt-get update && apt-get install -y vim tmux
 USER ${CONTAINER_USER}
 ENV PATH "/home/${CONTAINER_USER}/.local/bin:$PATH"
 RUN pip install -r /tmp/requirements.txt
+RUN pip install -r /tmp/jupyter-requirements.txt
 
 EXPOSE 8888
 

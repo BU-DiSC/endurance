@@ -1,7 +1,5 @@
 dill
 joblib
-jupyter
-matplotlib
 numba
 numpy
 pandas
