@@ -130,7 +130,7 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
             df = self._load_data(files)
             inputs = torch.from_numpy(df[self._input_cols].values).float()
             labels = torch.from_numpy(df[self._label_cols].values).float()
-            for label, input in zip(inputs, labels):
+            for label, input in zip(labels, inputs):
                 yield label, input
 
 

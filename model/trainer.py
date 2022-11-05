@@ -28,8 +28,6 @@ class Trainer:
     def _train_step(self, label, features) -> float:
         label = label.to(self.device)
         features = features.to(self.device)
-        self.log.info(f'{label.device=}')
-        self.log.info(f'{features.device=}')
         pred = self.model(features)
         loss = self.loss_fn(pred, label)
 

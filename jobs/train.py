@@ -19,14 +19,6 @@ class TrainJob:
         self.log = logging.getLogger(self._config['log']['name'])
         self.log.info('Running Training Job')
         self._dp = EndureData.EndureDataPipeGenerator(self._config)
-        self._prep_training()
-
-    def _prep_training(self):
-        self.model = self._build_model()
-        self.optimizer = self._build_optimizer(self.model)
-        self.train_data = self._build_train()
-        self.test_data = self._build_test()
-        self.loss_fn = MSLELoss()
 
     def _build_model(self):
         choice = self._config['model']['arch']
@@ -103,13 +95,19 @@ class TrainJob:
         return train, test
 
     def run(self) -> Trainer:
+        model = self._build_model()
+        optimizer = self._build_optimizer(model)
+        train_data = self._build_train()
+        test_data = self._build_test()
+        loss_fn = MSLELoss()
+
         trainer = Trainer(
             config=self._config,
-            model=self.model,
-            optimizer=self.optimizer,
-            loss_fn=self.loss_fn,
-            train_data=self.train_data,
-            test_data=self.test_data)
+            model=model,
+            optimizer=optimizer,
+            loss_fn=loss_fn,
+            train_data=train_data,
+            test_data=test_data)
         trainer.run()
 
         return trainer
