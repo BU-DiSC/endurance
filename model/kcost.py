@@ -28,8 +28,9 @@ class KCostModel(nn.Module):
 
     def forward(self, x):
         cate_inputs = x[:, self.params['num_cont_vars']:].to(torch.int32)
-        out = torch.flatten(self.embedding(cate_inputs), start_dim=1)
-        out = torch.cat((x[:, :self.params['num_cont_vars']], out), -1)
+        out = self.embedding(cate_inputs)
+        out = torch.flatten(out, start_dim=-1)
+        out = torch.cat([x[:, :self.params['num_cont_vars']], out], -1)
         out = self.cost_layer(out)
 
         return out

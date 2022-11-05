@@ -22,8 +22,14 @@ class Trainer:
         else:
             self.device = torch.device('cpu')
         self.log.info(f'Training on device: {self.device}')
+        self.model = self.model.to(self.device)
+        self.loss_fn = self.loss_fn.to(self.device)
 
     def _train_step(self, label, features) -> float:
+        label = label.to(self.device)
+        features = features.to(self.device)
+        self.log.info(f'{label.device=}')
+        self.log.info(f'{features.device=}')
         pred = self.model(features)
         loss = self.loss_fn(pred, label)
 
@@ -42,11 +48,9 @@ class Trainer:
 
         total_loss = 0
         for batch, (labels, features) in enumerate(pbar):
-            labels = labels.to(self.device)
-            features = features.to(self.device)
             loss = self._train_step(labels, features)
-            if batch % (100) == 0:
-                pbar.set_description(f'loss {loss:>5f}')
+            # if batch % (100) == 0:
+            #     pbar.set_description(f'loss {loss:>5f}')
             total_loss += loss
 
         if self.train_len == 0:
@@ -117,7 +121,7 @@ class Trainer:
         loss_min = float('inf')
         for epoch in range(max_epochs):
             self.log.info(f'Epoch: [{epoch+1}/{max_epochs}]')
-            self.log.info(f'Early Stop: [{loss_gradients_up}/{early_stop_num}]')
+            self.log.info(f'EarlyStop: [{loss_gradients_up}/{early_stop_num}]')
             train_loss = self._train_loop()
             curr_loss = self._test_loop()
             self.log.info(f'Train loss: {train_loss}')

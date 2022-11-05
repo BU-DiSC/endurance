@@ -8,7 +8,7 @@ import torchdata.datapipes as DataPipe
 
 
 class EndureDataSet(torch.utils.data.Dataset):
-    def __init__(self, config, folder, device='cpu'):
+    def __init__(self, config, folder):
         self._config = config
         self.log = logging.getLogger(config['log']['name'])
         self._mean = np.array(self._config['train']['mean_bias'], np.float32)
@@ -21,9 +21,9 @@ class EndureDataSet(torch.utils.data.Dataset):
         self._input_cols = self._get_input_cols()
 
         self.inputs = torch.from_numpy(
-            self._df[self._input_cols].values).float().to(device)
+            self._df[self._input_cols].values).float()
         self.labels = torch.from_numpy(
-            self._df[self._label_cols].values).float().to(device)
+            self._df[self._label_cols].values).float()
 
     def _get_input_cols(self):
         base = ['h', 'z0', 'z1', 'q', 'w', 'T']
@@ -37,6 +37,7 @@ class EndureDataSet(torch.utils.data.Dataset):
         if extension is None:
             self.log.warn('Invalid model defaulting to KCost')
             extension = choices.get('KCost')
+
         return base + extension
 
     def _load_data(self, fnames):
@@ -44,6 +45,7 @@ class EndureDataSet(torch.utils.data.Dataset):
         for fname in fnames:
             df.append(pd.read_csv(fname))
         df = pd.concat(df)
+
         return self._process_df(df)
 
     def _process_df(self, df):
@@ -63,6 +65,7 @@ class EndureDataSet(torch.utils.data.Dataset):
             for i in range(self._config['lsm']['max_levels']):
                 df[f'K_{i}'] -= (self._config['lsm']['size_ratio']['min'] - 1)
                 df[f'K_{i}'][df[f'K_{i}'] < 0] = 0
+
         return df
 
     def __len__(self):
@@ -70,6 +73,65 @@ class EndureDataSet(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         return self.labels[idx], self.inputs[idx]
+
+
+class EndureIterableDataSet(torch.utils.data.IterableDataset):
+    def __init__(self, config, folder):
+        self._config = config
+        self.log = logging.getLogger(config['log']['name'])
+        self._mean = np.array(self._config['train']['mean_bias'], np.float32)
+        self._std = np.array(self._config['train']['std_bias'], np.float32)
+        self._label_cols = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost']
+        self._input_cols = self._get_input_cols()
+        self._fnames = glob.glob(os.path.join(folder, '*.csv'))
+
+    def _get_input_cols(self):
+        base = ['h', 'z0', 'z1', 'q', 'w', 'T']
+        choices = {
+            'KCost': [f'K_{i}'
+                      for i in range(self._config['lsm']['max_levels'])],
+            'TierLevelCost': [],
+            'QCost': ['Q'],
+        }
+        extension = choices.get(self._config['model']['arch'], None)
+        if extension is None:
+            self.log.warn('Invalid model defaulting to KCost')
+            extension = choices.get('KCost')
+
+        return base + extension
+
+    def _load_data(self, fname):
+        df = pd.read_csv(fname)
+
+        return self._process_df(df)
+
+    def _process_df(self, df):
+        df[['h', 'z0', 'z1', 'q', 'w']] -= self._mean
+        df[['h', 'z0', 'z1', 'q', 'w']] /= self._std
+        df['T'] = df['T'] - self._config['lsm']['size_ratio']['min']
+        if self._config['model']['arch'] == 'QCost':
+            df['Q'] -= (self._config['lsm']['size_ratio']['min'] - 1)
+        elif self._config['model']['arch'] == 'TierLevelCost':
+            pass
+        elif self._config['model']['arch'] == 'KCost':
+            for i in range(self._config['lsm']['max_levels']):
+                df[f'K_{i}'] -= (self._config['lsm']['size_ratio']['min'] - 1)
+                df[f'K_{i}'][df[f'K_{i}'] < 0] = 0
+        else:
+            self.log.warn('Invalid model defaulting to KCost behavior')
+            for i in range(self._config['lsm']['max_levels']):
+                df[f'K_{i}'] -= (self._config['lsm']['size_ratio']['min'] - 1)
+                df[f'K_{i}'][df[f'K_{i}'] < 0] = 0
+
+        return df
+
+    def __iter__(self):
+        for files in self._fnames:
+            df = self._load_data(files)
+            inputs = torch.from_numpy(df[self._input_cols].values).float()
+            labels = torch.from_numpy(df[self._label_cols].values).float()
+            for label, input in zip(inputs, labels):
+                yield label, input
 
 
 class EndureDataPipeGenerator():
@@ -96,15 +158,25 @@ class EndureDataPipeGenerator():
 
         return (labels, features)
 
-    def build_dp(self, folder, shuffle=True):
-        dp = (DataPipe
-              .iter
-              .FileLister(folder)
-              .filter(filter_fn=lambda fname: fname.endswith('.csv'))
-              .open_files(mode='rt')
-              .parse_csv(delimiter=',', skip_lines=1)
-              .map(self._process_row)
-              .shuffle()
-              .set_shuffle(shuffle)
-              .sharding_filter())
+    def build_dp(self, folder, shuffle=True) -> DataPipe.iter.IterDataPipe:
+        dp = DataPipe.iter.FileLister(folder)
+        dp = dp.filter(filter_fn=lambda fname: fname.endswith('.csv'))
+        dp = DataPipe.iter.FileOpener(dp, mode='rt')
+        dp = dp.parse_csv(delimiter=',', skip_lines=1)
+        dp = dp.map(self._process_row)
+        dp = dp.in_memory_cache()
+        if shuffle:
+            dp = dp.shuffle()
+        dp = dp.sharding_filter()
+        # dp = (DataPipe
+        #       .iter
+        #       .FileLister(folder)
+        #       .filter(filter_fn=lambda fname: fname.endswith('.csv'))
+        #       .open_files(mode='rt')
+        #       .parse_csv(delimiter=',', skip_lines=1)
+        #       .map(self._process_row)
+        #       .shuffle()
+        #       .set_shuffle(shuffle)
+        #       .sharding_filter())
+
         return dp

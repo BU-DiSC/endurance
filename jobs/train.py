@@ -5,11 +5,12 @@ import logging
 
 from torch.utils.data import DataLoader
 
+import data.kcost_dataset as EndureData
 from data.io import Reader
-from data.kcost_dataset import EndureDataPipeGenerator, EndureDataSet
 from model.kcost import KCostModel
 from model.tierlevelcost import TierLevelCost
 from model.trainer import Trainer
+from model.losses import MSLELoss
 
 
 class TrainJob:
@@ -17,19 +18,15 @@ class TrainJob:
         self._config = config
         self.log = logging.getLogger(self._config['log']['name'])
         self.log.info('Running Training Job')
-        self._dp = EndureDataPipeGenerator(self._config)
+        self._dp = EndureData.EndureDataPipeGenerator(self._config)
         self._prep_training()
 
     def _prep_training(self):
-        if torch.cuda.is_available():
-            self.device = torch.device('cuda')
-        else:
-            self.device = torch.device('cpu')
-        self.log.info(f'Using device: {self.device}')
-        self.model = self._build_model().to(self.device)
+        self.model = self._build_model()
         self.optimizer = self._build_optimizer(self.model)
-        self.train_data, self.test_data = self._build_data()
-        self.loss_fn = torch.nn.MSELoss()
+        self.train_data = self._build_train()
+        self.test_data = self._build_test()
+        self.loss_fn = MSLELoss()
 
     def _build_model(self):
         choice = self._config['model']['arch']
@@ -48,12 +45,12 @@ class TrainJob:
         return model
 
     def _build_optimizer(self, model):
-        optimizer = torch.optim.SGD(
-            model.parameters(),
-            lr=self._config['train']['learning_rate'])
-        # optimizer = torch.optim.Adam(
-        #         model.parameters(),
-        #         lr=self.config['train']['learning_rate'])
+        # optimizer = torch.optim.SGD(
+        #     model.parameters(),
+        #     lr=self._config['train']['learning_rate'])
+        optimizer = torch.optim.Adam(
+                model.parameters(),
+                lr=self._config['train']['learning_rate'])
 
         return optimizer
 
@@ -66,13 +63,18 @@ class TrainJob:
                 train_dir,
                 shuffle=self._config['train']['shuffle'])
         else:
-            train_data = EndureDataSet(self._config, train_dir)
+            train_data = EndureData.EndureIterableDataSet(
+                config=self._config,
+                folder=train_dir,)
+            # train_data = EndureData.EndureDataSet(
+            #     config=self._config,
+            #     folder=train_dir,)
         train = DataLoader(
             train_data,
             batch_size=self._config['train']['batch_size'],
-            drop_last=self._config['train']['drop_last'],
-            shuffle=self._config['train']['shuffle'],
-            num_workers=4)
+            drop_last=self._config['train']['drop_last'],)
+            # num_workers=4,
+            # shuffle=self._config['train']['shuffle'])
         return train
 
     def _build_test(self):
@@ -84,12 +86,14 @@ class TrainJob:
                 test_dir,
                 shuffle=self._config['test']['shuffle'])
         else:
-            test_data = EndureDataSet(self._config, test_dir)
+            test_data = EndureData.EndureIterableDataSet(
+                config=self._config,
+                folder=test_dir,)
         test = DataLoader(
             test_data,
             batch_size=self._config['test']['batch_size'],
-            drop_last=self._config['test']['drop_last'],
-            shuffle=self._config['test']['shuffle'])
+            drop_last=self._config['test']['drop_last'],)
+            # shuffle=self._config['test']['shuffle'])
         return test
 
     def _build_data(self):
