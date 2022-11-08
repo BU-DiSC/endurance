@@ -27,9 +27,9 @@ class KCostModel(nn.Module):
         self.cost_layer = nn.Sequential(*modules)
 
     def forward(self, x):
-        cate_inputs = x[:, self.params['num_cont_vars']:].to(torch.int32)
-        out = self.embedding(cate_inputs)
-        out = torch.flatten(out, start_dim=-1)
+        cate_inputs = x[:, self.params['num_cont_vars']:]
+        out = self.embedding(cate_inputs.to(torch.int32))
+        out = torch.flatten(out, start_dim=1)
         out = torch.cat([x[:, :self.params['num_cont_vars']], out], -1)
         out = self.cost_layer(out)
 

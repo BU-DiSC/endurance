@@ -57,16 +57,13 @@ class TrainJob:
         else:
             train_data = EndureData.EndureIterableDataSet(
                 config=self._config,
-                folder=train_dir,)
-            # train_data = EndureData.EndureDataSet(
-            #     config=self._config,
-            #     folder=train_dir,)
+                folder=train_dir,
+                shuffle=self._config['train']['shuffle'])
         train = DataLoader(
             train_data,
             batch_size=self._config['train']['batch_size'],
-            drop_last=self._config['train']['drop_last'],)
-            # num_workers=4,
-            # shuffle=self._config['train']['shuffle'])
+            drop_last=self._config['train']['drop_last'],
+            num_workers=8,)
         return train
 
     def _build_test(self):
@@ -84,15 +81,9 @@ class TrainJob:
         test = DataLoader(
             test_data,
             batch_size=self._config['test']['batch_size'],
-            drop_last=self._config['test']['drop_last'],)
-            # shuffle=self._config['test']['shuffle'])
+            drop_last=self._config['test']['drop_last'],
+            num_workers=4,)
         return test
-
-    def _build_data(self):
-        train = self._build_train()
-        test = self._build_test()
-
-        return train, test
 
     def run(self) -> Trainer:
         model = self._build_model()

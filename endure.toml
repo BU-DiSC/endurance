@@ -45,13 +45,13 @@ min = 0
 #   Generating data to be used for learning
 # =============================================================================
 [data_gen]
-format = 'csv'
-generator = "QCost"
-dir = "tmp-data/qcost"
-file_prefix = "qcost"
+format = 'parquet'
+generator = 'QCost'
+dir = 'train-data/qcost-parquet'
+file_prefix = 'qcost'
 # Parallel workers, -1 will force all cores to be used
 num_workers = -1
-num_files = 2
+num_files = 256
 precision = 3
 # Per file sample
 samples = 262144
@@ -65,7 +65,7 @@ samples = 262144
 arch = "QCost"
 
 # Name to save the model
-dir = 'qcost-11-03-v2'
+dir = 'qcost-11-07'
 
 # Output dimensions, should match whatever the cost function outputs
 out_dims = 4
@@ -79,17 +79,17 @@ num_cont_vars = 5
 num_cate_vars = 2
 
 # Hidden layers between the continous inputs + embedding to output
-hidden_layers = 8
+hidden_layers = 16
 
 # Size of our cateogrical variable embedding, our overall cost-model network
 # input will be
 #   num_cont_vars + (num_cate_vars * embedding_size)
 # As each categorical variable will be embedded down to size `embedding_size`
-embedding_size = 10
+embedding_size = 8
 
 [train]
 # directory for data used for testing and training
-dir = "train-data/qcost"
+dir = "train-data/qcost-parquet"
 # use datapipe implementation (streaming) or dataset (load all in RAM)
 use_dp = false
 
@@ -98,7 +98,7 @@ mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
 std_bias =  [2.74,  0.3, 0.3, 0.3, 0.3]
 
 # Number of iterations of non-improvement to trigger and early stop of training
-early_stop_num = 16
+early_stop_num = 10
 # Delta between losses to count as a non-improvement
 epsilon = 1e-5
 # Maximum number of epochs we will train over
@@ -106,15 +106,15 @@ max_epochs = 128
 
 # If training is via SGD, this will be the gamma decay parameter for learning
 learning_rate_decay = 0.99
-learning_rate = 0.001
+learning_rate = 0.0001
 
 # data set specfic configurations
-batch_size = 64
+batch_size = 1024
 drop_last = true
 shuffle = true
 
 [test]
-dir = "test-data/qcost"
+dir = "test-data/qcost-parquet"
 use_dp = false
 batch_size = 8192
 drop_last = true

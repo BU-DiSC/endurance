@@ -7,6 +7,5 @@ pyarrow
 scipy
 toml
 torch
-torcharrow
 torchdata
 tqdm

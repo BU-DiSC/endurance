@@ -1,4 +1,5 @@
 import os
+import random
 import logging
 import glob
 import torch
@@ -76,14 +77,18 @@ class EndureDataSet(torch.utils.data.Dataset):
 
 
 class EndureIterableDataSet(torch.utils.data.IterableDataset):
-    def __init__(self, config, folder):
+    def __init__(self, config, folder, shuffle=False):
         self._config = config
         self.log = logging.getLogger(config['log']['name'])
         self._mean = np.array(self._config['train']['mean_bias'], np.float32)
         self._std = np.array(self._config['train']['std_bias'], np.float32)
         self._label_cols = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost']
         self._input_cols = self._get_input_cols()
-        self._fnames = glob.glob(os.path.join(folder, '*.csv'))
+        self._fnames = glob.glob(os.path.join(
+            folder,
+            '*.' + self._config['data_gen']['format']))
+        if shuffle:
+            random.shuffle(self._fnames)
 
     def _get_input_cols(self):
         base = ['h', 'z0', 'z1', 'q', 'w', 'T']
@@ -101,7 +106,10 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
         return base + extension
 
     def _load_data(self, fname):
-        df = pd.read_csv(fname)
+        if self._config['data_gen']['format'] == 'parquet':
+            df = pd.read_parquet(fname)
+        else:  # default csv
+            df = pd.read_csv(fname)
 
         return self._process_df(df)
 
@@ -126,10 +134,16 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
         return df
 
     def __iter__(self):
-        for files in self._fnames:
-            df = self._load_data(files)
-            inputs = torch.from_numpy(df[self._input_cols].values).float()
+        worker_info = torch.utils.data.get_worker_info()
+        if worker_info is None:
+            files = self._fnames
+        else:
+            file_bins = np.array_split(self._fnames, worker_info.num_workers)
+            files = file_bins[worker_info.id]
+        for file in files:
+            df = self._load_data(file)
             labels = torch.from_numpy(df[self._label_cols].values).float()
+            inputs = torch.from_numpy(df[self._input_cols].values).float()
             for label, input in zip(labels, inputs):
                 yield label, input
 
