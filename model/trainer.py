@@ -7,8 +7,15 @@ from tqdm import tqdm
 
 
 class Trainer:
-    def __init__(self, config, model, optimizer, loss_fn, train_data,
-                 test_data):
+    def __init__(
+        self,
+        config,
+        model,
+        optimizer,
+        loss_fn,
+        train_data,
+        test_data
+    ):
         self.config = config
         self.log = logging.getLogger(self.config['log']['name'])
         self.model = model

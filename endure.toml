@@ -44,14 +44,19 @@ min = 0
 # HEADER DATAGEN
 #   Generating data to be used for learning
 # =============================================================================
-[data_gen]
+[data]
+# h, z0, z1, q, w
+mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
+std_bias =  [2.74,  0.3, 0.3, 0.3, 0.3]
+
+[data.gen]
 format = 'parquet'
 generator = 'QCost'
-dir = 'train-data/qcost-parquet'
+dir = 'test-data/qcost-parquet'
 file_prefix = 'qcost'
 # Parallel workers, -1 will force all cores to be used
-num_workers = -1
-num_files = 256
+num_workers = 32
+num_files = 32
 precision = 3
 # Per file sample
 samples = 262144
@@ -65,7 +70,7 @@ samples = 262144
 arch = "QCost"
 
 # Name to save the model
-dir = 'qcost-11-07'
+dir = 'qcost-11-08'
 
 # Output dimensions, should match whatever the cost function outputs
 out_dims = 4
@@ -79,7 +84,7 @@ num_cont_vars = 5
 num_cate_vars = 2
 
 # Hidden layers between the continous inputs + embedding to output
-hidden_layers = 16
+hidden_layers = 8
 
 # Size of our cateogrical variable embedding, our overall cost-model network
 # input will be
@@ -88,15 +93,9 @@ hidden_layers = 16
 embedding_size = 8
 
 [train]
-# directory for data used for testing and training
-dir = "train-data/qcost-parquet"
-# use datapipe implementation (streaming) or dataset (load all in RAM)
-use_dp = false
-
-# h, z0, z1, q, w
-mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
-std_bias =  [2.74,  0.3, 0.3, 0.3, 0.3]
-
+batch_size = 4096
+drop_last = true
+shuffle = true
 # Number of iterations of non-improvement to trigger and early stop of training
 early_stop_num = 10
 # Delta between losses to count as a non-improvement
@@ -108,17 +107,24 @@ max_epochs = 128
 learning_rate_decay = 0.99
 learning_rate = 0.0001
 
-# data set specfic configurations
-batch_size = 1024
-drop_last = true
-shuffle = true
+[train.data]
+format = 'parquet'
+# directory for data used for training data
+dir = "train-data/qcost-parquet"
+# use datapipe implementation (streaming) or dataset (load all in RAM)
+use_dp = false
+num_workers = 4
 
 [test]
-dir = "test-data/qcost-parquet"
-use_dp = false
 batch_size = 8192
 drop_last = true
 shuffle = false
+
+[test.data]
+dir = "test-data/qcost-parquet"
+format = 'parquet'
+use_dp = false
+num_workers = 2
 
 # =============================================================================
 # HEADER SYSTEM

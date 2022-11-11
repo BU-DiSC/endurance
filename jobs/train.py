@@ -49,8 +49,8 @@ class TrainJob:
     def _build_train(self):
         train_dir = os.path.join(
             self._config['io']['data_dir'],
-            self._config['train']['dir'])
-        if self._config['train']['use_dp']:
+            self._config['train']['data']['dir'])
+        if self._config['train']['data']['use_dp']:
             train_data = self._dp.build_dp(
                 train_dir,
                 shuffle=self._config['train']['shuffle'])
@@ -58,7 +58,8 @@ class TrainJob:
             train_data = EndureData.EndureIterableDataSet(
                 config=self._config,
                 folder=train_dir,
-                shuffle=self._config['train']['shuffle'])
+                shuffle=self._config['train']['shuffle'],
+                format=self._config['train']['data']['format'])
         train = DataLoader(
             train_data,
             batch_size=self._config['train']['batch_size'],
@@ -69,7 +70,7 @@ class TrainJob:
     def _build_test(self):
         test_dir = os.path.join(
                 self._config['io']['data_dir'],
-                self._config['test']['dir'])
+                self._config['test']['data']['dir'])
         if self._config['test']['use_dp']:
             test_data = self._dp.build_dp(
                 test_dir,
@@ -77,7 +78,9 @@ class TrainJob:
         else:
             test_data = EndureData.EndureIterableDataSet(
                 config=self._config,
-                folder=test_dir,)
+                folder=test_dir,
+                shuffle=self._config['test']['shuffle'],
+                format=self._config['test']['data']['format'])
         test = DataLoader(
             test_data,
             batch_size=self._config['test']['batch_size'],

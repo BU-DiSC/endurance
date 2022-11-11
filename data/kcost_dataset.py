@@ -9,13 +9,14 @@ import torchdata.datapipes as DataPipe
 
 
 class EndureDataSet(torch.utils.data.Dataset):
-    def __init__(self, config, folder):
+    def __init__(self, config, folder, format='csv'):
         self._config = config
         self.log = logging.getLogger(config['log']['name'])
-        self._mean = np.array(self._config['train']['mean_bias'], np.float32)
-        self._std = np.array(self._config['train']['std_bias'], np.float32)
+        self._mean = np.array(self._config['data']['mean_bias'], np.float32)
+        self._std = np.array(self._config['data']['std_bias'], np.float32)
+        self._format = format
 
-        fnames = glob.glob(os.path.join(folder, '*.csv'))
+        fnames = glob.glob(os.path.join(folder, '*.' + self._format))
         self.log.info('Loading in all files to RAM')
         self._df = self._load_data(fnames)
         self._label_cols = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost']
@@ -77,16 +78,15 @@ class EndureDataSet(torch.utils.data.Dataset):
 
 
 class EndureIterableDataSet(torch.utils.data.IterableDataset):
-    def __init__(self, config, folder, shuffle=False):
+    def __init__(self, config, folder, format='csv', shuffle=False):
         self._config = config
         self.log = logging.getLogger(config['log']['name'])
-        self._mean = np.array(self._config['train']['mean_bias'], np.float32)
-        self._std = np.array(self._config['train']['std_bias'], np.float32)
+        self._mean = np.array(self._config['data']['mean_bias'], np.float32)
+        self._std = np.array(self._config['data']['std_bias'], np.float32)
         self._label_cols = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost']
         self._input_cols = self._get_input_cols()
-        self._fnames = glob.glob(os.path.join(
-            folder,
-            '*.' + self._config['data_gen']['format']))
+        self._format = format
+        self._fnames = glob.glob(os.path.join(folder, '*.' + format))
         if shuffle:
             random.shuffle(self._fnames)
 
@@ -106,7 +106,7 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
         return base + extension
 
     def _load_data(self, fname):
-        if self._config['data_gen']['format'] == 'parquet':
+        if self._format == 'parquet':
             df = pd.read_parquet(fname)
         else:  # default csv
             df = pd.read_csv(fname)
@@ -117,6 +117,7 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
         df[['h', 'z0', 'z1', 'q', 'w']] -= self._mean
         df[['h', 'z0', 'z1', 'q', 'w']] /= self._std
         df['T'] = df['T'] - self._config['lsm']['size_ratio']['min']
+
         if self._config['model']['arch'] == 'QCost':
             df['Q'] -= (self._config['lsm']['size_ratio']['min'] - 1)
         elif self._config['model']['arch'] == 'TierLevelCost':
@@ -151,8 +152,8 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
 class EndureDataPipeGenerator():
     def __init__(self, config):
         self.config = config
-        self.mean = np.array(self.config['train']['mean_bias'], np.float32)
-        self.std = np.array(self.config['train']['std_bias'], np.float32)
+        self.mean = np.array(self.config['data']['mean_bias'], np.float32)
+        self.std = np.array(self.config['data']['std_bias'], np.float32)
 
     def _process_row(self, row):
         labels = np.array(row[0:4], np.float32)
@@ -182,15 +183,5 @@ class EndureDataPipeGenerator():
         if shuffle:
             dp = dp.shuffle()
         dp = dp.sharding_filter()
-        # dp = (DataPipe
-        #       .iter
-        #       .FileLister(folder)
-        #       .filter(filter_fn=lambda fname: fname.endswith('.csv'))
-        #       .open_files(mode='rt')
-        #       .parse_csv(delimiter=',', skip_lines=1)
-        #       .map(self._process_row)
-        #       .shuffle()
-        #       .set_shuffle(shuffle)
-        #       .sharding_filter())
 
         return dp
