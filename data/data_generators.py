@@ -19,7 +19,7 @@ class DataGenerator:
 
     def _sample_bloom_filter_bits(self) -> float:
         sample = np.random.rand() * self.config['lsm']['bits_per_elem']['max']
-        return np.around(sample, self.config['data_gen']['precision'])
+        return np.around(sample, self.config['data']['gen']['precision'])
 
     def _sample_workload(self, dimensions: int) -> list:
         # See stackoverflow thread for why the simple solution is not uniform
@@ -45,7 +45,7 @@ class DataGenerator:
         return []
 
     def generate_row(self) -> list:
-        if self.config['data_gen']['format'] == 'parquet':
+        if self.config['data']['gen']['format'] == 'parquet':
             row = self.generate_row_parquet()
         else:  # format == 'csv'
             row = self.generate_row_csv()

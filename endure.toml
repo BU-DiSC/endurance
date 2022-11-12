@@ -5,7 +5,7 @@
 [app]
 name = "ENDURE"
 jobs = [
-    # 'DataGen',
+    'DataGen',
     'Train',
 ]
 
@@ -52,7 +52,7 @@ std_bias =  [2.74,  0.3, 0.3, 0.3, 0.3]
 [data.gen]
 format = 'parquet'
 generator = 'QCost'
-dir = 'test-data/qcost-parquet'
+dir = 'train-data/qcost-parquet'
 file_prefix = 'qcost'
 # Parallel workers, -1 will force all cores to be used
 num_workers = 32
