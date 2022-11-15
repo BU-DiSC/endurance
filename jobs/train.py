@@ -37,12 +37,12 @@ class TrainJob:
         return model
 
     def _build_optimizer(self, model):
-        # optimizer = torch.optim.SGD(
-        #     model.parameters(),
-        #     lr=self._config['train']['learning_rate'])
-        optimizer = torch.optim.Adam(
-                model.parameters(),
-                lr=self._config['train']['learning_rate'])
+        optimizer = torch.optim.SGD(
+            model.parameters(),
+            lr=self._config['train']['learning_rate'])
+        # optimizer = torch.optim.Adam(
+        #         model.parameters(),
+        #         lr=self._config['train']['learning_rate'])
 
         return optimizer
 
@@ -71,7 +71,7 @@ class TrainJob:
         test_dir = os.path.join(
                 self._config['io']['data_dir'],
                 self._config['test']['data']['dir'])
-        if self._config['test']['use_dp']:
+        if self._config['test']['data']['use_dp']:
             test_data = self._dp.build_dp(
                 test_dir,
                 shuffle=self._config['test']['shuffle'])

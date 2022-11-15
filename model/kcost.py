@@ -6,13 +6,15 @@ class KCostModel(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.params = config['model']
+        num_classes = (config['lsm']['size_ratio']['max']
+                       - config['lsm']['size_ratio']['min'])
 
         self.embedding = nn.Embedding(
-                num_embeddings=config['lsm']['size_ratio']['max'],
+                num_embeddings=num_classes,
                 embedding_dim=self.params['embedding_size'],
                 max_norm=True)
-        embedding_output = (self.params['num_cate_vars'] *
-                            self.params['embedding_size'])
+        embedding_output = (self.params['num_cate_vars']
+                            * self.params['embedding_size'])
         num_feat = self.params['num_cont_vars'] + embedding_output
 
         modules = []
