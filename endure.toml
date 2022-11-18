@@ -18,6 +18,7 @@ name = 'endure-logger'
 format = "[%(levelname)s][%(asctime)-15s][%(filename)s] %(message)s"
 datefmt = '%d-%m-%y:%H:%M:%S'
 level = "INFO"
+
 # =============================================================================
 # HEADER IO
 #   Generic IO settings for experiments, saving data, etc
@@ -54,12 +55,10 @@ format = 'parquet'
 generator = 'QCost'
 dir = 'train-data/qcost-parquet'
 file_prefix = 'qcost'
-# Parallel workers, -1 will force all cores to be used
-num_workers = -1
+num_workers = -1  # -1 forces all cores to be used
 num_files = 512
 precision = 3
-# Per file sample
-samples = 262144
+samples = 262144  # per file sample
 
 # =============================================================================
 # HEADER MODEL
@@ -67,13 +66,14 @@ samples = 262144
 # =============================================================================
 [model]
 # Architecture to pick
+#   QCost - all levels same hold the same max files per level
+#   KCost - multiple different max files per level
+#   TierLevelCost - specifically for tiering and leveling
 arch = "QCost"
 
 # Name to save the model
-dir = 'qcost-11-15'
-
-# Output dimensions, should match whatever the cost function outputs
-out_dims = 4
+dir = 'qcost-11-19'
+out_dims = 4  # should match cost function output (z0, z1, q, h)
 
 # Number of continuous variables the NN will take, referring to bits per
 # element, workload, etc
@@ -93,27 +93,38 @@ hidden_layers = 16
 embedding_size = 16
 
 [train]
-batch_size = 1024
-drop_last = true
+batch_size = 4096
 shuffle = true
-# Number of iterations of non-improvement to trigger and early stop of training
-early_stop_num = 10
-# Delta between losses to count as a non-improvement
-epsilon = 1e-5
-# Maximum number of epochs we will train over
+drop_last = true  # drop last if unable to make full batch
+early_stop_num = 10  # number of non improvements to stop
+epsilon = 1e-6  # delta that counts as non improvement
 max_epochs = 128
+
+# Different loss functions to train via
+#   MSE - Mean squared error
+#   NMSE - Normalized mean squared error
+#   MSLE - Mean squared log error
+#   RMSE - Root mean square error
+#   RMSLE - Root mean squared log error
+loss_fn = 'NMSE'
+
+# List of optimizers supported
+#   SGD - Stochastic gradient descent
+#   Adam
+optimizer = 'SGD'
 
 # If training is via SGD, this will be the gamma decay parameter for learning
 learning_rate_decay = 0.99
 learning_rate = 0.0001
 
 [train.data]
-format = 'parquet'
-# directory for data used for training data
-dir = "train-data/qcost-parquet"
-# use datapipe implementation (streaming) or dataset (load all in RAM)
-use_dp = false
 num_workers = 4
+dir = "train-data/qcost-parquet"
+use_dp = false  # use datapipe (streamed) or dataset (legacy)
+# Format of the file to use
+#   csv
+#   parquet
+format = 'parquet'
 
 [test]
 batch_size = 8192
@@ -121,10 +132,10 @@ drop_last = true
 shuffle = false
 
 [test.data]
-dir = "test-data/qcost-parquet"
-format = 'parquet'
-use_dp = false
 num_workers = 2
+format = 'parquet'
+dir = "test-data/qcost-parquet"
+use_dp = false
 
 # =============================================================================
 # HEADER SYSTEM

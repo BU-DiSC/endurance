@@ -10,7 +10,7 @@ from data.io import Reader
 from model.kcost import KCostModel
 from model.tierlevelcost import TierLevelCost
 from model.trainer import Trainer
-from model.losses import MSLELoss
+import model.losses as Losses
 
 
 class TrainJob:
@@ -20,14 +20,32 @@ class TrainJob:
         self.log.info('Running Training Job')
         self._dp = EndureData.EndureDataPipeGenerator(self._config)
 
+    def _build_loss_fn(self):
+        losses = {
+            'MSE': torch.nn.MSELoss(),
+            'MSLE': Losses.MSLELoss(),
+            'NMSE': Losses.NMSELoss(),
+            'RMSLE': Losses.RMSLELoss(),
+            'RMSE': Losses.RMSELoss(),
+        }
+        choice = self._config['train']['loss_fn']
+        self.log.info(f'Loss function: {choice}')
+
+        loss = losses.get(choice, None)
+        if loss is None:
+            self.log.warn('Invalid loss func. Defaulting to MSE')
+            loss = loss.get('MSE')
+
+        return loss
+
     def _build_model(self):
-        choice = self._config['model']['arch']
-        self.log.info(f'Building model: {choice}')
         models = {
             'KCost': KCostModel,
             'QCost': KCostModel,
             'TierLevelCost': TierLevelCost,
         }
+        choice = self._config['model']['arch']
+        self.log.info(f'Building model: {choice}')
         model = models.get(choice, None)
         if model is None:
             self.log.warn('Invalid model arch. Defaulting to KCostModel')
@@ -37,12 +55,12 @@ class TrainJob:
         return model
 
     def _build_optimizer(self, model):
-        optimizer = torch.optim.SGD(
-            model.parameters(),
-            lr=self._config['train']['learning_rate'])
-        # optimizer = torch.optim.Adam(
-        #         model.parameters(),
-        #         lr=self._config['train']['learning_rate'])
+        # optimizer = torch.optim.SGD(
+        #     model.parameters(),
+        #     lr=self._config['train']['learning_rate'])
+        optimizer = torch.optim.Adam(
+                model.parameters(),
+                lr=self._config['train']['learning_rate'])
 
         return optimizer
 
@@ -93,7 +111,7 @@ class TrainJob:
         optimizer = self._build_optimizer(model)
         train_data = self._build_train()
         test_data = self._build_test()
-        loss_fn = MSLELoss()
+        loss_fn = self._build_loss_fn()
 
         trainer = Trainer(
             config=self._config,

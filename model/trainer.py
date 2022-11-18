@@ -55,7 +55,7 @@ class Trainer:
         for batch, (labels, features) in enumerate(pbar):
             loss = self._train_step(labels, features)
             if batch % (100) == 0:
-                pbar.set_description(f'loss {loss:>5f}')
+                pbar.set_description(f'loss {loss:e}')
             total_loss += loss
 
         if self.train_len == 0:

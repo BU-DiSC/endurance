@@ -7,7 +7,8 @@ class KCostModel(nn.Module):
         super().__init__()
         self.params = config['model']
         num_classes = (config['lsm']['size_ratio']['max']
-                       - config['lsm']['size_ratio']['min'])
+                       - config['lsm']['size_ratio']['min']
+                       + 1)
 
         self.embedding = nn.Embedding(
                 num_embeddings=num_classes,
