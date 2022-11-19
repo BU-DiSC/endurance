@@ -89,13 +89,15 @@ class TrainJob:
             optimizer,
             **self._config['train']['scheduler']['CosineAnnealingLR'],)
 
-    def _build_scheduler(self, optimizer) -> TorchOpt.lr_scheduler._LRScheduler:
+    def _build_scheduler(
+            self,
+            optimizer) -> TorchOpt.lr_scheduler._LRScheduler:
         schedules = {
                 'CosineAnnealing': self._build_cosine_anneal,
                 'None': None, }
         choice = self._config['train']['lr_scheduler']
         schedule_builder = schedules.get(choice, -1)
-        if schedule_builder is -1:
+        if schedule_builder == -1:
             self.log.warn('Invalid scheduler, defaulting to none')
             return None
         if schedule_builder is None:
