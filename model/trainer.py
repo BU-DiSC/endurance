@@ -2,20 +2,22 @@ import os
 import toml
 import logging
 import torch
+from torch.utils.data import DataLoader, Dataset
 import pandas as pd
+from typing import Optional, Union
 from tqdm import tqdm
 
 
 class Trainer:
     def __init__(
-        self,
-        config,
-        model,
-        optimizer,
-        loss_fn,
-        train_data,
-        test_data
-    ):
+            self,
+            config: dict,
+            model: torch.nn.Module,
+            optimizer: torch.optim.Optimizer,
+            loss_fn: torch.nn.Module,
+            train_data: Union[DataLoader, Dataset],
+            test_data: Union[DataLoader, Dataset],
+            scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,):
         self.config = config
         self.log = logging.getLogger(self.config['log']['name'])
         self.model = model
@@ -24,10 +26,15 @@ class Trainer:
         self.train_data = train_data
         self.test_data = test_data
         self.train_len = self.test_len = 0
-        if torch.cuda.is_available():
-            self.device = torch.device('cuda')
-        else:
-            self.device = torch.device('cpu')
+        self.scheduler = scheduler
+        self._early_stop_ticks = 0
+        self._move_to_available_device()
+
+    def _move_to_available_device(self):
+        use_gpu = (self.config['train']['use_gpu_if_avail'] and
+                   torch.cuda.is_available())
+        self.device = torch.device('cuda') if use_gpu else torch.device('cpu')
+
         self.log.info(f'Training on device: {self.device}')
         self.model = self.model.to(self.device)
         self.loss_fn = self.loss_fn.to(self.device)
@@ -35,10 +42,9 @@ class Trainer:
     def _train_step(self, label, features) -> float:
         label = label.to(self.device)
         features = features.to(self.device)
+        self.optimizer.zero_grad()
         pred = self.model(features)
         loss = self.loss_fn(pred, label)
-
-        self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
@@ -57,6 +63,8 @@ class Trainer:
             if batch % (100) == 0:
                 pbar.set_description(f'loss {loss:e}')
             total_loss += loss
+            if self.scheduler is not None:
+                self.scheduler.step()
 
         if self.train_len == 0:
             self.train_len = batch + 1
@@ -98,20 +106,42 @@ class Trainer:
                    'model_state_dict': self.model.state_dict(),
                    'optimizer_state_dict': self.optimizer.state_dict(),
                    'loss': loss}
-        torch.save(save_pt, os.path.join(save_dir, 'checkpoint.pt'))
+        torch.save(save_pt, os.path.join(save_dir, f'epoch_{epoch}.checkpoint'))
 
-    def _save_model(self, save_dir):
+    def _save_model(self, save_dir, name):
         torch.save(self.model.state_dict(),
-                   os.path.join(save_dir, 'kcost_min.model'))
+                   os.path.join(save_dir, name))
+
+    def _track_early_stop(self, prev_loss: float, curr_loss: float) -> bool:
+        """
+        Tracking step to check for early stop condition
+
+        :param prev_loss float: loss from prev iteration
+        :param curr_loss float: loss at current iteration
+        :rtype bool: true if we have met early stop condition, false otherwise
+        """
+        early_stop_num = self.config['train']['early_stop']['threshold']
+        epsilon = self.config['train']['early_stop']['epsilon']
+
+        self.log.info(f'EarlyStop: [{self._early_stop_ticks}/{early_stop_num}]')
+        if curr_loss - prev_loss > -epsilon:
+            self._early_stop_ticks += 1
+
+        if self._early_stop_ticks >= early_stop_num:
+            self.log.info(f'Loss has only changed by {epsilon} for '
+                          f'{early_stop_num} epochs. Terminating...')
+            return True
+
+        return False
 
     def run(self):
-        early_stop_num = self.config['train']['early_stop_num']
-        epsilon = self.config['train']['epsilon']
         max_epochs = self.config['train']['max_epochs']
         save_dir = os.path.join(self.config['io']['data_dir'],
                                 self.config['model']['dir'])
+        checkpoint_dir = os.path.join(save_dir, 'checkpoints')
 
         os.makedirs(save_dir, exist_ok=True)
+        os.makedirs(checkpoint_dir, exist_ok=True)
         self._dumpconfig(save_dir)
         self.log.info('Model parameters')
         for key in self.config['model'].keys():
@@ -122,21 +152,19 @@ class Trainer:
 
         df = []
         prev_loss = float('inf')
-        loss_gradients_up = 0
         loss_min = float('inf')
         for epoch in range(max_epochs):
             self.log.info(f'Epoch: [{epoch+1}/{max_epochs}]')
-            self.log.info(f'EarlyStop: [{loss_gradients_up}/{early_stop_num}]')
             train_loss = self._train_loop()
             curr_loss = self._test_loop()
             self.log.info(f'Train loss: {train_loss}')
             self.log.info(f'Test loss: {curr_loss}')
-            self._checkpoint(save_dir, epoch, curr_loss)
+            self._checkpoint(checkpoint_dir, epoch, curr_loss)
 
             if curr_loss < loss_min:
                 loss_min = curr_loss
                 self.log.info('New minmum loss, saving...')
-                self._save_model(save_dir)
+                self._save_model(save_dir, 'best.model')
             df.append({
                 'epoch': epoch,
                 'train_loss': train_loss,
@@ -144,13 +172,8 @@ class Trainer:
             pd.DataFrame(df).to_csv(
                 os.path.join(save_dir, 'losses.csv'),
                 index=False)
-
-            if curr_loss - prev_loss > -epsilon:
-                loss_gradients_up += 1
-            if loss_gradients_up >= early_stop_num:
-                self.log.info(f'Loss has only changed by {epsilon} for '
-                              f'{early_stop_num} epochs. Terminating...')
-                break
+            if self.config['train']['early_stop']['enabled']:
+                self._track_early_stop(prev_loss, curr_loss)
             prev_loss = curr_loss
 
         self.log.info('Training finished')

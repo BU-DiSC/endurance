@@ -29,7 +29,7 @@ class KCostModel(nn.Module):
 
         self.cost_layer = nn.Sequential(*modules)
 
-    def forward(self, x):
+    def forward(self, x) -> torch.Tensor:
         cate_inputs = x[:, self.params['num_cont_vars']:]
         out = self.embedding(cate_inputs.to(torch.int32))
         out = torch.flatten(out, start_dim=1)

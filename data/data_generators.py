@@ -120,9 +120,8 @@ class QCostGenerator(DataGenerator):
 
     def _sample_q(self) -> int:
         return np.random.randint(
-            low=self.config['lsm']['size_ratio']['min'] - 1,
-            high=self.config['lsm']['size_ratio']['max'] - 1,
-        )
+                low=self.config['lsm']['size_ratio']['min'] - 1,
+                high=self.config['lsm']['size_ratio']['max'] - 1,)
 
     def generate_header(self) -> list:
         return self.header

@@ -5,8 +5,8 @@
 [app]
 name = "ENDURE"
 jobs = [
-    # 'DataGen',
-    'Train',
+    'DataGen',
+    # 'Train',
 ]
 
 # =============================================================================
@@ -24,7 +24,7 @@ level = "INFO"
 #   Generic IO settings for experiments, saving data, etc
 # =============================================================================
 [io]
-data_dir = "/data"
+data_dir = "/Users/ndhuynh/sandbox/data"
 
 # =============================================================================
 # HEADER LSM
@@ -56,7 +56,7 @@ generator = 'QCost'
 dir = 'train-data/qcost-parquet'
 file_prefix = 'qcost'
 num_workers = -1  # -1 forces all cores to be used
-num_files = 512
+num_files = 16
 precision = 3
 samples = 262144  # per file sample
 
@@ -92,13 +92,13 @@ hidden_layers = 16
 # As each categorical variable will be embedded down to size `embedding_size`
 embedding_size = 16
 
+
 [train]
 batch_size = 4096
 shuffle = true
 drop_last = true  # drop last if unable to make full batch
-early_stop_num = 10  # number of non improvements to stop
-epsilon = 1e-6  # delta that counts as non improvement
-max_epochs = 128
+max_epochs = 50
+use_gpu_if_avail = true  # if gpu is avail, use for training
 
 # Different loss functions to train via
 #   MSE - Mean squared error
@@ -106,16 +106,32 @@ max_epochs = 128
 #   MSLE - Mean squared log error
 #   RMSE - Root mean square error
 #   RMSLE - Root mean squared log error
-loss_fn = 'NMSE'
+loss_fn = 'MSLE'
 
 # List of optimizers supported
 #   SGD - Stochastic gradient descent
 #   Adam
 optimizer = 'SGD'
 
-# If training is via SGD, this will be the gamma decay parameter for learning
-learning_rate_decay = 0.99
+# Learning rate schedulers
+#   CosineAnnealing
+#   None - Will keep learning rate constant without any decay
+lr_scheduler = 'CosineAnnealing'
 learning_rate = 0.0001
+
+# If decided to use cosine annealing, all settings will be taken from this dict
+# refer to pytorch docs for keywords as this dictionary will be passed by kwargs
+# https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html
+[train.scheduler.CosineAnnealingLR]
+T_max = 10
+eta_min = 0  # minimum learning rate
+
+# Early stopping will count the number of occurances where non improvement
+# happens and stop once we hit a certain threshold
+[train.early_stop]
+enabled = false
+threshold = 10  # number of non improvements to stop
+epsilon = 1e-6  # delta that counts as non improvement
 
 [train.data]
 num_workers = 4

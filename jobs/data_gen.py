@@ -22,13 +22,14 @@ class DataGenJob:
         self.output_dir = os.path.join(
             config['io']['data_dir'], config['data']['gen']['dir'])
 
-    def _choose_generator(self):
+    def _choose_generator(self) -> Gen.DataGenerator:
         choice = self.config['data']['gen']['generator']
         generators = {
-            'TierCost': Gen.TierLevelGenerator(self.config, Policy.Tiering),
-            'LevelCost': Gen.TierLevelGenerator(self.config, Policy.Leveling),
-            'QCost': Gen.QCostGenerator(self.config),
-            'KHybridCost': Gen.KHybridGenerator(self.config)}
+                'TierCost': Gen.TierLevelGenerator(self.config, Policy.Tiering),
+                'LevelCost': Gen.TierLevelGenerator(self.config,
+                                                    Policy.Leveling),
+                'QCost': Gen.QCostGenerator(self.config),
+                'KHybridCost': Gen.KHybridGenerator(self.config)}
         generator = generators.get(choice, None)
         if generator is None:
             self.log.error('Invalid generator choice. '
@@ -55,7 +56,11 @@ class DataGenJob:
 
         return idx
 
-    def generate_parquet_file(self, generator, idx: int, pos: int) -> int:
+    def generate_parquet_file(
+            self,
+            generator: Gen.DataGenerator,
+            idx: int,
+            pos: int) -> int:
         fname_prefix = self.config['data']['gen']['file_prefix']
         fname = f'{fname_prefix}-{idx:04}.parquet'
         fpath = os.path.join(self.output_dir, fname)
@@ -98,9 +103,10 @@ class DataGenJob:
         if threads == 1:
             self.generate_file(0)
         else:
-            with mp.Pool(threads,
-                         initializer=tqdm.set_lock,
-                         initargs=(mp.RLock(),)) as p:
+            with mp.Pool(
+                    threads,
+                    initializer=tqdm.set_lock,
+                    initargs=(mp.RLock(),)) as p:
                 p.map(self.generate_file, inputs)
 
         return
