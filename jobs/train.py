@@ -122,7 +122,7 @@ class TrainJob:
                 train_data,
                 batch_size=self._config['train']['batch_size'],
                 drop_last=self._config['train']['drop_last'],
-                num_workers=8,)
+                num_workers=self._config['train']['data']['num_workers'],)
 
         return train
 
@@ -144,7 +144,7 @@ class TrainJob:
                 test_data,
                 batch_size=self._config['test']['batch_size'],
                 drop_last=self._config['test']['drop_last'],
-                num_workers=4,)
+                num_workers=self._config['train']['data']['num_workers'],)
 
         return test
 
