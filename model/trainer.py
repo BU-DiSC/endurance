@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader, Dataset
 import pandas as pd
 from typing import Optional, Union
 from tqdm import tqdm
+from data.parquet_batch_dataset import ParquetBatchDataSet
 
 
 class Trainer:
@@ -15,8 +16,8 @@ class Trainer:
             model: torch.nn.Module,
             optimizer: torch.optim.Optimizer,
             loss_fn: torch.nn.Module,
-            train_data: Union[DataLoader, Dataset],
-            test_data: Union[DataLoader, Dataset],
+            train_data: Union[DataLoader, Dataset, ParquetBatchDataSet],
+            test_data: Union[DataLoader, Dataset, ParquetBatchDataSet],
             scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,):
         self.config = config
         self.log = logging.getLogger(self.config['log']['name'])
@@ -65,6 +66,8 @@ class Trainer:
             total_loss += loss
             if self.scheduler is not None:
                 self.scheduler.step()
+        if type(self.train_data) is ParquetBatchDataSet:
+            self.train_data.reset()
 
         if self.train_len == 0:
             self.train_len = batch + 1
@@ -90,6 +93,9 @@ class Trainer:
                         ncols=80, total=self.test_len)
         for batch, (labels, features) in enumerate(pbar):
             test_loss += self._test_step(labels, features)
+
+        if type(self.test_data) is ParquetBatchDataSet:
+            self.test_data.reset()
 
         if self.test_len == 0:
             self.test_len = batch + 1  # Last batch will correspond to total
