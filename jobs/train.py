@@ -111,26 +111,26 @@ class TrainJob:
         train_dir = os.path.join(
                 self._config['io']['data_dir'],
                 self._config['train']['data']['dir'],)
-        # if self._config['train']['data']['use_dp']:
-        #     train_data = self._dp.build_dp(
-        #             train_dir,
-        #             shuffle=self._config['train']['shuffle'],)
-        # else:
-        #     train_data = EndureData.EndureIterableDataSet(
-        #             config=self._config,
-        #             folder=train_dir,
-        #             shuffle=self._config['train']['shuffle'],
-        #             format=self._config['train']['data']['format'],)
-        # train = DataLoader(
-        #         train_data,
-        #         batch_size=self._config['train']['batch_size'],
-        #         drop_last=self._config['train']['drop_last'],
-        #         num_workers=self._config['train']['data']['num_workers'],)
-        train = ParquetBatchDataSet(
-                config=self._config,
-                path=train_dir,
+        if self._config['train']['data']['use_dp']:
+            train_data = self._dp.build_dp(
+                    train_dir,
+                    shuffle=self._config['train']['shuffle'],)
+        else:
+            train_data = EndureData.EndureIterableDataSet(
+                    config=self._config,
+                    folder=train_dir,
+                    shuffle=self._config['train']['shuffle'],
+                    format=self._config['train']['data']['format'],)
+        train = DataLoader(
+                train_data,
                 batch_size=self._config['train']['batch_size'],
-                shuffle=self._config['train']['shuffle'])
+                drop_last=self._config['train']['drop_last'],
+                num_workers=self._config['train']['data']['num_workers'],)
+        # train = ParquetBatchDataSet(
+        #         config=self._config,
+        #         path=train_dir,
+        #         batch_size=self._config['train']['batch_size'],
+        #         shuffle=self._config['train']['shuffle'])
 
         return train
 
@@ -138,26 +138,26 @@ class TrainJob:
         test_dir = os.path.join(
                     self._config['io']['data_dir'],
                     self._config['test']['data']['dir'],)
-        # if self._config['test']['data']['use_dp']:
-        #     test_data = self._dp.build_dp(
-        #             test_dir,
-        #             shuffle=self._config['test']['shuffle'],)
-        # else:
-        #     test_data = EndureData.EndureIterableDataSet(
-        #             config=self._config,
-        #             folder=test_dir,
-        #             shuffle=self._config['test']['shuffle'],
-        #             format=self._config['test']['data']['format'],)
-        # test = DataLoader(
-        #         test_data,
-        #         batch_size=self._config['test']['batch_size'],
-        #         drop_last=self._config['test']['drop_last'],
-        #         num_workers=self._config['train']['data']['num_workers'],)
-        test = ParquetBatchDataSet(
-                config=self._config,
-                path=test_dir,
+        if self._config['test']['data']['use_dp']:
+            test_data = self._dp.build_dp(
+                    test_dir,
+                    shuffle=self._config['test']['shuffle'],)
+        else:
+            test_data = EndureData.EndureIterableDataSet(
+                    config=self._config,
+                    folder=test_dir,
+                    shuffle=self._config['test']['shuffle'],
+                    format=self._config['test']['data']['format'],)
+        test = DataLoader(
+                test_data,
                 batch_size=self._config['test']['batch_size'],
-                shuffle=self._config['test']['shuffle'])
+                drop_last=self._config['test']['drop_last'],
+                num_workers=self._config['train']['data']['num_workers'],)
+        # test = ParquetBatchDataSet(
+        #         config=self._config,
+        #         path=test_dir,
+        #         batch_size=self._config['test']['batch_size'],
+        #         shuffle=self._config['test']['shuffle'])
 
         return test
 
