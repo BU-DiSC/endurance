@@ -5,6 +5,7 @@ import glob
 import torch
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pa
 import torchdata.datapipes as DataPipe
 
 
@@ -87,8 +88,7 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
         self._input_cols = self._get_input_cols()
         self._format = format
         self._fnames = glob.glob(os.path.join(folder, '*.' + format))
-        if shuffle:
-            random.shuffle(self._fnames)
+        self._shuffle = shuffle
 
     def _get_input_cols(self):
         base = ['h', 'z0', 'z1', 'q', 'w', 'T']
@@ -107,7 +107,7 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
 
     def _load_data(self, fname):
         if self._format == 'parquet':
-            df = pd.read_parquet(fname)
+            df = pa.read_table(fname).to_pandas()
         else:  # default csv
             df = pd.read_csv(fname)
 
@@ -141,12 +141,15 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
         else:
             file_bins = np.array_split(self._fnames, worker_info.num_workers)
             files = file_bins[worker_info.id]
+            if self._shuffle:
+                np.random.shuffle(files)
         for file in files:
             df = self._load_data(file)
             labels = torch.from_numpy(df[self._label_cols].values).float()
             inputs = torch.from_numpy(df[self._input_cols].values).float()
             for label, input in zip(labels, inputs):
                 yield label, input
+            del df  # attempt to release dataframe memory
 
 
 class EndureDataPipeGenerator():

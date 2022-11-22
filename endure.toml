@@ -24,7 +24,7 @@ level = "INFO"
 #   Generic IO settings for experiments, saving data, etc
 # =============================================================================
 [io]
-data_dir = "/Users/ndhuynh/sandbox/data"
+data_dir = "/data"
 
 # =============================================================================
 # HEADER LSM
@@ -48,7 +48,7 @@ min = 0
 [data]
 # h, z0, z1, q, w
 mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
-std_bias =  [2.74,  0.3, 0.3, 0.3, 0.3]
+std_bias =  [2.74, 0.3, 0.3, 0.3, 0.3]
 
 [data.gen]
 format = 'parquet'
@@ -149,9 +149,9 @@ shuffle = false
 
 [test.data]
 num_workers = 2
-format = 'parquet'
 dir = "test-data/qcost-parquet"
 use_dp = false
+format = 'parquet'
 
 # =============================================================================
 # HEADER SYSTEM

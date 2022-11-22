@@ -18,7 +18,7 @@ class Trainer:
             loss_fn: torch.nn.Module,
             train_data: Union[DataLoader, Dataset, ParquetBatchDataSet],
             test_data: Union[DataLoader, Dataset, ParquetBatchDataSet],
-            scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,):
+            scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None):
         self.config = config
         self.log = logging.getLogger(self.config['log']['name'])
         self.model = model
@@ -31,7 +31,7 @@ class Trainer:
         self._early_stop_ticks = 0
         self._move_to_available_device()
 
-    def _move_to_available_device(self):
+    def _move_to_available_device(self) -> None:
         use_gpu = (self.config['train']['use_gpu_if_avail'] and
                    torch.cuda.is_available())
         self.device = torch.device('cuda') if use_gpu else torch.device('cpu')
@@ -39,6 +39,8 @@ class Trainer:
         self.log.info(f'Training on device: {self.device}')
         self.model = self.model.to(self.device)
         self.loss_fn = self.loss_fn.to(self.device)
+
+        return
 
     def _train_step(self, label, features) -> float:
         label = label.to(self.device)
@@ -51,7 +53,7 @@ class Trainer:
 
         return loss
 
-    def _train_loop(self):
+    def _train_loop(self) -> float:
         self.model.train()
         if self.train_len == 0:
             pbar = tqdm(self.train_data, ncols=80)
@@ -74,7 +76,10 @@ class Trainer:
 
         return total_loss.item() / self.train_len
 
-    def _test_step(self, labels, features):
+    def _test_step(
+            self,
+            labels: torch.Tensor,
+            features: torch.Tensor) -> float:
         with torch.no_grad():
             labels = labels.to(self.device)
             features = features.to(self.device)
@@ -83,7 +88,7 @@ class Trainer:
 
         return test_loss
 
-    def _test_loop(self):
+    def _test_loop(self) -> float:
         self.model.eval()
         test_loss = 0
         if self.test_len == 0:
@@ -103,20 +108,28 @@ class Trainer:
 
         return test_loss
 
-    def _dumpconfig(self, save_dir):
+    def _dumpconfig(self, save_dir: str) -> None:
         with open(os.path.join(save_dir, 'config.toml'), 'w') as fid:
             toml.dump(self.config, fid)
 
-    def _checkpoint(self, save_dir, epoch, loss):
+        return
+
+    def _checkpoint(self, save_dir: str, epoch: int, loss) -> None:
         save_pt = {'epoch': epoch,
                    'model_state_dict': self.model.state_dict(),
                    'optimizer_state_dict': self.optimizer.state_dict(),
                    'loss': loss}
-        torch.save(save_pt, os.path.join(save_dir, f'epoch_{epoch}.checkpoint'))
+        torch.save(
+                save_pt,
+                os.path.join(save_dir, f'epoch_{epoch:02f}.checkpoint'))
 
-    def _save_model(self, save_dir, name):
+        return
+
+    def _save_model(self, save_dir: str, name: str) -> None:
         torch.save(self.model.state_dict(),
                    os.path.join(save_dir, name))
+
+        return
 
     def _track_early_stop(self, prev_loss: float, curr_loss: float) -> bool:
         """
@@ -129,7 +142,8 @@ class Trainer:
         early_stop_num = self.config['train']['early_stop']['threshold']
         epsilon = self.config['train']['early_stop']['epsilon']
 
-        self.log.info(f'EarlyStop: [{self._early_stop_ticks}/{early_stop_num}]')
+        self.log.info(
+                f'EarlyStop: [{self._early_stop_ticks}/{early_stop_num}]')
         if curr_loss - prev_loss > -epsilon:
             self._early_stop_ticks += 1
 
@@ -140,7 +154,7 @@ class Trainer:
 
         return False
 
-    def run(self):
+    def run(self) -> None:
         max_epochs = self.config['train']['max_epochs']
         save_dir = os.path.join(self.config['io']['data_dir'],
                                 self.config['model']['dir'])
@@ -183,3 +197,5 @@ class Trainer:
             prev_loss = curr_loss
 
         self.log.info('Training finished')
+
+        return
