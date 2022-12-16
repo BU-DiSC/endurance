@@ -18,13 +18,13 @@ BITS_IN_BYTES = 8
 @jitclass(spec)
 class EndureTierLevelCost:
     def __init__(
-            self,
-            B: float,
-            E: float,
-            H: float,
-            N: float,
-            phi: float,
-            s: float
+        self,
+        B: float,
+        E: float,
+        H: float,
+        N: float,
+        phi: float,
+        s: float
     ) -> None:
         self.B, self.E, self.H, self.N = B, E, H, N
         self.phi, self.s = phi, s
@@ -102,6 +102,18 @@ class EndureTierLevelCost:
                 + (z1 * self.Z1(h, T, policy))
                 + (q * self.Q(h, T, policy))
                 + (w * self.W(h, T, policy)))
+
+    def __call__(
+        self,
+        h: float,
+        T: float,
+        policy: Policy,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float
+    ) -> float:
+        return self.calc_cost(h, T, policy, z0, z1, q, w)
 
 
 @jitclass(spec)
@@ -186,6 +198,18 @@ class EndureQFixedCost():
                 + (w * self.W(h, T, Q)))
 
         return cost
+
+    def __call__(
+        self,
+        h: float,
+        T: float,
+        Q: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float
+    ) -> float:
+        return self.calc_cost(h, T, Q, z0, z1, q, w)
 
 
 @jitclass(spec)
@@ -277,6 +301,18 @@ class EndureKHybridCost():
                 + (w * self.W(h, T, K)))
 
         return cost
+
+    def __call__(
+        self,
+        h: float,
+        T: float,
+        K,  # List of values corresponding to file per level
+        z0: float,
+        z1: float,
+        q: float,
+        w: float
+    ) -> float:
+        return self.calc_cost(h, T, K, z0, z1, z1, q, w)
 
 
 @jitclass(spec)
@@ -379,3 +415,16 @@ class EndureYZHybridCost():
                 + (w * self.W(h, T, Y, Z)))
 
         return cost
+
+    def __call__(
+        self,
+        h: float,
+        T: float,
+        Y: float,
+        Z: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float
+    ) -> float:
+        return self.calc_cost(h, T, Y, Z, z0, z1, q, w)
