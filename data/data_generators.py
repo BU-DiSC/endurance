@@ -9,17 +9,17 @@ from lsm.lsmtype import Policy
 
 class DataGenerator:
     def __init__(self, config):
-        self.config = config
+        self._config = config
         self.log = logging.getLogger('endure')
         self._header = None
 
     def _sample_size_ratio(self) -> int:
-        return np.random.randint(low=self.config['lsm']['size_ratio']['min'],
-                                 high=self.config['lsm']['size_ratio']['max'])
+        return np.random.randint(low=self._config['lsm']['size_ratio']['min'],
+                                 high=self._config['lsm']['size_ratio']['max'])
 
     def _sample_bloom_filter_bits(self) -> float:
-        sample = np.random.rand() * self.config['lsm']['bits_per_elem']['max']
-        return np.around(sample, self.config['data']['gen']['precision'])
+        sample = np.random.rand() * self._config['lsm']['bits_per_elem']['max']
+        return np.around(sample, self._config['data']['gen']['precision'])
 
     def _sample_workload(self, dimensions: int) -> list:
         # See stackoverflow thread for why the simple solution is not uniform
@@ -45,7 +45,7 @@ class DataGenerator:
         return []
 
     def generate_row(self) -> list:
-        if self.config['data']['gen']['format'] == 'parquet':
+        if self._config['data']['gen']['format'] == 'parquet':
             row = self.generate_row_parquet()
         else:  # format == 'csv'
             row = self.generate_row_csv()
@@ -57,7 +57,7 @@ class TierLevelGenerator(DataGenerator):
     def __init__(self, config: dict, policy: Policy):
         super(TierLevelGenerator, self).__init__(config)
         self.policy = policy
-        self.cf = CostFunc.EndureTierLevelCost(**self.config['system'])
+        self.cf = CostFunc.EndureTierLevelCost(**self._config['system'])
         self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
                        'h', 'z0', 'z1', 'q', 'w', 'T']
 
@@ -80,8 +80,8 @@ class TierLevelGenerator(DataGenerator):
 class KHybridGenerator(DataGenerator):
     def __init__(self, config: dict):
         super(KHybridGenerator, self).__init__(config)
-        self.cf = CostFunc.EndureKHybridCost(**self.config['system'])
-        max_levels = self.config['lsm']['max_levels']
+        self.cf = CostFunc.EndureKHybridCost(**self._config['system'])
+        max_levels = self._config['lsm']['max_levels']
         self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
                        'h', 'z0', 'z1', 'q', 'w', 'T']
         self.header += [f'K_{i}' for i in range(max_levels)]
@@ -101,12 +101,12 @@ class KHybridGenerator(DataGenerator):
         h = self._sample_bloom_filter_bits()
         levels = int(self.cf.L(h, T, True))
         K = random.sample(self._gen_k_levels(levels, T - 1), 1)[0]
-        K = np.pad(K, (0, self.config['lsm']['max_levels'] - len(K)))
+        K = np.pad(K, (0, self._config['lsm']['max_levels'] - len(K)))
 
         line = [z0 * self.cf.Z0(h, T, K), z1 * self.cf.Z1(h, T, K),
                 q * self.cf.Q(h, T, K), w * self.cf.W(h, T, K),
                 h, z0, z1, q, w, T]
-        for level_idx in range(self.config['lsm']['max_levels']):
+        for level_idx in range(self._config['lsm']['max_levels']):
             line.append(K[level_idx])
         return line
 
@@ -114,14 +114,14 @@ class KHybridGenerator(DataGenerator):
 class QCostGenerator(DataGenerator):
     def __init__(self, config: dict):
         super(QCostGenerator, self).__init__(config)
-        self.cf = CostFunc.EndureQFixedCost(**self.config['system'])
+        self.cf = CostFunc.EndureQFixedCost(**self._config['system'])
         self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
                        'h', 'z0', 'z1', 'q', 'w', 'T', 'Q']
 
     def _sample_q(self) -> int:
         return np.random.randint(
-                low=self.config['lsm']['size_ratio']['min'] - 1,
-                high=self.config['lsm']['size_ratio']['max'] - 1,)
+                low=self._config['lsm']['size_ratio']['min'] - 1,
+                high=self._config['lsm']['size_ratio']['max'] - 1,)
 
     def generate_header(self) -> list:
         return self.header

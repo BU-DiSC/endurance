@@ -12,7 +12,6 @@ from model.kcost import KCostModel
 from model.tierlevelcost import TierLevelCost
 from model.trainer import Trainer
 import model.losses as Losses
-from data.parquet_batch_dataset import ParquetBatchDataSet
 
 
 class TrainJob:
@@ -126,11 +125,6 @@ class TrainJob:
                 batch_size=self._config['train']['batch_size'],
                 drop_last=self._config['train']['drop_last'],
                 num_workers=self._config['train']['data']['num_workers'],)
-        # train = ParquetBatchDataSet(
-        #         config=self._config,
-        #         path=train_dir,
-        #         batch_size=self._config['train']['batch_size'],
-        #         shuffle=self._config['train']['shuffle'])
 
         return train
 
@@ -153,11 +147,6 @@ class TrainJob:
                 batch_size=self._config['test']['batch_size'],
                 drop_last=self._config['test']['drop_last'],
                 num_workers=self._config['train']['data']['num_workers'],)
-        # test = ParquetBatchDataSet(
-        #         config=self._config,
-        #         path=test_dir,
-        #         batch_size=self._config['test']['batch_size'],
-        #         shuffle=self._config['test']['shuffle'])
 
         return test
 

@@ -154,9 +154,9 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
 
 class EndureDataPipeGenerator():
     def __init__(self, config):
-        self.config = config
-        self.mean = np.array(self.config['data']['mean_bias'], np.float32)
-        self.std = np.array(self.config['data']['std_bias'], np.float32)
+        self._config = config
+        self.mean = np.array(self._config['data']['mean_bias'], np.float32)
+        self.std = np.array(self._config['data']['std_bias'], np.float32)
 
     def _process_row(self, row):
         labels = np.array(row[0:4], np.float32)
@@ -170,8 +170,8 @@ class EndureDataPipeGenerator():
 
         # Remaining will be T and Ks
         categorical_data = features[5:]
-        categorical_data[0] -= self.config['lsm']['size_ratio']['min']
-        categorical_data[1:] -= (self.config['lsm']['size_ratio']['min'] - 1)
+        categorical_data[0] -= self._config['lsm']['size_ratio']['min']
+        categorical_data[1:] -= (self._config['lsm']['size_ratio']['min'] - 1)
         features = np.concatenate((continuous_data, categorical_data))
 
         return (labels, features)

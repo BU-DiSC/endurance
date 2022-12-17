@@ -73,6 +73,7 @@ class EndureSolver:
             x0=init_args,
             callback=callback_fun,
             **minimizer_kwargs)
+
         return sol
 
     def solve_robust(
@@ -102,6 +103,7 @@ class EndureSolver:
             x0=init_args,
             callback=callback_fun,
             **minimizer_kwargs)
+
         return sol
 
 
@@ -111,22 +113,22 @@ class EndureTierLevelSolver(EndureSolver):
         self._cf = CostFunc.EndureTierLevelCost(**config['system'])
         self.policy = policy
 
-    def z0_conjugate(self, x: list):
+    def z0_conjugate(self, x: list) -> float:
         h, T, lamb, eta = x
         kl_conjugate_input = (self._cf.Z0(h, T, self.policy) - eta) / lamb
         return self.kl_div_con(kl_conjugate_input)
 
-    def z1_conjugate(self, x: list):
+    def z1_conjugate(self, x: list) -> float:
         h, T, lamb, eta = x
         kl_conjugate_input = (self._cf.Z1(h, T, self.policy) - eta) / lamb
         return self.kl_div_con(kl_conjugate_input)
 
-    def q_conjugate(self, x: list):
+    def q_conjugate(self, x: list) -> float:
         h, T, lamb, eta = x
         kl_conjugate_input = (self._cf.Q(h, T, self.policy) - eta) / lamb
         return self.kl_div_con(kl_conjugate_input)
 
-    def w_conjugate(self, x: list):
+    def w_conjugate(self, x: list) -> float:
         h, T, lamb, eta = x
         kl_conjugate_input = (self._cf.W(h, T, self.policy) - eta) / lamb
         return self.kl_div_con(kl_conjugate_input)
@@ -142,7 +144,7 @@ class EndureTierLevelSolver(EndureSolver):
         h, T = x
         return self._cf.calc_cost(h, T, self.policy, z0, z1, q, w)
 
-    def get_bounds(self):
+    def get_bounds(self) -> SciOpt.Bounds:
         T_UPPER_LIM = self._config['lsm']['size_ratio']['max']
         T_LOWER_LIM = self._config['lsm']['size_ratio']['min']
         H_LOWER_LIM = self._config['lsm']['bits_per_elem']['min']
@@ -162,7 +164,7 @@ class EndureTierLevelSolver(EndureSolver):
         w: float,
         h_init: float = 1.0,
         t_init: float = 2.0,
-    ):
+    ) -> SciOpt.OptimizeResult:
         init_args = [h_init, t_init]
         bounds = self.get_bounds()
         sol = self.solve_robust(rho, z0, z1, q, w, init_args, bounds)
@@ -176,7 +178,7 @@ class EndureTierLevelSolver(EndureSolver):
         w: float,
         h_init: float = 1.0,
         t_init: float = 2.0,
-    ):
+    ) -> SciOpt.OptimizeResult:
         init_args = [h_init, t_init]
         bounds = self.get_bounds()
         sol = self.solve_nominal(z0, z1, q, w, init_args, bounds)
@@ -361,6 +363,85 @@ class RobustKSolver(EndureSolver):
     ):
         MAX_LEVELS = self._config['lsm']['max_levels']
         init_args = [h_init, t_init] + [k_inits] * MAX_LEVELS
+        bounds = self.get_bounds()
+        sol = self.solve_nominal(z0, z1, q, w, init_args, bounds)
+        return sol
+
+
+class EndureY1Solver(EndureSolver):
+    def __init__(self, config: dict):
+        super().__init__(config)
+        self._cf = CostFunc.EndureYZHybridCost(**config['system'])
+
+    def z0_conjugate(self, x: list):
+        h, T, Y, lamb, eta = x
+        kl_conjugate_input = (self._cf.Z0(h, T, Y, 1) - eta) / lamb
+        return self.kl_div_con(kl_conjugate_input)
+
+    def z1_conjugate(self, x: list):
+        h, T, Y, lamb, eta = x
+        kl_conjugate_input = (self._cf.Z1(h, T, Y, 1) - eta) / lamb
+        return self.kl_div_con(kl_conjugate_input)
+
+    def q_conjugate(self, x: list):
+        h, T, Y, lamb, eta = x
+        kl_conjugate_input = (self._cf.Q(h, T, Y, 1) - eta) / lamb
+        return self.kl_div_con(kl_conjugate_input)
+
+    def w_conjugate(self, x: list):
+        h, T, Y, lamb, eta = x
+        kl_conjugate_input = (self._cf.W(h, T, Y, 1) - eta) / lamb
+        return self.kl_div_con(kl_conjugate_input)
+
+    def nominal_objective(
+        self,
+        x: list,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+    ) -> float:
+        h, T, Y = x
+        return self._cf.calc_cost(h, T, Y, 1, z0, z1, q, w)
+
+    def get_bounds(self):
+        T_UPPER_LIM = self._config['lsm']['size_ratio']['max']
+        T_LOWER_LIM = self._config['lsm']['size_ratio']['min']
+        H_LOWER_LIM = self._config['lsm']['bits_per_elem']['min']
+        H_UPPER_LIM = self._config['lsm']['bits_per_elem']['max']
+
+        return SciOpt.Bounds(
+            [H_LOWER_LIM, T_LOWER_LIM, T_LOWER_LIM - 1],
+            [H_UPPER_LIM, T_UPPER_LIM, T_UPPER_LIM - 1],
+            keep_feasible=True)
+
+    def find_robust_design(
+        self,
+        rho: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+        h_init: float = 1.0,
+        t_init: float = 2.0,
+        q_init: float = 1.0,
+    ):
+        init_args = [h_init, t_init, q_init]
+        bounds = self.get_bounds()
+        sol = self.solve_robust(rho, z0, z1, q, w, init_args, bounds)
+        return sol
+
+    def find_nominal_design(
+        self,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+        h_init: float = 1.0,
+        t_init: float = 2.0,
+        q_init: float = 1.0,
+    ):
+        init_args = [h_init, t_init, q_init]
         bounds = self.get_bounds()
         sol = self.solve_nominal(z0, z1, q, w, init_args, bounds)
         return sol

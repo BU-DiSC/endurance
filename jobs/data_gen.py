@@ -18,7 +18,6 @@ class DataGenJob:
         self.config = config
         self.log = logging.getLogger(self.config['log']['name'])
         self.log.info('Running Data Generator Job')
-        self.reader = Reader(config)
         self.output_dir = os.path.join(
             config['io']['data_dir'], config['data']['gen']['dir'])
 

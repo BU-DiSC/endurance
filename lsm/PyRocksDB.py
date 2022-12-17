@@ -22,7 +22,7 @@ class RocksDB(object):
 
         :param config:
         """
-        self.config = config
+        self._config = config
         self.logger = logging.getLogger("rlt_logger")
         self.level_hit_prog = re.compile(
             r'\[[0-9:.]+\]\[info\] \(l0, l1, l2plus\) : '
@@ -57,13 +57,13 @@ class RocksDB(object):
 
     def options_from_config(self):
         db_settings = {}
-        db_settings['path_db'] = self.config['app']['DATABASE_PATH']
-        db_settings['N'] = self.config['lsm_tree_config']['N']
-        db_settings['B'] = self.config['lsm_tree_config']['B']
-        db_settings['E'] = self.config['lsm_tree_config']['E']
-        db_settings['M'] = self.config['lsm_tree_config']['M']
-        db_settings['P'] = self.config['lsm_tree_config']['P']
-        db_settings['is_leveling_policy'] = self.config['lsm_tree_config']['is_leveling_policy']
+        db_settings['path_db'] = self._config['app']['DATABASE_PATH']
+        db_settings['N'] = self._config['lsm_tree_config']['N']
+        db_settings['B'] = self._config['lsm_tree_config']['B']
+        db_settings['E'] = self._config['lsm_tree_config']['E']
+        db_settings['M'] = self._config['lsm_tree_config']['M']
+        db_settings['P'] = self._config['lsm_tree_config']['P']
+        db_settings['is_leveling_policy'] = self._config['lsm_tree_config']['is_leveling_policy']
 
         # Defaults
         db_settings['db_name'] = 'default'
@@ -130,7 +130,7 @@ class RocksDB(object):
             f'mbuff: {mbuff}, E: {self.E}, N: {self.N}, M: {self.M}'
         )
         cmd = [
-            self.config['app']['BUILDER_PATH'],
+            self._config['app']['BUILDER_PATH'],
             db_dir,
             '-d',
             '-T {}'.format(self.T),
@@ -141,7 +141,7 @@ class RocksDB(object):
             '-b {:.2f}'.format(self.h),
             '-N {}'.format(self.N),
             '--parallelism {}'.format(8),
-            '--key-file {}'.format(self.config['app']['KEY_FILE_PATH'])
+            '--key-file {}'.format(self._config['app']['KEY_FILE_PATH'])
         ]
         if bulk_stop_early:
             cmd += ['--early_fill_stop']
@@ -203,7 +203,7 @@ class RocksDB(object):
             db_dir = os.path.join(self.path_db, self.db_name)
 
         cmd = [
-            self.config['app']['EXECUTION_PATH'],
+            self._config['app']['EXECUTION_PATH'],
             db_dir,
             f'-e {num_z0}',
             f'-r {num_z1}',
@@ -211,7 +211,7 @@ class RocksDB(object):
             f'-w {num_w}',
             f'-p {prime}',
             '--parallelism {}'.format(THREADS),
-            '--key-file {}'.format(self.config['app']['KEY_FILE_PATH']),
+            '--key-file {}'.format(self._config['app']['KEY_FILE_PATH']),
             '--dist zipf'
         ]
         cmd = ' '.join(cmd)

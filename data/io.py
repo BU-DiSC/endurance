@@ -9,7 +9,7 @@ import dill
 class Writer(object):
 
     def __init__(self, config):
-        self.config = config
+        self._config = config
         self.log = logging.getLogger('endure')
 
     def export_csv_file(self, df, filename):
@@ -19,7 +19,7 @@ class Writer(object):
         :param df:
         :param filename:
         """
-        DATA_DIR = self.config['io']['data_dir']
+        DATA_DIR = self._config['io']['data_dir']
         filepath = os.path.join(DATA_DIR, filename)
         df.to_csv(filepath, sep=',', header=True, index=False)
 
@@ -30,7 +30,7 @@ class Writer(object):
         :param data:
         :param filename:
         """
-        DATA_DIR = self.config['io']['data_dir']
+        DATA_DIR = self._config['io']['data_dir']
         filepath = os.path.join(DATA_DIR, filename)
         with open(filepath, 'wb') as f:
             dill.dump(data, f)
@@ -42,7 +42,7 @@ class Writer(object):
         :param fig: Figure handle
         :param figname: Name of the figure with extension
         """
-        DATA_DIR = self.config['app']['data_dir']
+        DATA_DIR = self._config['app']['data_dir']
         filepath = os.path.join(DATA_DIR, figname, **kwargs)
         fig.savefig(filepath)
 
@@ -57,8 +57,8 @@ class Reader(object):
 
         :param config:
         """
-        self.config = config
-        self.data_dir = self.config['io']['data_dir']
+        self._config = config
+        self.data_dir = self._config['io']['data_dir']
         self.log = logging.getLogger('endure')
 
     @classmethod
