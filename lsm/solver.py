@@ -4,6 +4,13 @@ import numpy as np
 import scipy.optimize as SciOpt
 from lsm.lsmtype import Policy
 
+H_DEFAULT = 4
+T_DEFAULT = 10
+Z_DEFAULT = 8
+Y_DEFAULT = 8
+Q_DEFAULT = 8
+K_DEFAULT = 8
+
 
 class EndureSolver:
     def __init__(self, config: dict):
@@ -53,7 +60,7 @@ class EndureSolver:
     ) -> float:
         pass
 
-    def solve_nominal(
+    def _solve_nominal(
         self,
         z0: float,
         z1: float,
@@ -76,7 +83,7 @@ class EndureSolver:
 
         return sol
 
-    def solve_robust(
+    def _solve_robust(
         self,
         rho: float,
         z0: float,
@@ -105,6 +112,27 @@ class EndureSolver:
             **minimizer_kwargs)
 
         return sol
+
+    def find_robust_design(
+        self,
+        rho: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+        init_args: Optional[list] = None,
+    ) -> SciOpt.OptimizeResult:
+        pass
+
+    def find_nominal_design(
+        self,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+        init_args: Optional[list] = None,
+    ) -> SciOpt.OptimizeResult:
+        pass
 
 
 class EndureTierLevelSolver(EndureSolver):
@@ -162,12 +190,12 @@ class EndureTierLevelSolver(EndureSolver):
         z1: float,
         q: float,
         w: float,
-        h_init: float = 1.0,
-        t_init: float = 2.0,
+        init_args: Optional[list] = None,
     ) -> SciOpt.OptimizeResult:
-        init_args = [h_init, t_init]
+        if init_args is None:
+            init_args = [H_DEFAULT, T_DEFAULT]
         bounds = self.get_bounds()
-        sol = self.solve_robust(rho, z0, z1, q, w, init_args, bounds)
+        sol = self._solve_robust(rho, z0, z1, q, w, init_args, bounds)
         return sol
 
     def find_nominal_design(
@@ -176,12 +204,12 @@ class EndureTierLevelSolver(EndureSolver):
         z1: float,
         q: float,
         w: float,
-        h_init: float = 1.0,
-        t_init: float = 2.0,
+        init_args: Optional[list] = None,
     ) -> SciOpt.OptimizeResult:
-        init_args = [h_init, t_init]
+        if init_args is None:
+            init_args = [H_DEFAULT, T_DEFAULT]
         bounds = self.get_bounds()
-        sol = self.solve_nominal(z0, z1, q, w, init_args, bounds)
+        sol = self._solve_nominal(z0, z1, q, w, init_args, bounds)
         return sol
 
 
@@ -249,13 +277,12 @@ class EndureQSolver(EndureSolver):
         z1: float,
         q: float,
         w: float,
-        h_init: float = 1.0,
-        t_init: float = 2.0,
-        q_init: float = 1.0,
-    ):
-        init_args = [h_init, t_init, q_init]
+        init_args: Optional[list] = None,
+    ) -> SciOpt.OptimizeResult:
+        if init_args is None:
+            init_args = [H_DEFAULT, T_DEFAULT, Q_DEFAULT]
         bounds = self.get_bounds()
-        sol = self.solve_robust(rho, z0, z1, q, w, init_args, bounds)
+        sol = self._solve_robust(rho, z0, z1, q, w, init_args, bounds)
         return sol
 
     def find_nominal_design(
@@ -264,17 +291,16 @@ class EndureQSolver(EndureSolver):
         z1: float,
         q: float,
         w: float,
-        h_init: float = 1.0,
-        t_init: float = 2.0,
-        q_init: float = 1.0,
-    ):
-        init_args = [h_init, t_init, q_init]
+        init_args: Optional[list] = None,
+    ) -> SciOpt.OptimizeResult:
+        if init_args is None:
+            init_args = [H_DEFAULT, T_DEFAULT, Q_DEFAULT]
         bounds = self.get_bounds()
-        sol = self.solve_nominal(z0, z1, q, w, init_args, bounds)
+        sol = self._solve_nominal(z0, z1, q, w, init_args, bounds)
         return sol
 
 
-class RobustKSolver(EndureSolver):
+class EndureKSolver(EndureSolver):
     def __init__(self, config: dict):
         super().__init__(config)
         self._cf = CostFunc.EndureKHybridCost(**config['system'])
@@ -341,14 +367,13 @@ class RobustKSolver(EndureSolver):
         z1: float,
         q: float,
         w: float,
-        h_init: float = 5.0,
-        t_init: float = 10.0,
-        k_inits: float = 1.0,
-    ):
-        MAX_LEVELS = self._config['lsm']['max_levels']
-        init_args = [h_init, t_init] + [k_inits] * MAX_LEVELS
+        init_args: Optional[list] = None,
+    ) -> SciOpt.OptimizeResult:
+        if init_args is None:
+            init_args = [H_DEFAULT, T_DEFAULT]
+            init_args += [K_DEFAULT] * self._config['lsm']['max_levels']
         bounds = self.get_bounds()
-        sol = self.solve_robust(rho, z0, z1, q, w, init_args, bounds)
+        sol = self._solve_robust(rho, z0, z1, q, w, init_args, bounds)
         return sol
 
     def find_nominal_design(
@@ -357,40 +382,39 @@ class RobustKSolver(EndureSolver):
         z1: float,
         q: float,
         w: float,
-        h_init: float = 5.0,
-        t_init: float = 10.0,
-        k_inits: float = 1.0,
-    ):
-        MAX_LEVELS = self._config['lsm']['max_levels']
-        init_args = [h_init, t_init] + [k_inits] * MAX_LEVELS
+        init_args: Optional[list] = None,
+    ) -> SciOpt.OptimizeResult:
+        if init_args is None:
+            init_args = [H_DEFAULT, T_DEFAULT]
+            init_args += [K_DEFAULT] * self._config['lsm']['max_levels']
         bounds = self.get_bounds()
-        sol = self.solve_nominal(z0, z1, q, w, init_args, bounds)
+        sol = self._solve_nominal(z0, z1, q, w, init_args, bounds)
         return sol
 
 
-class EndureY1Solver(EndureSolver):
+class EndureYZSolver(EndureSolver):
     def __init__(self, config: dict):
         super().__init__(config)
         self._cf = CostFunc.EndureYZHybridCost(**config['system'])
 
     def z0_conjugate(self, x: list):
-        h, T, Y, lamb, eta = x
-        kl_conjugate_input = (self._cf.Z0(h, T, Y, 1) - eta) / lamb
+        h, T, Y, Z, lamb, eta = x
+        kl_conjugate_input = (self._cf.Z0(h, T, Y, Z) - eta) / lamb
         return self.kl_div_con(kl_conjugate_input)
 
     def z1_conjugate(self, x: list):
-        h, T, Y, lamb, eta = x
-        kl_conjugate_input = (self._cf.Z1(h, T, Y, 1) - eta) / lamb
+        h, T, Y, Z, lamb, eta = x
+        kl_conjugate_input = (self._cf.Z1(h, T, Y, Z) - eta) / lamb
         return self.kl_div_con(kl_conjugate_input)
 
     def q_conjugate(self, x: list):
-        h, T, Y, lamb, eta = x
-        kl_conjugate_input = (self._cf.Q(h, T, Y, 1) - eta) / lamb
+        h, T, Y, Z, lamb, eta = x
+        kl_conjugate_input = (self._cf.Q(h, T, Y, Z) - eta) / lamb
         return self.kl_div_con(kl_conjugate_input)
 
     def w_conjugate(self, x: list):
-        h, T, Y, lamb, eta = x
-        kl_conjugate_input = (self._cf.W(h, T, Y, 1) - eta) / lamb
+        h, T, Y, Z, lamb, eta = x
+        kl_conjugate_input = (self._cf.W(h, T, Y, Z) - eta) / lamb
         return self.kl_div_con(kl_conjugate_input)
 
     def nominal_objective(
@@ -401,8 +425,8 @@ class EndureY1Solver(EndureSolver):
         q: float,
         w: float,
     ) -> float:
-        h, T, Y = x
-        return self._cf.calc_cost(h, T, Y, 1, z0, z1, q, w)
+        h, T, Y, Z = x
+        return self._cf.calc_cost(h, T, Y, Z, z0, z1, q, w)
 
     def get_bounds(self):
         T_UPPER_LIM = self._config['lsm']['size_ratio']['max']
@@ -422,13 +446,12 @@ class EndureY1Solver(EndureSolver):
         z1: float,
         q: float,
         w: float,
-        h_init: float = 1.0,
-        t_init: float = 2.0,
-        q_init: float = 1.0,
-    ):
-        init_args = [h_init, t_init, q_init]
+        init_args: Optional[list] = None,
+    ) -> SciOpt.OptimizeResult:
+        if init_args is None:
+            init_args = [H_DEFAULT, T_DEFAULT, Y_DEFAULT, Z_DEFAULT]
         bounds = self.get_bounds()
-        sol = self.solve_robust(rho, z0, z1, q, w, init_args, bounds)
+        sol = self._solve_robust(rho, z0, z1, q, w, init_args, bounds)
         return sol
 
     def find_nominal_design(
@@ -437,11 +460,10 @@ class EndureY1Solver(EndureSolver):
         z1: float,
         q: float,
         w: float,
-        h_init: float = 1.0,
-        t_init: float = 2.0,
-        q_init: float = 1.0,
-    ):
-        init_args = [h_init, t_init, q_init]
+        init_args: Optional[list] = None,
+    ) -> SciOpt.OptimizeResult:
+        if init_args is None:
+            init_args = [H_DEFAULT, T_DEFAULT, Y_DEFAULT, Z_DEFAULT]
         bounds = self.get_bounds()
-        sol = self.solve_nominal(z0, z1, q, w, init_args, bounds)
+        sol = self._solve_nominal(z0, z1, q, w, init_args, bounds)
         return sol

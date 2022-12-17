@@ -1,12 +1,17 @@
 # =============================================================================
+# ENDURE Configuration File
+#   Every job will contain it's own HEADER <Job Title> with settings appropiate
+#   for the job.
+#
 # HEADER APP
 #   Logic of app including jobs list to run
 # =============================================================================
 [app]
 name = "ENDURE"
 jobs = [
-    'DataGen',
+    # 'DataGen',
     # 'Train',
+    # 'CreateTunings',
 ]
 
 # =============================================================================
@@ -182,6 +187,26 @@ H = 10
 
 # Total number of elements our LSM tree will start off with
 N = 100000000
+
+# =============================================================================
+# HEADER CREATETUNING
+#   Generic IO settings for experiments, saving data, etc
+# =============================================================================
+[tunings]
+# Architecture to pick
+#   QCost - all levels same hold the same max files per level
+#   KCost - multiple different max files per level
+#   YZCost - Y files per level except the last level will be Z files
+#   TierCost - Traditional model fixed to tiering policy
+#   LevelCost - Traditional model fixed to leveling policy
+#   TierLevelCost - Model will solve both and pick the lowest of the two
+cost_model = 'YZCost'
+
+[tunings.rho]
+# Range of rhos we want to search over over
+start = 0
+stop = 4
+step = 0.25
 
 # =============================================================================
 # HEADER WORKLOADS
