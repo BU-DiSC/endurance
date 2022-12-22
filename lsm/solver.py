@@ -10,6 +10,8 @@ Z_DEFAULT = 8
 Y_DEFAULT = 8
 Q_DEFAULT = 8
 K_DEFAULT = 8
+LAMBDA_DEFAULT = 1.
+ETA_DEFAULT = 1.
 
 
 class EndureSolver:
@@ -20,18 +22,6 @@ class EndureSolver:
     def kl_div_con(self, input):
         return np.exp(input) - 1
 
-    def z0_conjugate(self, x):
-        pass
-
-    def z1_conjugate(self, x):
-        pass
-
-    def q_conjugate(self, x):
-        pass
-
-    def w_conjugate(self, x):
-        pass
-
     def robust_objective(
         self,
         x: list,
@@ -41,14 +31,7 @@ class EndureSolver:
         q: float,
         w: float,
     ) -> float:
-        eta = x[-1]
-        lamb = x[-2]
-        query_cost = ((z0 * self.z0_conjugate(x))
-                      + (z1 * self.z1_conjugate(x))
-                      + (q * self.q_conjugate(x))
-                      + (w * self.w_conjugate(x)))
-        cost = eta + (rho * lamb) + (lamb * query_cost)
-        return cost
+        raise NotImplementedError
 
     def nominal_objective(
         self,
@@ -58,7 +41,7 @@ class EndureSolver:
         q: float,
         w: float,
     ) -> float:
-        pass
+        raise NotImplementedError
 
     def _solve_nominal(
         self,
@@ -94,7 +77,7 @@ class EndureSolver:
         bounds: SciOpt.Bounds,
         callback_fun: Optional[Callable[..., float]] = None
     ):
-        init_args = init_args + [1., 1.]  # manually add lambda and eta
+        init_args = init_args + [LAMBDA_DEFAULT, ETA_DEFAULT]
         bounds = SciOpt.Bounds(
             np.concatenate([bounds.lb, np.array([0.01, -np.inf])]),
             np.concatenate([bounds.ub, np.array([np.inf, np.inf])]),
@@ -122,7 +105,7 @@ class EndureSolver:
         w: float,
         init_args: Optional[list] = None,
     ) -> SciOpt.OptimizeResult:
-        pass
+        raise NotImplementedError
 
     def find_nominal_design(
         self,
@@ -132,7 +115,7 @@ class EndureSolver:
         w: float,
         init_args: Optional[list] = None,
     ) -> SciOpt.OptimizeResult:
-        pass
+        raise NotImplementedError
 
 
 class EndureTierLevelSolver(EndureSolver):
@@ -141,25 +124,22 @@ class EndureTierLevelSolver(EndureSolver):
         self._cf = CostFunc.EndureTierLevelCost(**config['system'])
         self.policy = policy
 
-    def z0_conjugate(self, x: list) -> float:
+    def robust_objective(
+        self,
+        x: list,
+        rho: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+    ) -> float:
         h, T, lamb, eta = x
-        kl_conjugate_input = (self._cf.Z0(h, T, self.policy) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
-
-    def z1_conjugate(self, x: list) -> float:
-        h, T, lamb, eta = x
-        kl_conjugate_input = (self._cf.Z1(h, T, self.policy) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
-
-    def q_conjugate(self, x: list) -> float:
-        h, T, lamb, eta = x
-        kl_conjugate_input = (self._cf.Q(h, T, self.policy) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
-
-    def w_conjugate(self, x: list) -> float:
-        h, T, lamb, eta = x
-        kl_conjugate_input = (self._cf.W(h, T, self.policy) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
+        query_cost = z0 * ((self._cf.Z0(h, T, self.policy) - eta) / lamb)
+        query_cost += z1 * ((self._cf.Z1(h, T, self.policy) - eta) / lamb)
+        query_cost += q * ((self._cf.Q(h, T, self.policy) - eta) / lamb)
+        query_cost += w * ((self._cf.W(h, T, self.policy) - eta) / lamb)
+        cost = eta + (rho * lamb) + (lamb * query_cost)
+        return cost
 
     def nominal_objective(
         self,
@@ -228,25 +208,22 @@ class EndureQSolver(EndureSolver):
         super().__init__(config)
         self._cf = CostFunc.EndureQFixedCost(**config['system'])
 
-    def z0_conjugate(self, x: list):
+    def robust_objective(
+        self,
+        x: list,
+        rho: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+    ) -> float:
         h, T, Q, lamb, eta = x
-        kl_conjugate_input = (self._cf.Z0(h, T, Q) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
-
-    def z1_conjugate(self, x: list):
-        h, T, Q, lamb, eta = x
-        kl_conjugate_input = (self._cf.Z1(h, T, Q) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
-
-    def q_conjugate(self, x: list):
-        h, T, Q, lamb, eta = x
-        kl_conjugate_input = (self._cf.Q(h, T, Q) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
-
-    def w_conjugate(self, x: list):
-        h, T, Q, lamb, eta = x
-        kl_conjugate_input = (self._cf.W(h, T, Q) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
+        query_cost = z0 * ((self._cf.Z0(h, T, Q) - eta) / lamb)
+        query_cost += z1 * ((self._cf.Z1(h, T, Q) - eta) / lamb)
+        query_cost += q * ((self._cf.Q(h, T, Q) - eta) / lamb)
+        query_cost += w * ((self._cf.W(h, T, Q) - eta) / lamb)
+        cost = eta + (rho * lamb) + (lamb * query_cost)
+        return cost
 
     def nominal_objective(
         self,
@@ -305,33 +282,24 @@ class EndureKSolver(EndureSolver):
         super().__init__(config)
         self._cf = CostFunc.EndureKHybridCost(**config['system'])
 
-    def z0_conjugate(self, x: list):
+    def robust_objective(
+        self,
+        x: list,
+        rho: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+    ) -> float:
         lamb, eta = x[-2:]
         h, T = x[0:2]
         K = x[2:-2]
-        kl_conjugate_input = (self._cf.Z0(h, T, K) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
-
-    def z1_conjugate(self, x: list):
-        lamb, eta = x[-2:]
-        h, T = x[0:2]
-        K = x[2:-2]
-        kl_conjugate_input = (self._cf.Z1(h, T, K) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
-
-    def q_conjugate(self, x: list):
-        lamb, eta = x[-2:]
-        h, T = x[0:2]
-        K = x[2:-2]
-        kl_conjugate_input = (self._cf.Q(h, T, K) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
-
-    def w_conjugate(self, x: list):
-        lamb, eta = x[-2:]
-        h, T = x[0:2]
-        K = x[2:-2]
-        kl_conjugate_input = (self._cf.W(h, T, K) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
+        query_cost = z0 * ((self._cf.Z0(h, T, K) - eta) / lamb)
+        query_cost += z1 * ((self._cf.Z1(h, T, K) - eta) / lamb)
+        query_cost += q * ((self._cf.Q(h, T, K) - eta) / lamb)
+        query_cost += w * ((self._cf.W(h, T, K) - eta) / lamb)
+        cost = eta + (rho * lamb) + (lamb * query_cost)
+        return cost
 
     def nominal_objective(
         self,
@@ -397,25 +365,22 @@ class EndureYZSolver(EndureSolver):
         super().__init__(config)
         self._cf = CostFunc.EndureYZHybridCost(**config['system'])
 
-    def z0_conjugate(self, x: list):
+    def robust_objective(
+        self,
+        x: list,
+        rho: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+    ) -> float:
         h, T, Y, Z, lamb, eta = x
-        kl_conjugate_input = (self._cf.Z0(h, T, Y, Z) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
-
-    def z1_conjugate(self, x: list):
-        h, T, Y, Z, lamb, eta = x
-        kl_conjugate_input = (self._cf.Z1(h, T, Y, Z) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
-
-    def q_conjugate(self, x: list):
-        h, T, Y, Z, lamb, eta = x
-        kl_conjugate_input = (self._cf.Q(h, T, Y, Z) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
-
-    def w_conjugate(self, x: list):
-        h, T, Y, Z, lamb, eta = x
-        kl_conjugate_input = (self._cf.W(h, T, Y, Z) - eta) / lamb
-        return self.kl_div_con(kl_conjugate_input)
+        query_cost = z0 * ((self._cf.Z0(h, T, Y, Z) - eta) / lamb)
+        query_cost += z1 * ((self._cf.Z1(h, T, Y, Z) - eta) / lamb)
+        query_cost += q * ((self._cf.Q(h, T, Y, Z) - eta) / lamb)
+        query_cost += w * ((self._cf.W(h, T, Y, Z) - eta) / lamb)
+        cost = eta + (rho * lamb) + (lamb * query_cost)
+        return cost
 
     def nominal_objective(
         self,
