@@ -10,8 +10,9 @@ Z_DEFAULT = 8
 Y_DEFAULT = 8
 Q_DEFAULT = 8
 K_DEFAULT = 8
-LAMBDA_DEFAULT = 1.
-ETA_DEFAULT = 1.
+LAMBDA_DEFAULT = 1
+ETA_DEFAULT = 1
+SOLVER_FTOL = 1e-12
 
 
 class EndureSolver:
@@ -51,18 +52,21 @@ class EndureSolver:
         w: float,
         init_args: list,
         bounds: SciOpt.Bounds,
-        callback_fun: Optional[Callable[..., float]] = None
-    ):
-        minimizer_kwargs = {
+        callback_fun: Optional[Callable[..., float]] = None,
+        minimizer_kwargs: Optional[dict] = None,
+    ) -> SciOpt.OptimizeResult:
+        min_kwargs = {
             'method': 'SLSQP',
             'bounds': bounds,
-            'options': {'ftol': 1e-6, 'disp': False}}
+            'options': {'ftol': SOLVER_FTOL, 'disp': False}}
+        if minimizer_kwargs is not None:
+            min_kwargs.update(minimizer_kwargs)
 
         sol = SciOpt.minimize(
             fun=lambda x: self.nominal_objective(x, z0, z1, q, w),
             x0=init_args,
             callback=callback_fun,
-            **minimizer_kwargs)
+            **min_kwargs)
 
         return sol
 
@@ -75,24 +79,27 @@ class EndureSolver:
         w: float,
         init_args: list,
         bounds: SciOpt.Bounds,
-        callback_fun: Optional[Callable[..., float]] = None
-    ):
+        callback_fun: Optional[Callable[..., float]] = None,
+        minimizer_kwargs: Optional[dict] = None,
+    ) -> SciOpt.OptimizeResult:
         init_args = init_args + [LAMBDA_DEFAULT, ETA_DEFAULT]
         bounds = SciOpt.Bounds(
             np.concatenate([bounds.lb, np.array([0.01, -np.inf])]),
             np.concatenate([bounds.ub, np.array([np.inf, np.inf])]),
             keep_feasible=bounds.keep_feasible)
 
-        minimizer_kwargs = {
+        min_kwargs = {
             'method': 'SLSQP',
             'bounds': bounds,
-            'options': {'ftol': 1e-12, 'disp': False}}
+            'options': {'ftol': SOLVER_FTOL, 'disp': False}}
+        if minimizer_kwargs is not None:
+            min_kwargs.update(minimizer_kwargs)
 
         sol = SciOpt.minimize(
             fun=lambda x: self.robust_objective(x, rho, z0, z1, q, w),
             x0=init_args,
             callback=callback_fun,
-            **minimizer_kwargs)
+            **min_kwargs)
 
         return sol
 
@@ -104,6 +111,7 @@ class EndureSolver:
         q: float,
         w: float,
         init_args: Optional[list] = None,
+        minimizer_kwargs: Optional[dict] = None,
     ) -> SciOpt.OptimizeResult:
         raise NotImplementedError
 
@@ -114,6 +122,7 @@ class EndureSolver:
         q: float,
         w: float,
         init_args: Optional[list] = None,
+        minimizer_kwargs: Optional[dict] = None,
     ) -> SciOpt.OptimizeResult:
         raise NotImplementedError
 
@@ -134,10 +143,14 @@ class EndureTierLevelSolver(EndureSolver):
         w: float,
     ) -> float:
         h, T, lamb, eta = x
-        query_cost = z0 * ((self._cf.Z0(h, T, self.policy) - eta) / lamb)
-        query_cost += z1 * ((self._cf.Z1(h, T, self.policy) - eta) / lamb)
-        query_cost += q * ((self._cf.Q(h, T, self.policy) - eta) / lamb)
-        query_cost += w * ((self._cf.W(h, T, self.policy) - eta) / lamb)
+        query_cost = z0 * \
+            self.kl_div_con((self._cf.Z0(h, T, self.policy) - eta) / lamb)
+        query_cost += z1 * \
+            self.kl_div_con((self._cf.Z1(h, T, self.policy) - eta) / lamb)
+        query_cost += q * \
+            self.kl_div_con((self._cf.Q(h, T, self.policy) - eta) / lamb)
+        query_cost += w * \
+            self.kl_div_con((self._cf.W(h, T, self.policy) - eta) / lamb)
         cost = eta + (rho * lamb) + (lamb * query_cost)
         return cost
 
@@ -171,11 +184,13 @@ class EndureTierLevelSolver(EndureSolver):
         q: float,
         w: float,
         init_args: Optional[list] = None,
+        minimizer_kwargs: Optional[dict] = None,
     ) -> SciOpt.OptimizeResult:
         if init_args is None:
             init_args = [H_DEFAULT, T_DEFAULT]
         bounds = self.get_bounds()
-        sol = self._solve_robust(rho, z0, z1, q, w, init_args, bounds)
+        sol = self._solve_robust(
+            rho, z0, z1, q, w, init_args, bounds, minimizer_kwargs)
         return sol
 
     def find_nominal_design(
@@ -185,11 +200,13 @@ class EndureTierLevelSolver(EndureSolver):
         q: float,
         w: float,
         init_args: Optional[list] = None,
+        minimizer_kwargs: Optional[dict] = None,
     ) -> SciOpt.OptimizeResult:
         if init_args is None:
             init_args = [H_DEFAULT, T_DEFAULT]
         bounds = self.get_bounds()
-        sol = self._solve_nominal(z0, z1, q, w, init_args, bounds)
+        sol = self._solve_nominal(
+            z0, z1, q, w, init_args, bounds, minimizer_kwargs)
         return sol
 
 
@@ -218,10 +235,10 @@ class EndureQSolver(EndureSolver):
         w: float,
     ) -> float:
         h, T, Q, lamb, eta = x
-        query_cost = z0 * ((self._cf.Z0(h, T, Q) - eta) / lamb)
-        query_cost += z1 * ((self._cf.Z1(h, T, Q) - eta) / lamb)
-        query_cost += q * ((self._cf.Q(h, T, Q) - eta) / lamb)
-        query_cost += w * ((self._cf.W(h, T, Q) - eta) / lamb)
+        query_cost = z0 * self.kl_div_con((self._cf.Z0(h, T, Q) - eta) / lamb)
+        query_cost += z1 * self.kl_div_con((self._cf.Z1(h, T, Q) - eta) / lamb)
+        query_cost += q * self.kl_div_con((self._cf.Q(h, T, Q) - eta) / lamb)
+        query_cost += w * self.kl_div_con((self._cf.W(h, T, Q) - eta) / lamb)
         cost = eta + (rho * lamb) + (lamb * query_cost)
         return cost
 
@@ -255,11 +272,13 @@ class EndureQSolver(EndureSolver):
         q: float,
         w: float,
         init_args: Optional[list] = None,
+        minimizer_kwargs: Optional[dict] = None,
     ) -> SciOpt.OptimizeResult:
         if init_args is None:
             init_args = [H_DEFAULT, T_DEFAULT, Q_DEFAULT]
         bounds = self.get_bounds()
-        sol = self._solve_robust(rho, z0, z1, q, w, init_args, bounds)
+        sol = self._solve_robust(rho, z0, z1, q, w, init_args, bounds,
+                                 minimizer_kwargs=minimizer_kwargs)
         return sol
 
     def find_nominal_design(
@@ -269,11 +288,13 @@ class EndureQSolver(EndureSolver):
         q: float,
         w: float,
         init_args: Optional[list] = None,
+        minimizer_kwargs: Optional[dict] = None,
     ) -> SciOpt.OptimizeResult:
         if init_args is None:
             init_args = [H_DEFAULT, T_DEFAULT, Q_DEFAULT]
         bounds = self.get_bounds()
-        sol = self._solve_nominal(z0, z1, q, w, init_args, bounds)
+        sol = self._solve_nominal(z0, z1, q, w, init_args, bounds,
+                                  minimizer_kwargs=minimizer_kwargs)
         return sol
 
 
@@ -294,10 +315,10 @@ class EndureKSolver(EndureSolver):
         lamb, eta = x[-2:]
         h, T = x[0:2]
         K = x[2:-2]
-        query_cost = z0 * ((self._cf.Z0(h, T, K) - eta) / lamb)
-        query_cost += z1 * ((self._cf.Z1(h, T, K) - eta) / lamb)
-        query_cost += q * ((self._cf.Q(h, T, K) - eta) / lamb)
-        query_cost += w * ((self._cf.W(h, T, K) - eta) / lamb)
+        query_cost = z0 * self.kl_div_con((self._cf.Z0(h, T, K) - eta) / lamb)
+        query_cost += z1 * self.kl_div_con((self._cf.Z1(h, T, K) - eta) / lamb)
+        query_cost += q * self.kl_div_con((self._cf.Q(h, T, K) - eta) / lamb)
+        query_cost += w * self.kl_div_con((self._cf.W(h, T, K) - eta) / lamb)
         cost = eta + (rho * lamb) + (lamb * query_cost)
         return cost
 
@@ -336,12 +357,14 @@ class EndureKSolver(EndureSolver):
         q: float,
         w: float,
         init_args: Optional[list] = None,
+        minimizer_kwargs: Optional[dict] = None,
     ) -> SciOpt.OptimizeResult:
         if init_args is None:
             init_args = [H_DEFAULT, T_DEFAULT]
             init_args += [K_DEFAULT] * self._config['lsm']['max_levels']
         bounds = self.get_bounds()
-        sol = self._solve_robust(rho, z0, z1, q, w, init_args, bounds)
+        sol = self._solve_robust(rho, z0, z1, q, w, init_args, bounds,
+                                 minimizer_kwargs=minimizer_kwargs)
         return sol
 
     def find_nominal_design(
@@ -351,12 +374,14 @@ class EndureKSolver(EndureSolver):
         q: float,
         w: float,
         init_args: Optional[list] = None,
+        minimizer_kwargs: Optional[dict] = None,
     ) -> SciOpt.OptimizeResult:
         if init_args is None:
             init_args = [H_DEFAULT, T_DEFAULT]
             init_args += [K_DEFAULT] * self._config['lsm']['max_levels']
         bounds = self.get_bounds()
-        sol = self._solve_nominal(z0, z1, q, w, init_args, bounds)
+        sol = self._solve_nominal(z0, z1, q, w, init_args, bounds,
+                                  minimizer_kwargs=minimizer_kwargs)
         return sol
 
 
@@ -375,10 +400,12 @@ class EndureYZSolver(EndureSolver):
         w: float,
     ) -> float:
         h, T, Y, Z, lamb, eta = x
-        query_cost = z0 * ((self._cf.Z0(h, T, Y, Z) - eta) / lamb)
-        query_cost += z1 * ((self._cf.Z1(h, T, Y, Z) - eta) / lamb)
-        query_cost += q * ((self._cf.Q(h, T, Y, Z) - eta) / lamb)
-        query_cost += w * ((self._cf.W(h, T, Y, Z) - eta) / lamb)
+        query_cost = z0 * \
+            self.kl_div_con((self._cf.Z0(h, T, Y, Z) - eta) / lamb)
+        query_cost += z1 * \
+            self.kl_div_con((self._cf.Z1(h, T, Y, Z) - eta) / lamb)
+        query_cost += q * self.kl_div_con((self._cf.Q(h, T, Y, Z) - eta) / lamb)
+        query_cost += w * self.kl_div_con((self._cf.W(h, T, Y, Z) - eta) / lamb)
         cost = eta + (rho * lamb) + (lamb * query_cost)
         return cost
 
@@ -400,6 +427,89 @@ class EndureYZSolver(EndureSolver):
         H_UPPER_LIM = self._config['lsm']['bits_per_elem']['max']
 
         return SciOpt.Bounds(
+            [H_LOWER_LIM, T_LOWER_LIM, T_LOWER_LIM - 1, T_LOWER_LIM - 1],
+            [H_UPPER_LIM, T_UPPER_LIM, T_UPPER_LIM - 1, T_UPPER_LIM - 1],
+            keep_feasible=True)
+
+    def find_robust_design(
+        self,
+        rho: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+        init_args: Optional[list] = None,
+        minimizer_kwargs: Optional[dict] = None,
+    ) -> SciOpt.OptimizeResult:
+        if init_args is None:
+            init_args = [H_DEFAULT, T_DEFAULT, Y_DEFAULT, Z_DEFAULT]
+        bounds = self.get_bounds()
+        sol = self._solve_robust(rho, z0, z1, q, w, init_args, bounds,
+                                 minimizer_kwargs=minimizer_kwargs)
+        return sol
+
+    def find_nominal_design(
+        self,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+        init_args: Optional[list] = None,
+        minimizer_kwargs: Optional[dict] = None,
+    ) -> SciOpt.OptimizeResult:
+        if init_args is None:
+            init_args = [H_DEFAULT, T_DEFAULT, Y_DEFAULT, Z_DEFAULT]
+        bounds = self.get_bounds()
+        sol = self._solve_nominal(z0, z1, q, w, init_args, bounds,
+                                  minimizer_kwargs=minimizer_kwargs)
+        return sol
+
+
+class EndureYSolver(EndureSolver):
+    def __init__(self, config: dict, last_level: float):
+        super().__init__(config)
+        self._cf = CostFunc.EndureYZHybridCost(**config['system'])
+        self.Z = last_level
+
+    def robust_objective(
+        self,
+        x: list,
+        rho: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+    ) -> float:
+        h, T, Y, lamb, eta = x
+        query_cost = z0 * \
+            self.kl_div_con((self._cf.Z0(h, T, Y, self.Z) - eta) / lamb)
+        query_cost += z1 * \
+            self.kl_div_con((self._cf.Z1(h, T, Y, self.Z) - eta) / lamb)
+        query_cost += q * \
+            self.kl_div_con((self._cf.Q(h, T, Y, self.Z) - eta) / lamb)
+        query_cost += w * \
+            self.kl_div_con((self._cf.W(h, T, Y, self.Z) - eta) / lamb)
+        cost = eta + (rho * lamb) + (lamb * query_cost)
+        return cost
+
+    def nominal_objective(
+        self,
+        x: list,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+    ) -> float:
+        h, T, Y = x
+        return self._cf.calc_cost(h, T, Y, self.Z, z0, z1, q, w)
+
+    def get_bounds(self):
+        T_UPPER_LIM = self._config['lsm']['size_ratio']['max']
+        T_LOWER_LIM = self._config['lsm']['size_ratio']['min']
+        H_LOWER_LIM = self._config['lsm']['bits_per_elem']['min']
+        H_UPPER_LIM = self._config['lsm']['bits_per_elem']['max']
+
+        return SciOpt.Bounds(
             [H_LOWER_LIM, T_LOWER_LIM, T_LOWER_LIM - 1],
             [H_UPPER_LIM, T_UPPER_LIM, T_UPPER_LIM - 1],
             keep_feasible=True)
@@ -412,11 +522,13 @@ class EndureYZSolver(EndureSolver):
         q: float,
         w: float,
         init_args: Optional[list] = None,
+        minimizer_kwargs: Optional[dict] = None,
     ) -> SciOpt.OptimizeResult:
         if init_args is None:
-            init_args = [H_DEFAULT, T_DEFAULT, Y_DEFAULT, Z_DEFAULT]
+            init_args = [H_DEFAULT, T_DEFAULT, Y_DEFAULT]
         bounds = self.get_bounds()
-        sol = self._solve_robust(rho, z0, z1, q, w, init_args, bounds)
+        sol = self._solve_robust(rho, z0, z1, q, w, init_args, bounds,
+                                 minimizer_kwargs=minimizer_kwargs)
         return sol
 
     def find_nominal_design(
@@ -426,9 +538,11 @@ class EndureYZSolver(EndureSolver):
         q: float,
         w: float,
         init_args: Optional[list] = None,
+        minimizer_kwargs: Optional[dict] = None,
     ) -> SciOpt.OptimizeResult:
         if init_args is None:
-            init_args = [H_DEFAULT, T_DEFAULT, Y_DEFAULT, Z_DEFAULT]
+            init_args = [H_DEFAULT, T_DEFAULT, Y_DEFAULT]
         bounds = self.get_bounds()
-        sol = self._solve_nominal(z0, z1, q, w, init_args, bounds)
+        sol = self._solve_nominal(z0, z1, q, w, init_args, bounds,
+                                  minimizer_kwargs=minimizer_kwargs)
         return sol
