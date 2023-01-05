@@ -222,14 +222,14 @@ class EndureKHybridCost():
     def run_prob(self, level: int, T: float, mbuff: float, Nf: float) -> float:
         return (T - 1) * mbuff * T**(level - 1) / (Nf * self.E)
 
-    def Z0(self, h: float, T: float, K: list[float]) -> float:
+    def Z0(self, h: float, T: float, K) -> float:
         z0 = 0
         for i in range(1, int(self.L(h, T, ceil=True)) + 1):
             z0 += K[i - 1] * self.fp(h, T, i)
 
         return z0
 
-    def Z1(self, h: float, T: float, K: list[float]) -> float:
+    def Z1(self, h: float, T: float, K) -> float:
         L = int(self.L(h, T, ceil=True))
         mbuff = self.mbuff(h)
         nfull = self.Nfull(h, T, L)
@@ -246,11 +246,11 @@ class EndureKHybridCost():
 
         return z1
 
-    def Q(self, h: float, T: float, K: list[float]) -> float:
+    def Q(self, h: float, T: float, K) -> float:
         L = int(self.L(h, T, ceil=True))
         return (self.s * self.N / self.B) + sum(K[:L])
 
-    def W(self, h: float, T: float, K: list[float]) -> float:
+    def W(self, h: float, T: float, K) -> float:
         L = int(self.L(h, T, ceil=True))
         w = 0
         for level in range(0, L):
