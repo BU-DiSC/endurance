@@ -36,15 +36,15 @@ data_dir = "/data"
 #   Bounds for searching the LSM space
 # =============================================================================
 [lsm]
-max_levels = 16
+max_levels = 20
 
 [lsm.size_ratio]
 max = 50
 min = 2
 
 [lsm.bits_per_elem]
-max = 9.5
-min = 0
+max = 9.9
+min = 1
 
 # =============================================================================
 # HEADER DATAGEN
@@ -175,10 +175,10 @@ phi = 1
 # Range query selectivity, 0 implies the key range per range query would roughly
 # fit into 1 page. Selectivity 1 implies range queries will always query the
 # full key possible range
-s = 0.00
+s = 0.0000001
 
-# Size of a single entry in bytes
-E = 1024
+# Size of a single entry in bits
+E = 8192
 
 # Memory budget in terms of bits per element, this combined with number of
 # elements (N) will get you roughly the expected total memory we are allocating
@@ -186,7 +186,8 @@ E = 1024
 H = 10
 
 # Total number of elements our LSM tree will start off with
-N = 100000000
+# N = 1000000000
+N = 10000000
 
 # =============================================================================
 # HEADER CREATETUNING

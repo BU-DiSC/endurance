@@ -10,7 +10,7 @@ Z_DEFAULT = 3
 Y_DEFAULT = 3
 Q_DEFAULT = 3
 K_DEFAULT = 3
-LAMBDA_DEFAULT = 1e16
+LAMBDA_DEFAULT = 1.
 ETA_DEFAULT = 1.
 
 
@@ -82,14 +82,14 @@ class EndureSolver:
     ):
         init_args = init_args + [LAMBDA_DEFAULT, ETA_DEFAULT]
         bounds = SciOpt.Bounds(
-            np.concatenate([bounds.lb, np.array([0.01, -np.inf])]),
+            np.concatenate([bounds.lb, np.array([0.001, -np.inf])]),
             np.concatenate([bounds.ub, np.array([np.inf, np.inf])]),
             keep_feasible=bounds.keep_feasible)
 
         minimizer_kwargs = {
             'method': 'SLSQP',
             'bounds': bounds,
-            'options': {'ftol': 1e-12, 'disp': True}}
+            'options': {'ftol': 1e-12, 'disp': False}}
 
         sol = SciOpt.minimize(
             fun=lambda x: self.robust_objective(x, rho, z0, z1, q, w),
@@ -140,10 +140,11 @@ class EndureTierLevelSolver(EndureSolver):
         w: float,
     ) -> float:
         h, T, lamb, eta = x
-        query_cost = z0 * self.kl_div_con((self._cf.Z0(h, T) - eta) / lamb)
-        query_cost += z1 * self.kl_div_con((self._cf.Z1(h, T) - eta) / lamb)
-        query_cost += q * self.kl_div_con((self._cf.Q(h, T) - eta) / lamb)
-        query_cost += w * self.kl_div_con((self._cf.W(h, T) - eta) / lamb)
+        query_cost = 0
+        query_cost += (z0 * self.kl_div_con((self._cf.Z0(h, T) - eta) / lamb))
+        query_cost += (z1 * self.kl_div_con((self._cf.Z1(h, T) - eta) / lamb))
+        query_cost += (q * self.kl_div_con((self._cf.Q(h, T) - eta) / lamb))
+        query_cost += (w * self.kl_div_con((self._cf.W(h, T) - eta) / lamb))
         cost = eta + (rho * lamb) + (lamb * query_cost)
         return cost
 
@@ -159,14 +160,17 @@ class EndureTierLevelSolver(EndureSolver):
         return self._cf(h, T, z0, z1, q, w)
 
     def get_bounds(self) -> SciOpt.Bounds:
+        # one_mb_in_bits = 1 * 1024 * 1024 * 8
         T_UPPER_LIM = self._config['lsm']['size_ratio']['max']
         T_LOWER_LIM = self._config['lsm']['size_ratio']['min']
         H_LOWER_LIM = self._config['lsm']['bits_per_elem']['min']
         H_UPPER_LIM = self._config['lsm']['bits_per_elem']['max']
+        # H_UPPER_LIM = (self._config['system']['H']
+        #                - (one_mb_in_bits / self._config['system']['N']))
 
         return SciOpt.Bounds(
-            [H_LOWER_LIM, T_LOWER_LIM],
-            [H_UPPER_LIM, T_UPPER_LIM],
+            (H_LOWER_LIM, T_LOWER_LIM),
+            (H_UPPER_LIM, T_UPPER_LIM),
             keep_feasible=True)
 
     def find_robust_design(
@@ -224,10 +228,14 @@ class EndureQSolver(EndureSolver):
         w: float,
     ) -> float:
         h, T, Q, lamb, eta = x
-        query_cost = z0 * self.kl_div_con((self._cf.Z0(h, T, Q) - eta) / lamb)
-        query_cost += z1 * self.kl_div_con((self._cf.Z1(h, T, Q) - eta) / lamb)
-        query_cost += q * self.kl_div_con((self._cf.Q(h, T, Q) - eta) / lamb)
-        query_cost += w * self.kl_div_con((self._cf.W(h, T, Q) - eta) / lamb)
+        query_cost = (z0
+                      * self.kl_div_con((self._cf.Z0(h, T, Q) - eta) / lamb))
+        query_cost += (z1
+                       * self.kl_div_con((self._cf.Z1(h, T, Q) - eta) / lamb))
+        query_cost += (q
+                       * self.kl_div_con((self._cf.Q(h, T, Q) - eta) / lamb))
+        query_cost += (w
+                       * self.kl_div_con((self._cf.W(h, T, Q) - eta) / lamb))
         cost = eta + (rho * lamb) + (lamb * query_cost)
         return cost
 
