@@ -1,4 +1,5 @@
 import numpy as np
+from lsm.lsmtype import Policy
 import lsm.lsm_models as Model
 
 
@@ -196,3 +197,35 @@ class EndureKCost:
                 + (z1 * self.Z1(h, T, K))
                 + (q * self.Q(h, T, K))
                 + (w * self.W(h, T, K)))
+
+
+class EndureLevelTrueCost:
+    def __init__(self, config: dict[str, ...]):
+        self._config = config
+        self.cf = Model.EndureTierLevelCost(**self._config['system'])
+
+    def Z0(self, h: float, T: float):
+        return self.cf.Z0(h, T, Policy.Leveling)
+
+    def Z1(self, h: float, T: float):
+        return self.cf.Z1(h, T, Policy.Leveling)
+
+    def W(self, h: float, T: float):
+        return self.cf.W(h, T, Policy.Leveling)
+
+    def Q(self, h: float, T: float):
+        return self.cf.Q(h, T, Policy.Leveling)
+
+    def __call__(
+        self,
+        h: float,
+        T: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float
+    ) -> float:
+        return ((z0 * self.Z0(h, T))
+                + (z1 * self.Z1(h, T))
+                + (q * self.Q(h, T))
+                + (w * self.W(h, T)))
