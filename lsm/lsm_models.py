@@ -23,17 +23,18 @@ class EndureKHybridCost():
         B: float,
         E: float,
         H: float,
+        M: float,
         N: float,
         phi: float,
         s: float
     ) -> None:
-        self.B, self.E, self.H, self.N = B, E, H, N
-        self.M = self.N * self.H
+        self.B, self.E, self.H, self.N, self.M = B, E, H, N, M
         self.phi, self.s = phi, s
 
     def mbuff(self, h: float) -> float:
-        # return self.M - (h * self.N)
-        return ((self.H - h) * self.N)
+        if self.M == -1:
+            return ((self.H - h) * self.N)
+        return self.M - (h * self.N)
 
     def L(self, h: float, T: float, ceil: bool = False) -> float:
         level = np.log(((self.N * self.E) / self.mbuff(h)) + 1) / np.log(T)
@@ -56,8 +57,9 @@ class EndureKHybridCost():
         return (T - 1) * mbuff * (T ** (level - 1)) / (Nf * self.E)
 
     def Z0(self, h: float, T: float, K: types.float64[:]) -> float:
+        L = int(self.L(h, T, ceil=True))
         z0 = 0
-        for i in range(1, int(self.L(h, T, ceil=True)) + 1):
+        for i in range(1, L + 1):
             z0 += K[i - 1] * self.fp(h, T, i)
 
         return z0
@@ -81,10 +83,10 @@ class EndureKHybridCost():
 
     def Q(self, h: float, T: float, K: types.float64[:]) -> float:
         L = int(self.L(h, T, ceil=True))
-        q = np.sum(K[:L])
-        # residual = 1 - (L - self.L(h, T, ceil=False))
-        # q = sum(K[:(L - 1)])
-        # q += K[L - 1] * residual
+        # q = np.sum(K[:L])
+        residual = 1 - (L - self.L(h, T, ceil=False))
+        q = sum(K[:(L - 1)])
+        q += K[L - 1] * residual
         return (self.s * self.N / self.B) + q
 
     def W(self, h: float, T: float, K: types.float64[:]) -> float:
@@ -127,17 +129,18 @@ class EndureTierLevelCost:
         B: float,
         E: float,
         H: float,
+        M: float,
         N: float,
         phi: float,
         s: float
     ) -> None:
-        self.B, self.E, self.H, self.N = B, E, H, N
-        self.M = self.H * self.N
+        self.B, self.E, self.H, self.N, self.M = B, E, H, N, M
         self.phi, self.s = phi, s
 
     def mbuff(self, h: float) -> float:
-        # return self.M - (h * self.N)
-        return ((self.H - h) * self.N)
+        if self.M == -1:
+            return ((self.H - h) * self.N)
+        return self.M - (h * self.N)
 
     def L(self, h: float, T: float, ceil: bool = False) -> float:
         level = np.log(((self.N * self.E) / self.mbuff(h)) + 1) / np.log(T)

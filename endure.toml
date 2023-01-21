@@ -39,11 +39,11 @@ data_dir = "/data"
 max_levels = 20
 
 [lsm.size_ratio]
-max = 50
+max = 100
 min = 2
 
 [lsm.bits_per_elem]
-max = 9.9
+max = 9.998
 min = 1
 
 # =============================================================================
@@ -167,6 +167,7 @@ format = 'parquet'
 [system]
 # Number of physical entries per page
 B = 4
+# B = 32
 
 # Read/Write asymmetry coefficient, 1 implies writes and reads throughput is
 # roughly the same the current storage device
@@ -175,19 +176,25 @@ phi = 1
 # Range query selectivity, 0 implies the key range per range query would roughly
 # fit into 1 page. Selectivity 1 implies range queries will always query the
 # full key possible range
-s = 0.0000001
+s = 0.000000001
 
 # Size of a single entry in bits
 E = 8192
+# E = 1024
 
 # Memory budget in terms of bits per element, this combined with number of
 # elements (N) will get you roughly the expected total memory we are allocating
 # between bloom filter memory and buffer memory
 H = 10
+# Can use ttotal memory instead of bits per element to budget, set M to -1 to
+# use H as it will take priority
+# M = 8589934592
+M = -1
 
 # Total number of elements our LSM tree will start off with
-# N = 1000000000
-N = 10000000
+# N = 1 000 000 000
+N = 1000000000
+# N = 8589934592
 
 # =============================================================================
 # HEADER CREATETUNING

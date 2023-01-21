@@ -10,8 +10,8 @@ Z_DEFAULT = 3
 Y_DEFAULT = 3
 Q_DEFAULT = 3
 K_DEFAULT = 3
-LAMBDA_DEFAULT = 1.
-ETA_DEFAULT = 1.
+LAMBDA_DEFAULT = 1
+ETA_DEFAULT = 1
 
 
 class EndureSolver:
@@ -20,6 +20,8 @@ class EndureSolver:
         self._cf = None
 
     def kl_div_con(self, input):
+        if input > 709:  # Unfortuantely we overflow above this
+            return np.finfo(np.float64).max
         return np.exp(input) - 1
 
     def robust_objective(
@@ -56,7 +58,7 @@ class EndureSolver:
         minimizer_kwargs = {
             'method': 'SLSQP',
             'bounds': bounds,
-            'options': {'ftol': 1e-12, 'disp': False}}
+            'options': {'ftol': 1e-12, 'disp': False, 'maxiter': 1000}}
 
         sol = SciOpt.minimize(
             fun=lambda x: self.nominal_objective(x, z0, z1, q, w),
@@ -89,7 +91,7 @@ class EndureSolver:
         minimizer_kwargs = {
             'method': 'SLSQP',
             'bounds': bounds,
-            'options': {'ftol': 1e-12, 'disp': False}}
+            'options': {'ftol': 1e-12, 'disp': False, 'maxiter': 1000}}
 
         sol = SciOpt.minimize(
             fun=lambda x: self.robust_objective(x, rho, z0, z1, q, w),
