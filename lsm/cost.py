@@ -229,3 +229,43 @@ class EndureLevelTrueCost:
                 + (z1 * self.Z1(h, T))
                 + (q * self.Q(h, T))
                 + (w * self.W(h, T)))
+
+
+class EndureOneLevelingCost:
+    def __init__(self, config: dict[str, ...]):
+        self._config = config
+        self.cf = Model.EndureKHybridCost(**self._config['system'])
+
+    def Z0(self, h: float, T: float):
+        k = np.full(self._config['lsm']['max_levels'] - 1, T - 1)
+        k = np.concatenate(([1], k))
+        return self.cf.Z0(h, T, k)
+
+    def Z1(self, h: float, T: float):
+        k = np.full(self._config['lsm']['max_levels'] - 1, T - 1)
+        k = np.concatenate(([1], k))
+        return self.cf.Z1(h, T, k)
+
+    def W(self, h: float, T: float):
+        k = np.full(self._config['lsm']['max_levels'] - 1, T - 1)
+        k = np.concatenate(([1], k))
+        return self.cf.W(h, T, k)
+
+    def Q(self, h: float, T: float):
+        k = np.full(self._config['lsm']['max_levels'] - 1, T - 1)
+        k = np.concatenate(([1], k))
+        return self.cf.Q(h, T, k)
+
+    def __call__(
+        self,
+        h: float,
+        T: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float
+    ) -> float:
+        return ((z0 * self.Z0(h, T))
+                + (z1 * self.Z1(h, T))
+                + (q * self.Q(h, T))
+                + (w * self.W(h, T)))
