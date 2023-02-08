@@ -20,8 +20,8 @@ class EndureSolver:
         self._cf = None
 
     def kl_div_con(self, input):
-        if input > 709:  # Unfortuantely we overflow above this
-            return np.finfo(np.float64).max
+        # if input > 709:  # Unfortuantely we overflow above this
+        #     return np.finfo(np.float64).max
         return np.exp(input) - 1
 
     def robust_objective(
@@ -678,6 +678,84 @@ class EndureDostoevskyFixedSolver(EndureSolver):
     ) -> SciOpt.OptimizeResult:
         if init_args is None:
             init_args = [T_DEFAULT, Y_DEFAULT, Z_DEFAULT]
+        bounds = self.get_bounds()
+        sol = self._solve_nominal(z0, z1, q, w, init_args, bounds)
+        return sol
+
+
+class EndureOneLevelingSolver(EndureSolver):
+    def __init__(self, config: dict):
+        super().__init__(config)
+        self._cf = CostFunc.EndureOneLevelingCost(config)
+
+    def robust_objective(
+        self,
+        x: list,
+        rho: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+    ) -> float:
+        h, T, lamb, eta = x
+        query_cost = z0 * \
+            self.kl_div_con((self._cf.Z0(h, T) - eta) / lamb)
+        query_cost += z1 * \
+            self.kl_div_con((self._cf.Z1(h, T) - eta) / lamb)
+        query_cost += q * \
+            self.kl_div_con((self._cf.Q(h, T) - eta) / lamb)
+        query_cost += w * \
+            self.kl_div_con((self._cf.W(h, T) - eta) / lamb)
+        cost = eta + (rho * lamb) + (lamb * query_cost)
+        return cost
+
+    def nominal_objective(
+        self,
+        x: list,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+    ) -> float:
+        h, T = x
+        return self._cf(h, T, z0, z1, q, w)
+
+    def get_bounds(self):
+        T_UPPER_LIM = self._config['lsm']['size_ratio']['max']
+        T_LOWER_LIM = self._config['lsm']['size_ratio']['min']
+        H_LOWER_LIM = self._config['lsm']['bits_per_elem']['min']
+        H_UPPER_LIM = self._config['lsm']['bits_per_elem']['max']
+
+        return SciOpt.Bounds(
+            [H_LOWER_LIM, T_LOWER_LIM],
+            [H_UPPER_LIM, T_UPPER_LIM],
+            keep_feasible=True)
+
+    def find_robust_design(
+        self,
+        rho: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+        init_args: Optional[list] = None,
+    ) -> SciOpt.OptimizeResult:
+        if init_args is None:
+            init_args = [H_DEFAULT, T_DEFAULT]
+        bounds = self.get_bounds()
+        sol = self._solve_robust(rho, z0, z1, q, w, init_args, bounds)
+        return sol
+
+    def find_nominal_design(
+        self,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+        init_args: Optional[list] = None,
+    ) -> SciOpt.OptimizeResult:
+        if init_args is None:
+            init_args = [H_DEFAULT, T_DEFAULT]
         bounds = self.get_bounds()
         sol = self._solve_nominal(z0, z1, q, w, init_args, bounds)
         return sol
