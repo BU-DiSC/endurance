@@ -53,34 +53,34 @@ class DataGenerator:
         return row
 
 
-class TierLevelGenerator(DataGenerator):
-    def __init__(self, config: dict, policy: Policy):
-        super(TierLevelGenerator, self).__init__(config)
-        self.policy = policy
-        self.cf = CostFunc.EndureTierLevelCost(**self._config['system'])
-        self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
-                       'h', 'z0', 'z1', 'q', 'w', 'T']
-
-    def generate_header(self) -> list:
-        return self.header
-
-    def generate_row_csv(self) -> list:
-        z0, z1, q, w = self._sample_workload(4)
-        T = self._sample_size_ratio()
-        h = self._sample_bloom_filter_bits()
-
-        line = [z0 * self.cf.Z0(h, T, self.policy),
-                z1 * self.cf.Z1(h, T, self.policy),
-                q * self.cf.Q(h, T, self.policy),
-                w * self.cf.W(h, T, self.policy),
-                h, z0, z1, q, w, T]
-        return line
+# class TierLevelGenerator(DataGenerator):
+#     def __init__(self, config: dict, policy: Policy):
+#         super(TierLevelGenerator, self).__init__(config)
+#         self.policy = policy
+#         self.cf = CostFunc.EndureTierLevelCost(**self._config['system'])
+#         self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
+#                        'h', 'z0', 'z1', 'q', 'w', 'T']
+#
+#     def generate_header(self) -> list:
+#         return self.header
+#
+#     def generate_row_csv(self) -> list:
+#         z0, z1, q, w = self._sample_workload(4)
+#         T = self._sample_size_ratio()
+#         h = self._sample_bloom_filter_bits()
+#
+#         line = [z0 * self.cf.Z0(h, T, self.policy),
+#                 z1 * self.cf.Z1(h, T, self.policy),
+#                 q * self.cf.Q(h, T, self.policy),
+#                 w * self.cf.W(h, T, self.policy),
+#                 h, z0, z1, q, w, T]
+#         return line
 
 
 class KHybridGenerator(DataGenerator):
     def __init__(self, config: dict):
         super(KHybridGenerator, self).__init__(config)
-        self.cf = CostFunc.EndureKHybridCost(**self._config['system'])
+        self.cf = CostFunc.EndureKCost(self._config)
         max_levels = self._config['lsm']['max_levels']
         self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
                        'h', 'z0', 'z1', 'q', 'w', 'T']
@@ -99,7 +99,7 @@ class KHybridGenerator(DataGenerator):
         z0, z1, q, w = self._sample_workload(4)
         T = self._sample_size_ratio()
         h = self._sample_bloom_filter_bits()
-        levels = int(self.cf.L(h, T, True))
+        levels = int(self.cf.cf.L(h, T, True))
         K = random.sample(self._gen_k_levels(levels, T - 1), 1)[0]
         K = np.pad(K, (0, self._config['lsm']['max_levels'] - len(K)))
 
@@ -114,7 +114,7 @@ class KHybridGenerator(DataGenerator):
 class QCostGenerator(DataGenerator):
     def __init__(self, config: dict):
         super(QCostGenerator, self).__init__(config)
-        self.cf = CostFunc.EndureQFixedCost(**self._config['system'])
+        self.cf = CostFunc.EndureQCost(self._config)
         self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
                        'h', 'z0', 'z1', 'q', 'w', 'T', 'Q']
 

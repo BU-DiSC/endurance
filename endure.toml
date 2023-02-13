@@ -9,7 +9,7 @@
 [app]
 name = "ENDURE"
 jobs = [
-    # 'DataGen',
+    'DataGen',
     # 'Train',
     # 'CreateTunings',
 ]
@@ -39,12 +39,12 @@ data_dir = "/data"
 max_levels = 20
 
 [lsm.size_ratio]
-max = 100
+max = 50
 min = 2
 
 [lsm.bits_per_elem]
-max = 9.998
-min = 1
+max = 9.9
+min = 0
 
 # =============================================================================
 # HEADER DATAGEN
@@ -52,8 +52,8 @@ min = 1
 # =============================================================================
 [data]
 # h, z0, z1, q, w
-mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
-std_bias =  [2.74, 0.3, 0.3, 0.3, 0.3]
+mean_bias = [5.0, 0.5, 0.5, 0.5, 0.5]
+std_bias =  [2.88, 0.3, 0.3, 0.3, 0.3]
 
 [data.gen]
 format = 'parquet'
@@ -61,7 +61,7 @@ generator = 'QCost'
 dir = 'train-data/qcost-parquet'
 file_prefix = 'qcost'
 num_workers = -1  # -1 forces all cores to be used
-num_files = 16
+num_files = 1024
 precision = 3
 samples = 262144  # per file sample
 

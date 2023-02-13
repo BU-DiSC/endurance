@@ -9,7 +9,6 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from data.io import Reader
-from lsm.lsmtype import Policy
 import data.data_generators as Gen
 
 
@@ -24,8 +23,8 @@ class DataGenJob:
     def _choose_generator(self) -> Gen.DataGenerator:
         choice = self.config['data']['gen']['generator']
         generators = {
-            'TierCost': Gen.TierLevelGenerator(self.config, Policy.Tiering),
-            'LevelCost': Gen.TierLevelGenerator(self.config, Policy.Leveling),
+            # 'TierCost': Gen.TierLevelGenerator(self.config, Policy.Tiering),
+            # 'LevelCost': Gen.TierLevelGenerator(self.config, Policy.Leveling),
             'QCost': Gen.QCostGenerator(self.config),
             'KHybridCost': Gen.KHybridGenerator(self.config)}
         generator = generators.get(choice, None)
