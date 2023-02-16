@@ -8,8 +8,8 @@ from tqdm import tqdm
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from data.io import Reader
-import data.data_generators as Gen
+from endure.data.io import Reader
+import endure.data.data_generators as Gen
 
 
 class DataGenJob:

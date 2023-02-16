@@ -6,12 +6,11 @@ import logging
 from torch.utils.data import DataLoader
 import torch.optim as TorchOpt
 
-import data.kcost_dataset as EndureData
-from data.io import Reader
-from model.kcost import KCostModel
-from model.tierlevelcost import TierLevelCost
-from model.trainer import Trainer
-import model.losses as Losses
+import endure.data.kcost_dataset as EndureData
+from endure.data.io import Reader
+from endure.lcm.model.builder import LearnedCostModelBuilder
+from endure.lcm.trainer import LCMTrainer
+import endure.utils.losses as Losses
 
 
 class TrainJob:
@@ -20,6 +19,7 @@ class TrainJob:
         self.log = logging.getLogger(self._config['log']['name'])
         self.log.info('Running Training Job')
         self._dp = EndureData.EndureDataPipeGenerator(self._config)
+        self._model_builder = LearnedCostModelBuilder(self._config)
 
     def _build_loss_fn(self) -> torch.nn.Module:
         losses = {
@@ -39,19 +39,7 @@ class TrainJob:
         return loss
 
     def _build_model(self) -> torch.nn.Module:
-        models = {
-                'QCost': KCostModel,
-                'TierLevelCost': TierLevelCost,
-                'KCost': KCostModel, }
-        choice = self._config['model']['arch']
-        self.log.info(f'Building model: {choice}')
-        model = models.get(choice, None)
-        if model is None:
-            self.log.warn('Invalid model arch. Defaulting to KCostModel')
-            model = models.get('KCost')
-        model = model(self._config)
-
-        return model
+        return self._model_builder.build_model()
 
     def _build_adam(self, model) -> TorchOpt.Adam:
         return TorchOpt.Adam(
@@ -150,7 +138,7 @@ class TrainJob:
 
         return test
 
-    def run(self) -> Trainer:
+    def run(self) -> LCMTrainer:
         model = self._build_model()
         optimizer = self._build_optimizer(model)
         scheduler = self._build_scheduler(optimizer)
@@ -158,7 +146,7 @@ class TrainJob:
         test_data = self._build_test()
         loss_fn = self._build_loss_fn()
 
-        trainer = Trainer(
+        trainer = LCMTrainer(
                 config=self._config,
                 model=model,
                 optimizer=optimizer,

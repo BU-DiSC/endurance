@@ -12,6 +12,7 @@ jobs = [
     'DataGen',
     # 'Train',
     # 'CreateTunings',
+    # 'RunExperiments',
 ]
 
 # =============================================================================
@@ -29,11 +30,12 @@ level = "INFO"
 #   Generic IO settings for experiments, saving data, etc
 # =============================================================================
 [io]
-data_dir = "/data"
+data_dir = "/Users/ndhuynh/sandbox/data"
 
 # =============================================================================
 # HEADER LSM
-#   Bounds for searching the LSM space
+#   Generic LSM settings including maximum bounds, system settings, starting
+#   budget for memory, number of elements, etc
 # =============================================================================
 [lsm]
 max_levels = 20
@@ -45,6 +47,35 @@ min = 2
 [lsm.bits_per_elem]
 max = 9.9
 min = 0
+
+[lsm.system]
+# Number of physical entries per page
+B = 4
+
+# Read/Write asymmetry coefficient, 1 implies writes and reads throughput is
+# roughly the same the current storage device
+phi = 1
+
+# Range query selectivity, 0 implies the key range per range query would roughly
+# fit into 1 page. Selectivity 1 implies range queries will always query the
+# full key possible range
+s = 0.000000001
+
+# Size of a single entry in bits
+E = 8192
+
+# Memory budget in terms of bits per element, this combined with number of
+# elements (N) will get you roughly the expected total memory we are allocating
+# between bloom filter memory and buffer memory
+H = 10
+# Can use ttotal memory instead of bits per element to budget, set M to -1 to
+# use H as it will take priority
+# M = 8589934592
+M = -1
+
+# Total number of elements our LSM tree will start off with
+N = 1000000000
+# N = 8589934592
 
 # =============================================================================
 # HEADER DATAGEN
@@ -60,24 +91,45 @@ format = 'parquet'
 generator = 'QCost'
 dir = 'train-data/qcost-parquet'
 file_prefix = 'qcost'
-num_workers = -1  # -1 forces all cores to be used
-num_files = 1024
+num_workers = 4  # -1 forces all cores to be used
+num_files = 8
 precision = 3
 samples = 262144  # per file sample
 
 # =============================================================================
-# HEADER MODEL
-#   Configuration parameters for creating, training, and validating a model
+# HEADER LCM
+#   Add configurations related to learned cost models
 # =============================================================================
-[model]
+[lcm]
 # Architecture to pick
-#   QCost - all levels same hold the same max files per level
-#   KCost - multiple different max files per level
-#   TierLevelCost - specifically for tiering and leveling
-arch = "QCost"
+#   Flexible - max files per level compaction policy
+#   Classic - single tiering / leveling policy
+arch = 'Flexible'
 
-# Name to save the model
-dir = 'qcost-11-19'
+# directory name to save the model
+dir = 'flex-02-15'
+
+# ======================================
+# HEADER LCM.MODELS
+#   Configuration for specific models
+# ======================================
+[lcm.models.classic]
+name = 'classic'
+out_dims = 4  # should match cost function output (z0, z1, q, h)
+hidden_layers = 16
+
+# Number of continuous variables the NN will take, referring to bits per
+# element, workload, etc
+num_cont_vars = 5
+
+# Size of our cateogrical variable embedding, our overall cost-model network
+# input will be
+#   num_cont_vars + (num_cate_vars * embedding_size)
+# As each categorical variable will be embedded down to size `embedding_size`
+embedding_size = 16
+
+[lcm.models.flexible]
+name = 'classic'
 out_dims = 4  # should match cost function output (z0, z1, q, h)
 
 # Number of continuous variables the NN will take, referring to bits per
@@ -85,7 +137,7 @@ out_dims = 4  # should match cost function output (z0, z1, q, h)
 num_cont_vars = 5
 
 # Number of categorical variables we will need to encode, referring to size
-# ratios and number of files per level (if using that cost-model)
+# ratios and number of files per level
 num_cate_vars = 2
 
 # Hidden layers between the continous inputs + embedding to output
@@ -97,8 +149,11 @@ hidden_layers = 16
 # As each categorical variable will be embedded down to size `embedding_size`
 embedding_size = 16
 
-
-[train]
+# ======================================
+# HEADER LCM.TRAIN
+#   Configuration parameters for creating, training, and validating a model
+# ======================================
+[lcm.train]
 batch_size = 4096
 shuffle = true
 drop_last = true  # drop last if unable to make full batch
@@ -124,21 +179,7 @@ optimizer = 'SGD'
 lr_scheduler = 'CosineAnnealing'
 learning_rate = 0.0001
 
-# If decided to use cosine annealing, all settings will be taken from this dict
-# refer to pytorch docs for keywords as this dictionary will be passed by kwargs
-# https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html
-[train.scheduler.CosineAnnealingLR]
-T_max = 10
-eta_min = 0  # minimum learning rate
-
-# Early stopping will count the number of occurances where non improvement
-# happens and stop once we hit a certain threshold
-[train.early_stop]
-enabled = false
-threshold = 10  # number of non improvements to stop
-epsilon = 1e-6  # delta that counts as non improvement
-
-[train.data]
+[lcm.train.data]
 num_workers = 4
 dir = "train-data/qcost-parquet"
 use_dp = false  # use datapipe (streamed) or dataset (legacy)
@@ -147,54 +188,38 @@ use_dp = false  # use datapipe (streamed) or dataset (legacy)
 #   parquet
 format = 'parquet'
 
-[test]
+# If decided to use cosine annealing, all settings will be taken from this dict
+# refer to pytorch docs for keywords as this dictionary will be passed by kwargs
+# https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html
+[lcm.train.scheduler.CosineAnnealingLR]
+T_max = 10
+eta_min = 0  # minimum learning rate
+
+# Early stopping will count the number of occurances where non improvement
+# happens and stop once we hit a certain threshold
+[lcm.train.early_stop]
+enabled = false
+threshold = 10  # number of non improvements to stop
+epsilon = 1e-6  # delta that counts as non improvement
+
+# ======================================
+# HEADER LCM.TEST
+#   Configuration parameters for testing / validation
+# ======================================
+[lcm.test]
 batch_size = 8192
 drop_last = true
 shuffle = false
 
-[test.data]
+[lcm.test.data]
 num_workers = 2
 dir = "test-data/qcost-parquet"
 use_dp = false
 format = 'parquet'
-
 # =============================================================================
-# HEADER SYSTEM
-#   System settings encapsulate physical components of the machine you're
-#   expecting to run your LSM tree on, and additionally starting budgets and
-#   number of element.
+# END LCM
 # =============================================================================
-[system]
-# Number of physical entries per page
-B = 4
-# B = 32
 
-# Read/Write asymmetry coefficient, 1 implies writes and reads throughput is
-# roughly the same the current storage device
-phi = 1
-
-# Range query selectivity, 0 implies the key range per range query would roughly
-# fit into 1 page. Selectivity 1 implies range queries will always query the
-# full key possible range
-s = 0.000000001
-
-# Size of a single entry in bits
-E = 8192
-# E = 1024
-
-# Memory budget in terms of bits per element, this combined with number of
-# elements (N) will get you roughly the expected total memory we are allocating
-# between bloom filter memory and buffer memory
-H = 10
-# Can use ttotal memory instead of bits per element to budget, set M to -1 to
-# use H as it will take priority
-# M = 8589934592
-M = -1
-
-# Total number of elements our LSM tree will start off with
-# N = 1 000 000 000
-N = 1000000000
-# N = 8589934592
 
 # =============================================================================
 # HEADER CREATETUNING

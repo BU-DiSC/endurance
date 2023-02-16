@@ -3,8 +3,7 @@ import numpy as np
 import random
 from itertools import combinations_with_replacement
 
-import lsm.cost as CostFunc
-from lsm.lsmtype import Policy
+import endure.lsm.cost_model as CostFunc
 
 
 class DataGenerator:

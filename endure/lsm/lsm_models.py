@@ -1,7 +1,7 @@
 import numpy as np
 from numba.experimental import jitclass
 from numba import types
-from lsm.lsmtype import Policy
+from endure.lsm.types import Policy
 
 spec = [
     ('B', types.float64),

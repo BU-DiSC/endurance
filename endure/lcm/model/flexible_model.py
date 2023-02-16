@@ -2,10 +2,10 @@ import torch
 from torch import nn
 
 
-class KCostModel(nn.Module):
-    def __init__(self, config):
+class FlexibleModel(nn.Module):
+    def __init__(self, config: dict[str, ...]):
         super().__init__()
-        self.params = config['model']
+        self.params = config['lcm']['models']['fleixble']
         num_classes = (config['lsm']['size_ratio']['max']
                        - config['lsm']['size_ratio']['min']
                        + 1)

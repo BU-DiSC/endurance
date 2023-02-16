@@ -1,8 +1,8 @@
 import torch
 import logging
 
-from model.kcost import KCostModel
-from model.tierlevelcost import TierLevelCost
+from endure.lcm.model.flexible_model import FlexibleModel
+from endure.lcm.model.classic_model import ClassicModel
 
 
 class LearnedCostModelBuilder:
@@ -10,21 +10,20 @@ class LearnedCostModelBuilder:
         self._config = config
         self.log = logging.getLogger(self._config['log']['name'])
         self._models = {
-            'QCost': KCostModel,
-            'TierLevelCost': TierLevelCost,
-            'KCost': KCostModel
+            'Flexible': FlexibleModel,
+            'Classic': ClassicModel,
         }
 
     @staticmethod
     def _get_default_arch():
-        return 'KCost'
+        return 'Classic'
 
     def get_choices(self):
         return self._models.keys()
 
     def build_model(self, choice: str = None) -> torch.nn.Module:
         if choice is None:
-            choice = self._config['model']['arch']
+            choice = self._config['lcm']['arch']
         self.log.info(f'Building model: {choice}')
         model = self._models.get(choice, None)
         if model is None:

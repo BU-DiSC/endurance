@@ -1,12 +1,13 @@
 import numpy as np
-from lsm.lsmtype import Policy
-import lsm.lsm_models as Model
+
+from endure.lsm.types import Policy
+import endure.lsm.lsm_models as Model
 
 
 class EndureTierCost:
     def __init__(self, config: dict[str, ...]):
         self._config = config
-        self.cf = Model.EndureKHybridCost(**self._config['system'])
+        self.cf = Model.EndureKHybridCost(**self._config['lsm']['system'])
 
     def Z0(self, h: float, T: float):
         k = np.full(self._config['lsm']['max_levels'], T - 1)
@@ -42,7 +43,7 @@ class EndureTierCost:
 class EndureLevelCost:
     def __init__(self, config: dict[str, ...]):
         self._config = config
-        self.cf = Model.EndureKHybridCost(**self._config['system'])
+        self.cf = Model.EndureKHybridCost(**self._config['lsm']['system'])
 
     def Z0(self, h: float, T: float):
         k = np.ones(self._config['lsm']['max_levels'])
@@ -78,7 +79,7 @@ class EndureLevelCost:
 class EndureYZCost:
     def __init__(self, config: dict[str, ...]):
         self._config = config
-        self.cf = Model.EndureKHybridCost(**self._config['system'])
+        self.cf = Model.EndureKHybridCost(**self._config['lsm']['system'])
 
     def Z0(self, h: float, T: float, Y: float, Z: float):
         num_levels = int(self.cf.L(h, T, True))
@@ -132,7 +133,7 @@ class EndureYZCost:
 class EndureQCost:
     def __init__(self, config: dict[str, ...]):
         self._config = config
-        self.cf = Model.EndureKHybridCost(**self._config['system'])
+        self.cf = Model.EndureKHybridCost(**self._config['lsm']['system'])
 
     def Z0(self, h: float, T: float, Q: float):
         k = np.full(self._config['lsm']['max_levels'], Q)
@@ -169,7 +170,7 @@ class EndureQCost:
 class EndureKCost:
     def __init__(self, config: dict[str, ...]):
         self._config = config
-        self.cf = Model.EndureKHybridCost(**self._config['system'])
+        self.cf = Model.EndureKHybridCost(**self._config['lsm']['system'])
 
     def Z0(self, h: float, T: float, K: np.ndarray):
         return self.cf.Z0(h, T, K)
@@ -202,7 +203,7 @@ class EndureKCost:
 class EndureLevelTrueCost:
     def __init__(self, config: dict[str, ...]):
         self._config = config
-        self.cf = Model.EndureTierLevelCost(**self._config['system'])
+        self.cf = Model.EndureTierLevelCost(**self._config['lsm']['system'])
 
     def Z0(self, h: float, T: float):
         return self.cf.Z0(h, T, Policy.Leveling)
@@ -234,7 +235,7 @@ class EndureLevelTrueCost:
 class EndureOneLevelingCost:
     def __init__(self, config: dict[str, ...]):
         self._config = config
-        self.cf = Model.EndureKHybridCost(**self._config['system'])
+        self.cf = Model.EndureKHybridCost(**self._config['lsm']['system'])
 
     def Z0(self, h: float, T: float):
         k = np.full(self._config['lsm']['max_levels'] - 1, T - 1)

@@ -6,13 +6,13 @@ from torch.utils.data import DataLoader, Dataset
 import pandas as pd
 from typing import Optional, Union
 from tqdm import tqdm
-from data.parquet_batch_dataset import ParquetBatchDataSet
+from endure.data.parquet_batch_dataset import ParquetBatchDataSet
 
 
-class Trainer:
+class LCMTrainer:
     def __init__(
             self,
-            config: dict,
+            config: dict[str, ...],
             model: torch.nn.Module,
             optimizer: torch.optim.Optimizer,
             loss_fn: torch.nn.Module,
@@ -32,7 +32,7 @@ class Trainer:
         self._move_to_available_device()
 
     def _move_to_available_device(self) -> None:
-        use_gpu = (self._config['train']['use_gpu_if_avail'] and
+        use_gpu = (self._config['lcm']['train']['use_gpu_if_avail'] and
                    torch.cuda.is_available())
         self.device = torch.device('cuda') if use_gpu else torch.device('cpu')
 
@@ -139,8 +139,8 @@ class Trainer:
         :param curr_loss float: loss at current iteration
         :rtype bool: true if we have met early stop condition, false otherwise
         """
-        early_stop_num = self._config['train']['early_stop']['threshold']
-        epsilon = self._config['train']['early_stop']['epsilon']
+        early_stop_num = self._config['lcm']['train']['early_stop']['threshold']
+        epsilon = self._config['lcm']['train']['early_stop']['epsilon']
 
         self.log.info(
                 f'EarlyStop: [{self._early_stop_ticks}/{early_stop_num}]')
@@ -155,20 +155,17 @@ class Trainer:
         return False
 
     def run(self) -> None:
-        max_epochs = self._config['train']['max_epochs']
+        max_epochs = self._config['lcm']['train']['max_epochs']
         save_dir = os.path.join(self._config['io']['data_dir'],
-                                self._config['model']['dir'])
+                                self._config['lcm']['model']['dir'])
         checkpoint_dir = os.path.join(save_dir, 'checkpoints')
 
         os.makedirs(save_dir, exist_ok=True)
         os.makedirs(checkpoint_dir, exist_ok=True)
         self._dumpconfig(save_dir)
-        self.log.info('Model parameters')
-        for key in self._config['model'].keys():
-            self.log.info(f'{key} = {self._config["model"][key]}')
         self.log.info('Training parameters')
-        for key in self._config['train'].keys():
-            self.log.info(f'{key} = {self._config["train"][key]}')
+        for key in self._config['lcm']['train'].keys():
+            self.log.info(f'{key} = {self._config["lcm"]["train"][key]}')
 
         df = []
         prev_loss = float('inf')
@@ -192,7 +189,7 @@ class Trainer:
             pd.DataFrame(df).to_csv(
                 os.path.join(save_dir, 'losses.csv'),
                 index=False)
-            if self._config['train']['early_stop']['enabled']:
+            if self._config['lcm']['train']['early_stop']['enabled']:
                 self._track_early_stop(prev_loss, curr_loss)
             prev_loss = curr_loss
 

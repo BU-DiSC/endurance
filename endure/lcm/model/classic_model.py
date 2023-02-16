@@ -2,10 +2,10 @@ import torch
 from torch import nn
 
 
-class TierLevelCost(nn.Module):
+class ClassicModel(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.params = config['model']
+        self.params = config['model']['models']['classic']
 
         self.embedding = nn.Embedding(
                 num_embeddings=config['lsm']['size_ratio']['max'],
