@@ -23,8 +23,8 @@ class DataGenJob:
     def _choose_generator(self) -> Gen.DataGenerator:
         choice = self.config['data']['gen']['generator']
         generators = {
-            # 'TierCost': Gen.TierLevelGenerator(self.config, Policy.Tiering),
-            # 'LevelCost': Gen.TierLevelGenerator(self.config, Policy.Leveling),
+            'TierCost': Gen.TierGenerator(self.config),
+            'LevelCost': Gen.LevelGenerator(self.config),
             'QCost': Gen.QCostGenerator(self.config),
             'KHybridCost': Gen.KHybridGenerator(self.config)}
         generator = generators.get(choice, None)

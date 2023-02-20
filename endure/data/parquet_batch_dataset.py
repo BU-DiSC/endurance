@@ -41,6 +41,8 @@ class ParquetBatchDataSet:
             'KCost': [f'K_{i}'
                       for i in range(self._config['lsm']['max_levels'])],
             'TierLevelCost': [],
+            'LevelCost': [],
+            'TierCost': [],
             'QCost': ['Q'],
         }
         extension = choices.get(self._config['model']['arch'], None)
