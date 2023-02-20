@@ -55,7 +55,7 @@ class DataGenerator:
 class LevelGenerator(DataGenerator):
     def __init__(self, config: dict):
         super().__init__(config)
-        self.cf = CostFunc.EndureLevelCost(self.config)
+        self.cf = CostFunc.EndureLevelCost(config)
         self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
                        'h', 'z0', 'z1', 'q', 'w', 'T']
 
@@ -78,7 +78,7 @@ class LevelGenerator(DataGenerator):
 class TierGenerator(DataGenerator):
     def __init__(self, config: dict):
         super().__init__(config)
-        self.cf = CostFunc.EndureTierCost(self.config)
+        self.cf = CostFunc.EndureTierCost(config)
         self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
                        'h', 'z0', 'z1', 'q', 'w', 'T']
 
