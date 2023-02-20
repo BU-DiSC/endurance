@@ -67,10 +67,10 @@ class LevelGenerator(DataGenerator):
         T = self._sample_size_ratio()
         h = self._sample_bloom_filter_bits()
 
-        line = [z0 * self.cf.Z0(h, T, self.policy),
-                z1 * self.cf.Z1(h, T, self.policy),
-                q * self.cf.Q(h, T, self.policy),
-                w * self.cf.W(h, T, self.policy),
+        line = [z0 * self.cf.Z0(h, T),
+                z1 * self.cf.Z1(h, T),
+                q * self.cf.Q(h, T),
+                w * self.cf.W(h, T),
                 h, z0, z1, q, w, T]
         return line
 
@@ -90,10 +90,10 @@ class TierGenerator(DataGenerator):
         T = self._sample_size_ratio()
         h = self._sample_bloom_filter_bits()
 
-        line = [z0 * self.cf.Z0(h, T, self.policy),
-                z1 * self.cf.Z1(h, T, self.policy),
-                q * self.cf.Q(h, T, self.policy),
-                w * self.cf.W(h, T, self.policy),
+        line = [z0 * self.cf.Z0(h, T),
+                z1 * self.cf.Z1(h, T),
+                q * self.cf.Q(h, T),
+                w * self.cf.W(h, T),
                 h, z0, z1, q, w, T]
         return line
 
