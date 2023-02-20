@@ -5,7 +5,7 @@ from torch import nn
 class ClassicModel(nn.Module):
     def __init__(self, config):
         super().__init__()
-        self.params = config['model']['models']['classic']
+        self.params = config['lcm']['models']['classic']
 
         self.embedding = nn.Embedding(
                 num_embeddings=config['lsm']['size_ratio']['max'],

@@ -157,7 +157,7 @@ class LCMTrainer:
     def run(self) -> None:
         max_epochs = self._config['lcm']['train']['max_epochs']
         save_dir = os.path.join(self._config['io']['data_dir'],
-                                self._config['lcm']['model']['dir'])
+                                self._config['lcm']['dir'])
         checkpoint_dir = os.path.join(save_dir, 'checkpoints')
 
         os.makedirs(save_dir, exist_ok=True)

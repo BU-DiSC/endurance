@@ -95,9 +95,10 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
             'KCost': [f'K_{i}'
                       for i in range(self._config['lsm']['max_levels'])],
             'TierLevelCost': [],
+            'Classic': [],
             'QCost': ['Q'],
         }
-        extension = choices.get(self._config['model']['arch'], None)
+        extension = choices.get(self._config['lcm']['arch'], None)
         if extension is None:
             self.log.warn('Invalid model defaulting to KCost')
             extension = choices.get('KCost')
@@ -117,11 +118,13 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
         df[['h', 'z0', 'z1', 'q', 'w']] /= self._std
         df['T'] = df['T'] - self._config['lsm']['size_ratio']['min']
 
-        if self._config['model']['arch'] == 'QCost':
+        if self._config['lcm']['arch'] == 'QCost':
             df['Q'] -= (self._config['lsm']['size_ratio']['min'] - 1)
-        elif self._config['model']['arch'] == 'TierLevelCost':
+        elif self._config['lcm']['arch'] == 'Classic':
             pass
-        elif self._config['model']['arch'] == 'KCost':
+        elif self._config['lcm']['arch'] == 'LevelCost':
+            pass
+        elif self._config['lcm']['arch'] == 'KCost':
             for i in range(self._config['lsm']['max_levels']):
                 df[f'K_{i}'] -= (self._config['lsm']['size_ratio']['min'] - 1)
                 df[f'K_{i}'][df[f'K_{i}'] < 0] = 0

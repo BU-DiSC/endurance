@@ -28,7 +28,7 @@ class TrainJob:
                 'RMSLE': Losses.RMSLELoss(),
                 'RMSE': Losses.RMSELoss(),
                 'MSE': torch.nn.MSELoss(), }
-        choice = self._config['train']['loss_fn']
+        choice = self._config['lcm']['train']['loss_fn']
         self.log.info(f'Loss function: {choice}')
 
         loss = losses.get(choice, None)
@@ -44,23 +44,23 @@ class TrainJob:
     def _build_adam(self, model) -> TorchOpt.Adam:
         return TorchOpt.Adam(
                 model.parameters(),
-                lr=self._config['train']['learning_rate'],)
+                lr=self._config['lcm']['train']['learning_rate'],)
 
     def _build_adagrad(self, model) -> TorchOpt.Adagrad:
         return TorchOpt.Adagrad(
                 model.parameters(),
-                lr=self._config['train']['learning_rate'],)
+                lr=self._config['lcm']['train']['learning_rate'],)
 
     def _build_sgd(self, model) -> TorchOpt.SGD:
         return TorchOpt.SGD(model.parameters(),
-                            lr=self._config['train']['learning_rate'],)
+                            lr=self._config['lcm']['train']['learning_rate'],)
 
     def _build_optimizer(self, model) -> TorchOpt.Optimizer:
         optimizers = {
             'Adam': self._build_adam,
             'Adagrad': self._build_adagrad,
             'SGD': self._build_sgd}
-        choice = self._config['train']['optimizer']
+        choice = self._config['lcm']['train']['optimizer']
         self.log.info(f'Using optimizer : {choice}')
         opt_builder = optimizers.get(choice, None)
         if opt_builder is None:
@@ -75,7 +75,7 @@ class TrainJob:
             optimizer) -> TorchOpt.lr_scheduler.CosineAnnealingLR:
         return TorchOpt.lr_scheduler.CosineAnnealingLR(
             optimizer,
-            **self._config['train']['scheduler']['CosineAnnealingLR'],)
+            **self._config['lcm']['train']['scheduler']['CosineAnnealingLR'],)
 
     def _build_scheduler(
             self,
@@ -83,7 +83,7 @@ class TrainJob:
         schedules = {
                 'CosineAnnealing': self._build_cosine_anneal,
                 'None': None, }
-        choice = self._config['train']['lr_scheduler']
+        choice = self._config['lcm']['train']['lr_scheduler']
         schedule_builder = schedules.get(choice, -1)
         if schedule_builder == -1:
             self.log.warn('Invalid scheduler, defaulting to none')
@@ -97,44 +97,44 @@ class TrainJob:
     def _build_train(self) -> DataLoader:
         train_dir = os.path.join(
                 self._config['io']['data_dir'],
-                self._config['train']['data']['dir'],)
-        if self._config['train']['data']['use_dp']:
+                self._config['lcm']['train']['data']['dir'],)
+        if self._config['lcm']['train']['data']['use_dp']:
             train_data = self._dp.build_dp(
                     train_dir,
-                    shuffle=self._config['train']['shuffle'],)
+                    shuffle=self._config['lcm']['train']['shuffle'],)
         else:
             train_data = EndureData.EndureIterableDataSet(
                     config=self._config,
                     folder=train_dir,
-                    shuffle=self._config['train']['shuffle'],
-                    format=self._config['train']['data']['format'],)
+                    shuffle=self._config['lcm']['train']['shuffle'],
+                    format=self._config['lcm']['train']['data']['format'],)
         train = DataLoader(
                 train_data,
-                batch_size=self._config['train']['batch_size'],
-                drop_last=self._config['train']['drop_last'],
-                num_workers=self._config['train']['data']['num_workers'],)
+                batch_size=self._config['lcm']['train']['batch_size'],
+                drop_last=self._config['lcm']['train']['drop_last'],
+                num_workers=self._config['lcm']['train']['data']['num_workers'],)
 
         return train
 
     def _build_test(self) -> DataLoader:
         test_dir = os.path.join(
                     self._config['io']['data_dir'],
-                    self._config['test']['data']['dir'],)
-        if self._config['test']['data']['use_dp']:
+                    self._config['lcm']['test']['data']['dir'],)
+        if self._config['lcm']['test']['data']['use_dp']:
             test_data = self._dp.build_dp(
                     test_dir,
-                    shuffle=self._config['test']['shuffle'],)
+                    shuffle=self._config['lcm']['test']['shuffle'],)
         else:
             test_data = EndureData.EndureIterableDataSet(
                     config=self._config,
                     folder=test_dir,
-                    shuffle=self._config['test']['shuffle'],
-                    format=self._config['test']['data']['format'],)
+                    shuffle=self._config['lcm']['test']['shuffle'],
+                    format=self._config['lcm']['test']['data']['format'],)
         test = DataLoader(
                 test_data,
-                batch_size=self._config['test']['batch_size'],
-                drop_last=self._config['test']['drop_last'],
-                num_workers=self._config['train']['data']['num_workers'],)
+                batch_size=self._config['lcm']['test']['batch_size'],
+                drop_last=self._config['lcm']['test']['drop_last'],
+                num_workers=self._config['lcm']['train']['data']['num_workers'],)
 
         return test
 
