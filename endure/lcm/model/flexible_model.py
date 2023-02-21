@@ -5,7 +5,7 @@ from torch import nn
 class FlexibleModel(nn.Module):
     def __init__(self, config: dict[str, ...]):
         super().__init__()
-        self.params = config['lcm']['models']['fleixble']
+        self.params = config['lcm']['model']['flexible']
         num_classes = (config['lsm']['size_ratio']['max']
                        - config['lsm']['size_ratio']['min']
                        + 1)

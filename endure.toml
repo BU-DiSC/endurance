@@ -8,12 +8,30 @@
 # =============================================================================
 [app]
 name = "ENDURE"
-jobs = [
-    'DataGen',
-    # 'Train',
-    # 'CreateTunings',
-    # 'RunExperiments',
+
+# =============================================================================
+# HEADER JOB
+#   Settings for each individual job (executable)
+# =============================================================================
+[job]
+to_run = [
+    # "LCMDataGen",
+    "LCMTrain",
+    # "CreateTunings",
+    # "RunExperiments",
 ]
+
+[job.LCMDataGen]
+format = "parquet"
+generator = "LevelCost"
+dir = "test-data/levelcost-parquet"
+file_prefix = "levelcost"
+num_workers = 4  # -1 forces all cores to be used
+num_files = 2
+samples = 262144  # per file sample
+overwrite_if_exists = true
+
+[job.LCMTrainer]
 
 # =============================================================================
 # HEADER LOGGER
@@ -38,6 +56,13 @@ data_dir = "/Users/ndhuynh/sandbox/data"
 #   budget for memory, number of elements, etc
 # =============================================================================
 [lsm]
+# Design will effect everything else down stream (e.g. choice of neural network
+# architecture for learned cost model)
+#   Level
+#   Tier
+#   KLSM
+#   QLSM
+design = 'Level'
 max_levels = 20
 
 [lsm.size_ratio]
@@ -81,40 +106,20 @@ N = 1000000000
 # HEADER DATAGEN
 #   Generating data to be used for learning
 # =============================================================================
-[data]
-# h, z0, z1, q, w
-mean_bias = [5.0, 0.5, 0.5, 0.5, 0.5]
-std_bias =  [2.88, 0.3, 0.3, 0.3, 0.3]
-
-[data.gen]
-format = 'parquet'
-generator = 'QCost'
-dir = 'train-data/qcost-parquet'
-file_prefix = 'qcost'
-num_workers = 4  # -1 forces all cores to be used
-num_files = 8
-precision = 3
-samples = 262144  # per file sample
 
 # =============================================================================
 # HEADER LCM
 #   Add configurations related to learned cost models
 # =============================================================================
 [lcm]
-# Architecture to pick
-#   Flexible - max files per level compaction policy
-#   Classic - single tiering / leveling policy
-arch = 'Flexible'
-
 # directory name to save the model
-dir = 'flex-02-15'
+dir = "level-02-15"
 
-# ======================================
+# -----------------------------------------------------------------------------
 # HEADER LCM.MODELS
 #   Configuration for specific models
-# ======================================
-[lcm.models.classic]
-name = 'classic'
+# -----------------------------------------------------------------------------
+[lcm.model.classic]
 out_dims = 4  # should match cost function output (z0, z1, q, h)
 hidden_layers = 16
 
@@ -128,8 +133,7 @@ num_cont_vars = 5
 # As each categorical variable will be embedded down to size `embedding_size`
 embedding_size = 16
 
-[lcm.models.flexible]
-name = 'classic'
+[lcm.model.flexible]
 out_dims = 4  # should match cost function output (z0, z1, q, h)
 
 # Number of continuous variables the NN will take, referring to bits per
@@ -149,10 +153,10 @@ hidden_layers = 16
 # As each categorical variable will be embedded down to size `embedding_size`
 embedding_size = 16
 
-# ======================================
+# -----------------------------------------------------------------------------
 # HEADER LCM.TRAIN
 #   Configuration parameters for creating, training, and validating a model
-# ======================================
+# -----------------------------------------------------------------------------
 [lcm.train]
 batch_size = 4096
 shuffle = true
@@ -166,27 +170,27 @@ use_gpu_if_avail = true  # if gpu is avail, use for training
 #   MSLE - Mean squared log error
 #   RMSE - Root mean square error
 #   RMSLE - Root mean squared log error
-loss_fn = 'MSLE'
+loss_fn = "MSLE"
 
 # List of optimizers supported
 #   SGD - Stochastic gradient descent
 #   Adam
-optimizer = 'SGD'
+optimizer = "SGD"
 
 # Learning rate schedulers
 #   CosineAnnealing
 #   None - Will keep learning rate constant without any decay
-lr_scheduler = 'CosineAnnealing'
+lr_scheduler = "CosineAnnealing"
 learning_rate = 0.0001
 
 [lcm.train.data]
 num_workers = 4
-dir = "train-data/qcost-parquet"
+dir = "train-data/levelcost-parquet"
 use_dp = false  # use datapipe (streamed) or dataset (legacy)
 # Format of the file to use
 #   csv
 #   parquet
-format = 'parquet'
+format = "parquet"
 
 # If decided to use cosine annealing, all settings will be taken from this dict
 # refer to pytorch docs for keywords as this dictionary will be passed by kwargs
@@ -202,10 +206,10 @@ enabled = false
 threshold = 10  # number of non improvements to stop
 epsilon = 1e-6  # delta that counts as non improvement
 
-# ======================================
+# -----------------------------------------------------------------------------
 # HEADER LCM.TEST
 #   Configuration parameters for testing / validation
-# ======================================
+# -----------------------------------------------------------------------------
 [lcm.test]
 batch_size = 8192
 drop_last = true
@@ -213,9 +217,20 @@ shuffle = false
 
 [lcm.test.data]
 num_workers = 2
-dir = "test-data/qcost-parquet"
+dir = "test-data/levelcost-parquet"
 use_dp = false
-format = 'parquet'
+format = "parquet"
+
+# -----------------------------------------------------------------------------
+# HEADER LCM.DATA
+#   misc settings on data such as bias, precision, etc
+# -----------------------------------------------------------------------------
+[lcm.data]
+# h, z0, z1, q, w
+mean_bias = [5.0, 0.5, 0.5, 0.5, 0.5]
+std_bias =  [2.88, 0.3, 0.3, 0.3, 0.3]
+precision = 3
+
 # =============================================================================
 # END LCM
 # =============================================================================
@@ -233,7 +248,7 @@ format = 'parquet'
 #   TierCost - Traditional model fixed to tiering policy
 #   LevelCost - Traditional model fixed to leveling policy
 #   TierLevelCost - Model will solve both and pick the lowest of the two
-cost_model = 'YZCost'
+cost_model = "YZCost"
 
 [tunings.rho]
 # Range of rhos we want to search over over

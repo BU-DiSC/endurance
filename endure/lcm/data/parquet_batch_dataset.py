@@ -22,8 +22,10 @@ class ParquetBatchDataSet:
         self._count_rows = count_rows
         self._shuffle = shuffle
 
-        self._mean = np.array(self._config['data']['mean_bias'], np.float32)
-        self._std = np.array(self._config['data']['std_bias'], np.float32)
+        self._mean = np.array(
+            self._config['lcm']['data']['mean_bias'], np.float32)
+        self._std = np.array(
+            self._config['lcm']['data']['std_bias'], np.float32)
         self._label_cols = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost']
         self._input_cols = self._get_input_cols()
 
@@ -45,7 +47,7 @@ class ParquetBatchDataSet:
             'TierCost': [],
             'QCost': ['Q'],
         }
-        extension = choices.get(self._config['model']['arch'], None)
+        extension = choices.get(self._config['lsm']['design'], None)
         if extension is None:
             self.log.warn('Invalid model defaulting to KCost')
             extension = choices.get('KCost')
@@ -56,11 +58,11 @@ class ParquetBatchDataSet:
         df[['h', 'z0', 'z1', 'q', 'w']] -= self._mean
         df[['h', 'z0', 'z1', 'q', 'w']] /= self._std
         df['T'] = df['T'] - self._config['lsm']['size_ratio']['min']
-        if self._config['model']['arch'] == 'QCost':
+        if self._config['lsm']['design'] == 'QCost':
             df['Q'] -= (self._config['lsm']['size_ratio']['min'] - 1)
-        elif self._config['model']['arch'] == 'TierLevelCost':
+        elif self._config['lsm']['design'] == 'TierLevelCost':
             pass
-        elif self._config['model']['arch'] == 'KCost':
+        elif self._config['lsm']['design'] == 'KCost':
             for i in range(self._config['lsm']['max_levels']):
                 df[f'K_{i}'] -= (self._config['lsm']['size_ratio']['min'] - 1)
                 df[f'K_{i}'][df[f'K_{i}'] < 0] = 0

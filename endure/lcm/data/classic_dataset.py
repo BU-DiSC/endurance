@@ -8,12 +8,12 @@ import pyarrow.parquet as pa
 import torchdata.datapipes as DataPipe
 
 
-class EndureDataSet(torch.utils.data.Dataset):
+class LCMDataSet(torch.utils.data.Dataset):
     def __init__(self, config, folder, format='csv'):
         self._config = config
         self.log = logging.getLogger(config['log']['name'])
-        self._mean = np.array(self._config['data']['mean_bias'], np.float32)
-        self._std = np.array(self._config['data']['std_bias'], np.float32)
+        self._mean = np.array(config['lcm']['data']['mean_bias'], np.float32)
+        self._std = np.array(config['lcm']['data']['std_bias'], np.float32)
         self._format = format
 
         fnames = glob.glob(os.path.join(folder, '*.' + self._format))
@@ -30,12 +30,13 @@ class EndureDataSet(torch.utils.data.Dataset):
     def _get_input_cols(self):
         base = ['h', 'z0', 'z1', 'q', 'w', 'T']
         choices = {
-            'KCost': [f'K_{i}'
-                      for i in range(self._config['lsm']['max_levels'])],
-            'TierLevelCost': [],
-            'QCost': ['Q'],
+            'KLSM': [f'K_{i}'
+                     for i in range(self._config['lsm']['max_levels'])],
+            'QLSM': ['Q'],
+            'Tier': [],
+            'Level': [],
         }
-        extension = choices.get(self._config['model']['arch'], None)
+        extension = choices.get(self._config['lsm']['design'], None)
         if extension is None:
             self.log.warn('Invalid model defaulting to KCost')
             extension = choices.get('KCost')
@@ -54,11 +55,11 @@ class EndureDataSet(torch.utils.data.Dataset):
         df[['h', 'z0', 'z1', 'q', 'w']] -= self._mean
         df[['h', 'z0', 'z1', 'q', 'w']] /= self._std
         df['T'] = df['T'] - self._config['lsm']['size_ratio']['min']
-        if self._config['model']['arch'] == 'QCost':
+        if self._config['lsm']['design'] == 'QLSM':
             df['Q'] -= (self._config['lsm']['size_ratio']['min'] - 1)
-        elif self._config['model']['arch'] == 'TierLevelCost':
+        elif self._config['lsm']['design'] in ['Tier', 'Level']:
             pass
-        elif self._config['model']['arch'] == 'KCost':
+        elif self._config['lsm']['design'] == 'KLSM':
             for i in range(self._config['lsm']['max_levels']):
                 df[f'K_{i}'] -= (self._config['lsm']['size_ratio']['min'] - 1)
                 df[f'K_{i}'][df[f'K_{i}'] < 0] = 0
@@ -77,12 +78,12 @@ class EndureDataSet(torch.utils.data.Dataset):
         return self.labels[idx], self.inputs[idx]
 
 
-class EndureIterableDataSet(torch.utils.data.IterableDataset):
+class LCMIterableDataSet(torch.utils.data.IterableDataset):
     def __init__(self, config, folder, format='csv', shuffle=False):
         self._config = config
         self.log = logging.getLogger(config['log']['name'])
-        self._mean = np.array(self._config['data']['mean_bias'], np.float32)
-        self._std = np.array(self._config['data']['std_bias'], np.float32)
+        self._mean = np.array(config['lcm']['data']['mean_bias'], np.float32)
+        self._std = np.array(config['lcm']['data']['std_bias'], np.float32)
         self._label_cols = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost']
         self._input_cols = self._get_input_cols()
         self._format = format
@@ -92,16 +93,16 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
     def _get_input_cols(self):
         base = ['h', 'z0', 'z1', 'q', 'w', 'T']
         choices = {
-            'KCost': [f'K_{i}'
-                      for i in range(self._config['lsm']['max_levels'])],
-            'TierLevelCost': [],
-            'Classic': [],
-            'QCost': ['Q'],
+            'KLSM': [f'K_{i}'
+                     for i in range(self._config['lsm']['max_levels'])],
+            'Tier': [],
+            'Level': [],
+            'QLSM': ['Q'],
         }
-        extension = choices.get(self._config['lcm']['arch'], None)
+        extension = choices.get(self._config['lsm']['design'], None)
         if extension is None:
-            self.log.warn('Invalid model defaulting to KCost')
-            extension = choices.get('KCost')
+            self.log.warn('Invalid design defaulting to Level')
+            extension = choices.get('Level')
 
         return base + extension
 
@@ -118,16 +119,14 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
         df[['h', 'z0', 'z1', 'q', 'w']] /= self._std
         df['T'] = df['T'] - self._config['lsm']['size_ratio']['min']
 
-        if self._config['lcm']['arch'] == 'QCost':
+        if self._config['lsm']['design'] == 'QLSM':
             df['Q'] -= (self._config['lsm']['size_ratio']['min'] - 1)
-        elif self._config['lcm']['arch'] == 'Classic':
-            pass
-        elif self._config['lcm']['arch'] == 'LevelCost':
-            pass
-        elif self._config['lcm']['arch'] == 'KCost':
+        elif self._config['lsm']['design'] == 'KLSM':
             for i in range(self._config['lsm']['max_levels']):
                 df[f'K_{i}'] -= (self._config['lsm']['size_ratio']['min'] - 1)
                 df[f'K_{i}'][df[f'K_{i}'] < 0] = 0
+        elif self._config['lsm']['design'] in ['Tier', 'Level']:
+            pass
         else:
             self.log.warn('Invalid model defaulting to KCost behavior')
             for i in range(self._config['lsm']['max_levels']):
@@ -154,11 +153,11 @@ class EndureIterableDataSet(torch.utils.data.IterableDataset):
             del df  # attempt to release dataframe memory
 
 
-class EndureDataPipeGenerator():
+class LCMDataPipeGenerator():
     def __init__(self, config):
         self._config = config
-        self.mean = np.array(self._config['data']['mean_bias'], np.float32)
-        self.std = np.array(self._config['data']['std_bias'], np.float32)
+        self.mean = np.array(config['lcm']['data']['mean_bias'], np.float32)
+        self.std = np.array(config['lcm']['data']['std_bias'], np.float32)
 
     def _process_row(self, row):
         labels = np.array(row[0:4], np.float32)

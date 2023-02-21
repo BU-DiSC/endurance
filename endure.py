@@ -4,8 +4,8 @@ import os
 import toml
 import sys
 
-from jobs.data_gen import DataGenJob
-from jobs.train import TrainJob
+from jobs.lcm_data_gen import LCMDataGenJob
+from jobs.lcm_train import LCMTrainJob
 
 
 class EndureDriver:
@@ -22,11 +22,11 @@ class EndureDriver:
         self.log.info(f'Staring app {self.config["app"]["name"]}')
 
         jobs = {
-            'DataGen': DataGenJob,
-            'Train': TrainJob
+            'LCMDataGen': LCMDataGenJob,
+            'LCMTrain': LCMTrainJob
         }
 
-        jobs_list = self.config['app']['jobs']
+        jobs_list = self.config['job']['to_run']
 
         for job_name in jobs_list:
             job = jobs.get(job_name, None)

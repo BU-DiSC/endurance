@@ -6,28 +6,29 @@ import logging
 from torch.utils.data import DataLoader
 import torch.optim as TorchOpt
 
-import endure.data.kcost_dataset as EndureData
+from endure.lcm.data.classic_dataset import LCMDataPipeGenerator
+from endure.lcm.data.iterable_dataset import LCMIterableDataSet
 from endure.data.io import Reader
 from endure.lcm.model.builder import LearnedCostModelBuilder
 from endure.lcm.trainer import LCMTrainer
 import endure.utils.losses as Losses
 
 
-class TrainJob:
+class LCMTrainJob:
     def __init__(self, config):
         self._config = config
         self.log = logging.getLogger(self._config['log']['name'])
         self.log.info('Running Training Job')
-        self._dp = EndureData.EndureDataPipeGenerator(self._config)
+        self._dp = LCMDataPipeGenerator(self._config)
         self._model_builder = LearnedCostModelBuilder(self._config)
 
     def _build_loss_fn(self) -> torch.nn.Module:
         losses = {
-                'MSLE': Losses.MSLELoss(),
-                'NMSE': Losses.NMSELoss(),
-                'RMSLE': Losses.RMSLELoss(),
-                'RMSE': Losses.RMSELoss(),
-                'MSE': torch.nn.MSELoss(), }
+            'MSLE': Losses.MSLELoss(),
+            'NMSE': Losses.NMSELoss(),
+            'RMSLE': Losses.RMSLELoss(),
+            'RMSE': Losses.RMSELoss(),
+            'MSE': torch.nn.MSELoss(), }
         choice = self._config['lcm']['train']['loss_fn']
         self.log.info(f'Loss function: {choice}')
 
@@ -96,45 +97,45 @@ class TrainJob:
 
     def _build_train(self) -> DataLoader:
         train_dir = os.path.join(
-                self._config['io']['data_dir'],
-                self._config['lcm']['train']['data']['dir'],)
+            self._config['io']['data_dir'],
+            self._config['lcm']['train']['data']['dir'],)
         if self._config['lcm']['train']['data']['use_dp']:
             train_data = self._dp.build_dp(
-                    train_dir,
-                    shuffle=self._config['lcm']['train']['shuffle'],)
+                train_dir,
+                shuffle=self._config['lcm']['train']['shuffle'],)
         else:
-            train_data = EndureData.EndureIterableDataSet(
-                    config=self._config,
-                    folder=train_dir,
-                    shuffle=self._config['lcm']['train']['shuffle'],
-                    format=self._config['lcm']['train']['data']['format'],)
+            train_data = LCMIterableDataSet(
+                config=self._config,
+                folder=train_dir,
+                shuffle=self._config['lcm']['train']['shuffle'],
+                format=self._config['lcm']['train']['data']['format'],)
         train = DataLoader(
-                train_data,
-                batch_size=self._config['lcm']['train']['batch_size'],
-                drop_last=self._config['lcm']['train']['drop_last'],
-                num_workers=self._config['lcm']['train']['data']['num_workers'],)
+            train_data,
+            batch_size=self._config['lcm']['train']['batch_size'],
+            drop_last=self._config['lcm']['train']['drop_last'],
+            num_workers=self._config['lcm']['train']['data']['num_workers'],)
 
         return train
 
     def _build_test(self) -> DataLoader:
         test_dir = os.path.join(
-                    self._config['io']['data_dir'],
-                    self._config['lcm']['test']['data']['dir'],)
+            self._config['io']['data_dir'],
+            self._config['lcm']['test']['data']['dir'],)
         if self._config['lcm']['test']['data']['use_dp']:
             test_data = self._dp.build_dp(
-                    test_dir,
-                    shuffle=self._config['lcm']['test']['shuffle'],)
+                test_dir,
+                shuffle=self._config['lcm']['test']['shuffle'],)
         else:
-            test_data = EndureData.EndureIterableDataSet(
-                    config=self._config,
-                    folder=test_dir,
-                    shuffle=self._config['lcm']['test']['shuffle'],
-                    format=self._config['lcm']['test']['data']['format'],)
+            test_data = LCMIterableDataSet(
+                config=self._config,
+                folder=test_dir,
+                shuffle=self._config['lcm']['test']['shuffle'],
+                format=self._config['lcm']['test']['data']['format'],)
         test = DataLoader(
-                test_data,
-                batch_size=self._config['lcm']['test']['batch_size'],
-                drop_last=self._config['lcm']['test']['drop_last'],
-                num_workers=self._config['lcm']['train']['data']['num_workers'],)
+            test_data,
+            batch_size=self._config['lcm']['test']['batch_size'],
+            drop_last=self._config['lcm']['test']['drop_last'],
+            num_workers=self._config['lcm']['train']['data']['num_workers'],)
 
         return test
 
@@ -147,13 +148,13 @@ class TrainJob:
         loss_fn = self._build_loss_fn()
 
         trainer = LCMTrainer(
-                config=self._config,
-                model=model,
-                optimizer=optimizer,
-                loss_fn=loss_fn,
-                train_data=train_data,
-                test_data=test_data,
-                scheduler=scheduler,)
+            config=self._config,
+            model=model,
+            optimizer=optimizer,
+            loss_fn=loss_fn,
+            train_data=train_data,
+            test_data=test_data,
+            scheduler=scheduler,)
         trainer.run()
 
         return trainer
@@ -168,5 +169,5 @@ if __name__ == '__main__':
     log = logging.getLogger(config['log']['name'])
     log.setLevel(config['log']['level'])
 
-    a = TrainJob(config)
+    a = LCMTrainJob(config)
     a.run()

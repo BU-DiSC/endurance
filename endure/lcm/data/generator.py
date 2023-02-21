@@ -6,10 +6,10 @@ from itertools import combinations_with_replacement
 import endure.lsm.cost_model as CostFunc
 
 
-class DataGenerator:
+class LCMDataGenerator:
     def __init__(self, config):
+        self.log = logging.getLogger(config['log']['name'])
         self._config = config
-        self.log = logging.getLogger('endure')
         self._header = None
 
     def _sample_size_ratio(self) -> int:
@@ -18,11 +18,11 @@ class DataGenerator:
 
     def _sample_bloom_filter_bits(self) -> float:
         sample = np.random.rand() * self._config['lsm']['bits_per_elem']['max']
-        return np.around(sample, self._config['data']['gen']['precision'])
+        return np.around(sample, self._config['lcm']['data']['precision'])
 
     def _sample_workload(self, dimensions: int) -> list:
         # See stackoverflow thread for why the simple solution is not uniform
-        # https://stackoverflow.com/questions/8064629/random-numbers-that-add-to-100-matlab
+        # https://stackoverflow.com/questions/8064629
         workload = list(np.random.rand(dimensions - 1)) + [0, 1]
         workload.sort()
 
@@ -52,7 +52,7 @@ class DataGenerator:
         return row
 
 
-class LevelGenerator(DataGenerator):
+class LevelGenerator(LCMDataGenerator):
     def __init__(self, config: dict):
         super().__init__(config)
         self.cf = CostFunc.EndureLevelCost(config)
@@ -75,7 +75,7 @@ class LevelGenerator(DataGenerator):
         return line
 
 
-class TierGenerator(DataGenerator):
+class TierGenerator(LCMDataGenerator):
     def __init__(self, config: dict):
         super().__init__(config)
         self.cf = CostFunc.EndureTierCost(config)
@@ -98,7 +98,7 @@ class TierGenerator(DataGenerator):
         return line
 
 
-class KHybridGenerator(DataGenerator):
+class KHybridGenerator(LCMDataGenerator):
     def __init__(self, config: dict):
         super(KHybridGenerator, self).__init__(config)
         self.cf = CostFunc.EndureKCost(self._config)
@@ -132,7 +132,7 @@ class KHybridGenerator(DataGenerator):
         return line
 
 
-class QCostGenerator(DataGenerator):
+class QCostGenerator(LCMDataGenerator):
     def __init__(self, config: dict):
         super(QCostGenerator, self).__init__(config)
         self.cf = CostFunc.EndureQCost(self._config)

@@ -10,24 +10,26 @@ class LearnedCostModelBuilder:
         self._config = config
         self.log = logging.getLogger(self._config['log']['name'])
         self._models = {
-            'Flexible': FlexibleModel,
-            'Classic': ClassicModel,
+            'KLSM': FlexibleModel,
+            'QLSM': FlexibleModel,
+            'Level': ClassicModel,
+            'Tier': ClassicModel,
         }
 
     @staticmethod
     def _get_default_arch():
-        return 'Classic'
+        return 'Level'
 
     def get_choices(self):
         return self._models.keys()
 
     def build_model(self, choice: str = None) -> torch.nn.Module:
         if choice is None:
-            choice = self._config['lcm']['arch']
+            choice = self._config['lsm']['design']
         self.log.info(f'Building model: {choice}')
         model = self._models.get(choice, None)
         if model is None:
-            self.log.warn('Invalid model architecture. Defaulting to KCost')
+            self.log.warn('Invalid model architecture. Defaulting to KLSM')
             model = self._models.get(self._get_default_arch())
         model = model(self._config)
 

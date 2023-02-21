@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, Dataset
 import pandas as pd
 from typing import Optional, Union
 from tqdm import tqdm
-from endure.data.parquet_batch_dataset import ParquetBatchDataSet
+from endure.lcm.data.parquet_batch_dataset import ParquetBatchDataSet
 
 
 class LCMTrainer:
