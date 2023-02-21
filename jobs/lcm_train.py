@@ -11,7 +11,7 @@ from endure.lcm.data.iterable_dataset import LCMIterableDataSet
 from endure.data.io import Reader
 from endure.lcm.model.builder import LearnedCostModelBuilder
 from endure.lcm.trainer import LCMTrainer
-import endure.utils.losses as Losses
+import endure.util.losses as Losses
 
 
 class LCMTrainJob:
