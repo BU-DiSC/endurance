@@ -17,17 +17,17 @@ name = "ENDURE"
 to_run = [
     # "LCMDataGen",
     "LCMTrain",
-    # "CreateTunings",
-    # "RunExperiments",
+    # TODO: "CreateTunings",
+    # TODO: "RunExperiments",
 ]
 
 [job.LCMDataGen]
 format = "parquet"
 generator = "LevelCost"
-dir = "test-data/levelcost-parquet"
+dir = "train-data/levelcost-parquet"
 file_prefix = "levelcost"
 num_workers = 4  # -1 forces all cores to be used
-num_files = 2
+num_files = 8
 samples = 262144  # per file sample
 overwrite_if_exists = true
 
@@ -103,17 +103,12 @@ N = 1000000000
 # N = 8589934592
 
 # =============================================================================
-# HEADER DATAGEN
-#   Generating data to be used for learning
-# =============================================================================
-
-# =============================================================================
 # HEADER LCM
 #   Add configurations related to learned cost models
 # =============================================================================
 [lcm]
 # directory name to save the model
-dir = "level-02-15"
+dir = "models/level-02-15"
 
 # -----------------------------------------------------------------------------
 # HEADER LCM.MODELS
@@ -146,7 +141,6 @@ num_cate_vars = 2
 
 # Hidden layers between the continous inputs + embedding to output
 hidden_layers = 16
-
 # Size of our cateogrical variable embedding, our overall cost-model network
 # input will be
 #   num_cont_vars + (num_cate_vars * embedding_size)
@@ -161,7 +155,7 @@ embedding_size = 16
 batch_size = 4096
 shuffle = true
 drop_last = true  # drop last if unable to make full batch
-max_epochs = 50
+max_epochs = 20
 use_gpu_if_avail = true  # if gpu is avail, use for training
 
 # Different loss functions to train via
@@ -184,7 +178,7 @@ lr_scheduler = "CosineAnnealing"
 learning_rate = 0.0001
 
 [lcm.train.data]
-num_workers = 4
+num_workers = 1
 dir = "train-data/levelcost-parquet"
 use_dp = false  # use datapipe (streamed) or dataset (legacy)
 # Format of the file to use
@@ -196,7 +190,7 @@ format = "parquet"
 # refer to pytorch docs for keywords as this dictionary will be passed by kwargs
 # https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html
 [lcm.train.scheduler.CosineAnnealingLR]
-T_max = 10
+T_max = 5
 eta_min = 0  # minimum learning rate
 
 # Early stopping will count the number of occurances where non improvement
@@ -216,7 +210,7 @@ drop_last = true
 shuffle = false
 
 [lcm.test.data]
-num_workers = 2
+num_workers = 1
 dir = "test-data/levelcost-parquet"
 use_dp = false
 format = "parquet"
@@ -235,6 +229,32 @@ precision = 3
 # END LCM
 # =============================================================================
 
+
+# =============================================================================
+# HEADER LTUNE
+#   Learned tuner module
+# =============================================================================
+[ltune]
+dir = "tuner/ltune-02-21"
+
+# -----------------------------------------------------------------------------
+# HEADER LTUNE.MODEL
+#   Model configurations
+# -----------------------------------------------------------------------------
+[ltune.model]
+in_dim = 4
+
+[ltune.model.classic]
+hidden_layers = 16
+
+[ltune.model.klsm]
+hidden_layers = 16
+
+[ltune.data]
+# z0, z1, q, w
+mean_bias = [0.5, 0.5, 0.5, 0.5]
+std_bias = [0.3, 0.3, 0.3, 0.3]
+precision = 3
 
 # =============================================================================
 # HEADER CREATETUNING
