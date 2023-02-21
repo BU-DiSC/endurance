@@ -2,8 +2,8 @@ import os
 import toml
 import logging
 import torch
+import csv
 from torch.utils.data import DataLoader, Dataset
-import pandas as pd
 from typing import Optional, Union
 from tqdm import tqdm
 from endure.lcm.data.parquet_batch_dataset import ParquetBatchDataSet
@@ -109,19 +109,20 @@ class LCMTrainer:
         return test_loss
 
     def _dumpconfig(self, save_dir: str) -> None:
-        with open(os.path.join(save_dir, 'config.toml'), 'w') as fid:
+        with open(os.path.join(save_dir, 'endure.toml'), 'w') as fid:
             toml.dump(self._config, fid)
 
         return
 
     def _checkpoint(self, save_dir: str, epoch: int, loss) -> None:
-        save_pt = {'epoch': epoch,
-                   'model_state_dict': self.model.state_dict(),
-                   'optimizer_state_dict': self.optimizer.state_dict(),
-                   'loss': loss}
+        save_pt = {
+            'epoch': epoch,
+            'model_state_dict': self.model.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'loss': loss}
         torch.save(
-                save_pt,
-                os.path.join(save_dir, f'epoch_{epoch:02f}.checkpoint'))
+            save_pt,
+            os.path.join(save_dir, f'epoch_{epoch:02f}.checkpoint'))
 
         return
 
@@ -165,9 +166,11 @@ class LCMTrainer:
         self._dumpconfig(save_dir)
         self.log.info('Training parameters')
         for key in self._config['lcm']['train'].keys():
-            self.log.info(f'{key} = {self._config["lcm"]["train"][key]}')
+            self.log.info(f"{key} = {self._config['lcm']['train'][key]}")
 
-        df = []
+        with open(os.path.join(save_dir, 'losses.csv'), 'w') as fid:
+            loss_csv_write = csv.writer(fid)
+            loss_csv_write.writerow(['epoch', 'train_loss', 'test_loss'])
         prev_loss = float('inf')
         loss_min = float('inf')
         for epoch in range(max_epochs):
@@ -182,13 +185,9 @@ class LCMTrainer:
                 loss_min = curr_loss
                 self.log.info('New minmum loss, saving...')
                 self._save_model(save_dir, 'best.model')
-            df.append({
-                'epoch': epoch,
-                'train_loss': train_loss,
-                'test_loss': curr_loss})
-            pd.DataFrame(df).to_csv(
-                os.path.join(save_dir, 'losses.csv'),
-                index=False)
+            with open(os.path.join(save_dir, 'losses.csv'), 'a') as fid:
+                write = csv.writer(fid)
+                write.writerow([epoch, train_loss, curr_loss])
             if self._config['lcm']['train']['early_stop']['enabled']:
                 self._track_early_stop(prev_loss, curr_loss)
             prev_loss = curr_loss
