@@ -23,7 +23,9 @@ class ClassicTuner(nn.Module):
 
         self.layers = nn.Sequential(*modules)
 
-    def forward(self, x) -> torch.Tensor:
+    def forward(self, x, temp=0.1, hard=False) -> torch.Tensor:
         out = self.layers(x)
+        size_ratio = nn.functional.gumbel_softmax(
+            out[:, 1:], tau=temp, hard=hard)
 
-        return out
+        return out[:, 0].view(-1, 1), size_ratio

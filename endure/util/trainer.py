@@ -9,7 +9,7 @@ from tqdm import tqdm
 from endure.lcm.data.parquet_batch_dataset import ParquetBatchDataSet
 
 
-class LCMTrainer:
+class Trainer:
     def __init__(
             self,
             config: dict[str, ...],
@@ -32,7 +32,7 @@ class LCMTrainer:
         self._move_to_available_device()
 
     def _move_to_available_device(self) -> None:
-        use_gpu = (self._config['lcm']['train']['use_gpu_if_avail'] and
+        use_gpu = (self._config['train']['use_gpu_if_avail'] and
                    torch.cuda.is_available())
         self.device = torch.device('cuda') if use_gpu else torch.device('cpu')
 
@@ -132,46 +132,22 @@ class LCMTrainer:
 
         return
 
-    def _track_early_stop(self, prev_loss: float, curr_loss: float) -> bool:
-        """
-        Tracking step to check for early stop condition
-
-        :param prev_loss float: loss from prev iteration
-        :param curr_loss float: loss at current iteration
-        :rtype bool: true if we have met early stop condition, false otherwise
-        """
-        early_stop_num = self._config['lcm']['train']['early_stop']['threshold']
-        epsilon = self._config['lcm']['train']['early_stop']['epsilon']
-
-        self.log.info(
-                f'EarlyStop: [{self._early_stop_ticks}/{early_stop_num}]')
-        if curr_loss - prev_loss > -epsilon:
-            self._early_stop_ticks += 1
-
-        if self._early_stop_ticks >= early_stop_num:
-            self.log.info(f'Loss has only changed by {epsilon} for '
-                          f'{early_stop_num} epochs. Terminating...')
-            return True
-
-        return False
-
     def run(self) -> None:
-        max_epochs = self._config['lcm']['train']['max_epochs']
+        max_epochs = self._config['train']['max_epochs']
         save_dir = os.path.join(self._config['io']['data_dir'],
-                                self._config['lcm']['dir'])
+                                self._config['train']['save_dir'])
         checkpoint_dir = os.path.join(save_dir, 'checkpoints')
 
         os.makedirs(save_dir, exist_ok=True)
         os.makedirs(checkpoint_dir, exist_ok=True)
         self._dumpconfig(save_dir)
         self.log.info('Training parameters')
-        for key in self._config['lcm']['train'].keys():
-            self.log.info(f"{key} = {self._config['lcm']['train'][key]}")
+        for key in self._config['train'].keys():
+            self.log.info(f"{key} = {self._config['train'][key]}")
 
         with open(os.path.join(save_dir, 'losses.csv'), 'w') as fid:
             loss_csv_write = csv.writer(fid)
             loss_csv_write.writerow(['epoch', 'train_loss', 'test_loss'])
-        prev_loss = float('inf')
         loss_min = float('inf')
         for epoch in range(max_epochs):
             self.log.info(f'Epoch: [{epoch+1}/{max_epochs}]')
@@ -188,9 +164,6 @@ class LCMTrainer:
             with open(os.path.join(save_dir, 'losses.csv'), 'a') as fid:
                 write = csv.writer(fid)
                 write.writerow([epoch, train_loss, curr_loss])
-            if self._config['lcm']['train']['early_stop']['enabled']:
-                self._track_early_stop(prev_loss, curr_loss)
-            prev_loss = curr_loss
 
         self.log.info('Training finished')
 

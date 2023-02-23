@@ -2,7 +2,7 @@ import logging
 import numpy as np
 
 
-class LTunerGenerator:
+class LTuneGenerator:
     def __init__(self, config: dict[str, ...]):
         self._config = config
         self._header = ['z0', 'z1', 'q', 'w']

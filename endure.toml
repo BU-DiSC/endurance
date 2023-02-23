@@ -16,8 +16,9 @@ name = "ENDURE"
 [job]
 to_run = [
     # "LCMDataGen",
-    # "LCMTrain",
-    "LTuneDataGen",
+    "LCMTrain",
+    # "LTuneDataGen",
+    # "LTuneTrain",
     # TODO: "CreateTunings",
     # TODO: "RunExperiments",
 ]
@@ -37,11 +38,11 @@ overwrite_if_exists = true
 [job.LTuneDataGen]
 format = "parquet"
 generator = "default"
-dir = "train-data/workload-parquet"
+dir = "test-data/workload-parquet"
 file_prefix = "workload"
-num_workers = 4  # -1 forces all cores to be used
-num_files = 256
-samples = 1048567  # per file sample
+num_workers = 2  # -1 forces all cores to be used
+num_files = 1
+samples = 262114  # per file sample
 overwrite_if_exists = true
 
 # =============================================================================
@@ -159,74 +160,6 @@ hidden_layers = 16
 embedding_size = 16
 
 # -----------------------------------------------------------------------------
-# HEADER LCM.TRAIN
-#   Configuration parameters for creating, training, and validating a model
-# -----------------------------------------------------------------------------
-[lcm.train]
-batch_size = 4096
-shuffle = true
-drop_last = true  # drop last if unable to make full batch
-max_epochs = 20
-use_gpu_if_avail = true  # if gpu is avail, use for training
-
-# Different loss functions to train via
-#   MSE - Mean squared error
-#   NMSE - Normalized mean squared error
-#   MSLE - Mean squared log error
-#   RMSE - Root mean square error
-#   RMSLE - Root mean squared log error
-loss_fn = "MSLE"
-
-# List of optimizers supported
-#   SGD - Stochastic gradient descent
-#   Adam
-optimizer = "SGD"
-
-# Learning rate schedulers
-#   CosineAnnealing
-#   None - Will keep learning rate constant without any decay
-lr_scheduler = "CosineAnnealing"
-learning_rate = 0.0001
-
-[lcm.train.data]
-num_workers = 1
-dir = "train-data/levelcost-parquet"
-use_dp = false  # use datapipe (streamed) or dataset (legacy)
-# Format of the file to use
-#   csv
-#   parquet
-format = "parquet"
-
-# If decided to use cosine annealing, all settings will be taken from this dict
-# refer to pytorch docs for keywords as this dictionary will be passed by kwargs
-# https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html
-[lcm.train.scheduler.CosineAnnealingLR]
-T_max = 5
-eta_min = 0  # minimum learning rate
-
-# Early stopping will count the number of occurances where non improvement
-# happens and stop once we hit a certain threshold
-[lcm.train.early_stop]
-enabled = false
-threshold = 10  # number of non improvements to stop
-epsilon = 1e-6  # delta that counts as non improvement
-
-# -----------------------------------------------------------------------------
-# HEADER LCM.TEST
-#   Configuration parameters for testing / validation
-# -----------------------------------------------------------------------------
-[lcm.test]
-batch_size = 8192
-drop_last = true
-shuffle = false
-
-[lcm.test.data]
-num_workers = 1
-dir = "test-data/levelcost-parquet"
-use_dp = false
-format = "parquet"
-
-# -----------------------------------------------------------------------------
 # HEADER LCM.DATA
 #   misc settings on data such as bias, precision, etc
 # -----------------------------------------------------------------------------
@@ -240,13 +173,13 @@ precision = 3
 # END LCM
 # =============================================================================
 
-
 # =============================================================================
 # HEADER LTUNE
 #   Learned tuner module
 # =============================================================================
 [ltune]
-dir = "tuner/ltune-02-21"
+dir = "models/ltune-02-21"
+loss_model_path = "models/level-02-15/best.model"
 
 # -----------------------------------------------------------------------------
 # HEADER LTUNE.MODEL
@@ -261,11 +194,73 @@ hidden_layers = 16
 [ltune.model.klsm]
 hidden_layers = 16
 
+# -----------------------------------------------------------------------------
+# HEADER LTUNE.DATA
+#   Misc data items
+# -----------------------------------------------------------------------------
 [ltune.data]
 # z0, z1, q, w
 mean_bias = [0.5, 0.5, 0.5, 0.5]
 std_bias = [0.3, 0.3, 0.3, 0.3]
 precision = 3
+
+# =============================================================================
+# END LTUNE
+# =============================================================================
+
+# =============================================================================
+# HEADER TRAIN
+#   Generic train settings for utils/trainer
+# =============================================================================
+[train]
+max_epochs = 50
+save_dir = "models/level-02-15"
+use_gpu_if_avail = true
+
+# Different loss functions to train via
+#   MSE - Mean squared error
+#   NMSE - Normalized mean squared error
+#   MSLE - Mean squared log error
+#   RMSE - Root mean square error
+#   RMSLE - Root mean squared log error
+#   PATH - Can use a path to load in a neural network module, note only works
+#          when training Learned Tuners
+loss_fn = "MSLE"
+# If using PATH, path to MODEL
+loss_model_path = "models/level-02-15"
+
+# List of optimizers supported
+#   SGD - Stochastic gradient descent
+#   Adam
+optimizer = "SGD"
+
+# Learning rate schedulers
+#   CosineAnnealing
+#   None - Will keep learning rate constant without any decay
+lr_scheduler = "None"
+learning_rate = 0.0001
+
+[train.data]
+dir = "test-data/workload-parquet"
+format = "parquet"
+batch_size = 8192
+shuffle = true
+num_workers = 4
+drop_last = true
+use_dp = false
+
+[train.scheduler.CosineAnnealingLR]
+T_max = 5
+eta_min = 0  # minimum learning rate
+
+[test.data]
+dir = "test-data/workload-parquet"
+format = "parquet"
+batch_size = 262114
+shuffle = false
+num_workers = 1
+drop_last = true
+use_dp = false
 
 # =============================================================================
 # HEADER CREATETUNING
