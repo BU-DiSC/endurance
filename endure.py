@@ -6,6 +6,7 @@ import sys
 
 from jobs.lcm_data_gen import LCMDataGenJob
 from jobs.lcm_train import LCMTrainJob
+from jobs.ltune_data_gen import LTuneDataGenJob
 
 
 class EndureDriver:
@@ -23,7 +24,8 @@ class EndureDriver:
 
         jobs = {
             'LCMDataGen': LCMDataGenJob,
-            'LCMTrain': LCMTrainJob
+            'LCMTrain': LCMTrainJob,
+            'LTuneDataGen': LTuneDataGenJob,
         }
 
         jobs_list = self.config['job']['to_run']

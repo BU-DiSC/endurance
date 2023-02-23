@@ -16,7 +16,8 @@ name = "ENDURE"
 [job]
 to_run = [
     # "LCMDataGen",
-    "LCMTrain",
+    # "LCMTrain",
+    "LTuneDataGen",
     # TODO: "CreateTunings",
     # TODO: "RunExperiments",
 ]
@@ -32,6 +33,16 @@ samples = 262144  # per file sample
 overwrite_if_exists = true
 
 [job.LCMTrainer]
+
+[job.LTuneDataGen]
+format = "parquet"
+generator = "default"
+dir = "train-data/workload-parquet"
+file_prefix = "workload"
+num_workers = 4  # -1 forces all cores to be used
+num_files = 256
+samples = 1048567  # per file sample
+overwrite_if_exists = true
 
 # =============================================================================
 # HEADER LOGGER
