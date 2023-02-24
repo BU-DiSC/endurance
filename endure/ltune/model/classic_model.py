@@ -16,7 +16,7 @@ class ClassicTuner(nn.Module):
         for _ in range(self.params['hidden_layers']):
             modules.append(nn.Linear(num_feat, num_feat))
             nn.init.xavier_normal_(modules[-1].weight)
-            modules.append(nn.ReLU)
+            modules.append(nn.ReLU())
         modules.append(nn.Linear(num_feat, out_dim))
         nn.init.xavier_normal_(modules[-1].weight)
         modules.append(nn.ReLU())

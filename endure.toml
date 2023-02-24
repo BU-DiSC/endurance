@@ -45,22 +45,84 @@ format = "parquet"
 generator = "LevelCost"
 dir = "train-data/levelcost-parquet"
 file_prefix = "levelcost"
-num_workers = 4  # -1 forces all cores to be used
+num_workers = -1  # -1 forces all cores to be used
 num_files = 8
 samples = 262144  # per file sample
 overwrite_if_exists = true
 
-[job.LCMTrainer]
+[job.LCMTrain]
+max_epochs = 50
+save_dir = "models/level-02-15"
+use_gpu_if_avail = true
+
+# Different loss functions to train via
+#   MSE - Mean squared error
+#   NMSE - Normalized mean squared error
+#   MSLE - Mean squared log error
+#   RMSE - Root mean square error
+#   RMSLE - Root mean squared log error
+#   PATH - Can use a path to load in a neural network module, note only works
+#          when training Learned Tuners
+loss_fn = "MSLE"
+# If using PATH, path to MODEL
+loss_model_path = "models/level-02-15"
+
+# List of optimizers supported
+#   SGD - Stochastic gradient descent
+#   Adam
+#   Adagrad
+optimizer = "SGD"
+
+# Learning rate schedulers
+#   CosineAnnealing
+#   None - Will keep learning rate constant without any decay
+lr_scheduler = "None"
+learning_rate = 0.0001
+
+[job.LCMTrain.train]
+dir = "train-data/levelcost-parquet"
+format = "parquet"
+batch_size = 8192
+shuffle = true
+num_workers = 4
+drop_last = true
+use_dp = false
+
+[job.LCMTrain.test]
+dir = "test-data/levelcost-parquet"
+format = "parquet"
+batch_size = 262114
+shuffle = false
+num_workers = 1
+drop_last = true
+use_dp = false
 
 [job.LTuneDataGen]
 format = "parquet"
 generator = "default"
 dir = "test-data/workload-parquet"
 file_prefix = "workload"
-num_workers = 2  # -1 forces all cores to be used
-num_files = 1
-samples = 262114  # per file sample
+num_workers = -1  # -1 forces all cores to be used
+num_files = 16
+samples = 262144  # per file sample
 overwrite_if_exists = true
+
+[job.LTuneTrain]
+max_epochs = 50
+save_dir = "models/level-02-15"
+use_gpu_if_avail = true
+
+# Learned cost model is our loss, input full path to checkpoint or model file
+loss_fn_path = "models/level-02-15/best.model"
+
+optimizer = "SGD"
+
+# Learning rate schedulers
+#   CosineAnnealing
+#   None - Will keep learning rate constant without any decay
+lr_scheduler = "None"
+learning_rate = 0.0001
+
 
 # =============================================================================
 # HEADER LSM
@@ -210,57 +272,20 @@ precision = 3
 
 # =============================================================================
 # HEADER TRAIN
-#   Generic train settings for utils/trainer
+#   Generic settings for training options like optiimzers and schedulers
 # =============================================================================
-[train]
-max_epochs = 50
-save_dir = "models/level-02-15"
-use_gpu_if_avail = true
-
-# Different loss functions to train via
-#   MSE - Mean squared error
-#   NMSE - Normalized mean squared error
-#   MSLE - Mean squared log error
-#   RMSE - Root mean square error
-#   RMSLE - Root mean squared log error
-#   PATH - Can use a path to load in a neural network module, note only works
-#          when training Learned Tuners
-loss_fn = "MSLE"
-# If using PATH, path to MODEL
-loss_model_path = "models/level-02-15"
-
-# List of optimizers supported
-#   SGD - Stochastic gradient descent
-#   Adam
-optimizer = "SGD"
-
-# Learning rate schedulers
-#   CosineAnnealing
-#   None - Will keep learning rate constant without any decay
-lr_scheduler = "None"
-learning_rate = 0.0001
-
-[train.data]
-dir = "test-data/workload-parquet"
-format = "parquet"
-batch_size = 8192
-shuffle = true
-num_workers = 4
-drop_last = true
-use_dp = false
-
 [train.scheduler.CosineAnnealingLR]
 T_max = 5
 eta_min = 0  # minimum learning rate
 
-[test.data]
-dir = "test-data/workload-parquet"
-format = "parquet"
-batch_size = 262114
-shuffle = false
-num_workers = 1
-drop_last = true
-use_dp = false
+[train.optimizer.Adam]
+lr = 0.001
+
+[train.optimizer.SGD]
+lr = 0.001
+
+[train.optimizer.Adagrad]
+lr = 0.001
 
 # =============================================================================
 # HEADER CREATETUNING
