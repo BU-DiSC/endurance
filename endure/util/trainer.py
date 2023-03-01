@@ -1,5 +1,4 @@
 import os
-import toml
 import logging
 import torch
 import csv
@@ -34,7 +33,7 @@ class Trainer:
         self.base_dir = base_dir
         self.use_gpu_if_avail = use_gpu_if_avail
         self.checkpoint_dir = os.path.join(self.base_dir, 'checkpoints')
-        os.makedirs(self.checkpoint_dir)
+        os.makedirs(self.checkpoint_dir, exist_ok=True)
 
         self._early_stop_ticks = 0
         self._move_to_available_device()
@@ -154,7 +153,7 @@ class Trainer:
             if curr_loss < loss_min:
                 loss_min = curr_loss
                 self.log.info('New minmum loss, saving...')
-                self._save_model(self.base_dir, 'best.model')
+                self._save_model('best.model')
             with open(os.path.join(self.base_dir, 'losses.csv'), 'a') as fid:
                 write = csv.writer(fid)
                 write.writerow([epoch, train_loss, curr_loss])

@@ -7,8 +7,6 @@ import torch
 from torch.utils.data import DataLoader
 import torch.optim as TorchOpt
 
-from endure.data.io import Reader
-from endure.lcm.data.classic_dataset import LCMDataPipeGenerator
 from endure.lcm.data.iterable_dataset import LCMIterableDataSet
 from endure.lcm.model.builder import LearnedCostModelBuilder
 from endure.util.trainer import Trainer
@@ -17,12 +15,11 @@ import endure.util.losses as Losses
 
 
 class LCMTrainJob:
-    def __init__(self, config):
+    def __init__(self, config: dict[str, ...]) -> None:
         self._config = config
         self._setting = config['job']['LCMTrain']
         self.log = logging.getLogger(self._config['log']['name'])
         self.log.info('Running Training Job')
-        self._dp = LCMDataPipeGenerator(self._config)
 
     def _build_loss_fn(self) -> torch.nn.Module:
         losses = {
@@ -102,13 +99,13 @@ class LCMTrainJob:
         test_data = LCMIterableDataSet(
             config=self._config,
             folder=test_dir,
-            shuffle=self._setting['test']['data']['shuffle'],
-            format=self._setting['test']['data']['format'],)
+            shuffle=self._setting['test']['shuffle'],
+            format=self._setting['test']['format'],)
         test = DataLoader(
             test_data,
             batch_size=self._setting['test']['batch_size'],
             drop_last=self._setting['test']['drop_last'],
-            num_workers=self._setting['train']['num_workers'],)
+            num_workers=self._setting['test']['num_workers'],)
 
         return test
 
@@ -156,6 +153,8 @@ class LCMTrainJob:
 
 
 if __name__ == '__main__':
+    from endure.data.io import Reader
+
     config = Reader.read_config('endure.toml')
 
     logging.basicConfig(format=config['log']['format'],

@@ -28,4 +28,4 @@ class ClassicTuner(nn.Module):
         size_ratio = nn.functional.gumbel_softmax(
             out[:, 1:], tau=temp, hard=hard)
 
-        return out[:, 0].view(-1, 1), size_ratio
+        return torch.concat([out[:, 0].view(-1, 1), size_ratio], dim=-1)
