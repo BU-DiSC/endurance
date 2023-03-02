@@ -1,8 +1,9 @@
-from typing import Optional, Callable
-import lsm.cost as CostFunc
 import numpy as np
 import scipy.optimize as SciOpt
-from lsm.lsmtype import Policy
+from typing import Optional, Callable
+
+import endure.lsm.cost_model as CostFunc
+from endure.lsm.types import Policy
 
 H_DEFAULT = 5
 T_DEFAULT = 10
