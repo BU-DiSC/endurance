@@ -1,7 +1,7 @@
 import logging
-import torch
-
 import torch.optim as Opt
+
+from torch.nn import Module
 
 
 class OptimizerBuilder:
@@ -9,17 +9,17 @@ class OptimizerBuilder:
         self.log = logging.getLogger(config['log']['name'])
         self._config = config
 
-    def _build_adam(self, model: torch.nn.Module) -> Opt.Adam:
+    def _build_adam(self, model: Module) -> Opt.Adam:
         return Opt.Adam(
             model.parameters(),
             lr=self._config['train']['optimizer']['Adam']['lr'],)
 
-    def _build_adagrad(self, model: torch.nn.Module) -> Opt.Adagrad:
+    def _build_adagrad(self, model: Module) -> Opt.Adagrad:
         return Opt.Adagrad(
             model.parameters(),
             lr=self._config['train']['optimizer']['Adagrad']['lr'],)
 
-    def _build_sgd(self, model: torch.nn.Module) -> Opt.SGD:
+    def _build_sgd(self, model: Module) -> Opt.SGD:
         return Opt.SGD(
             model.parameters(),
             lr=self._config['train']['optimizer']['SGD']['lr'],)
@@ -27,7 +27,7 @@ class OptimizerBuilder:
     def build_optimizer(
         self,
         optimizer_choice: str,
-        model: torch.nn.Module,
+        model: Module,
     ) -> Opt.Optimizer:
         optimizers = {
             'Adam': self._build_adam,

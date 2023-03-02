@@ -3,10 +3,11 @@ import numpy as np
 
 
 class LTuneGenerator:
-    def __init__(self, config: dict[str, ...]):
+    def __init__(self, config: dict[str, ...], format: str = 'parquet'):
+        self.log = logging.getLogger(config['log']['name'])
         self._config = config
         self._header = ['z0', 'z1', 'q', 'w']
-        self.log = logging.getLogger('endure')
+        self.format = format
 
     def _sample_workload(self, dimensions: int) -> list:
         # See stackoverflow thread for why the simple solution is not uniform
@@ -35,7 +36,7 @@ class LTuneGenerator:
         return self._header
 
     def generate_row(self) -> list:
-        if self._config['data']['gen']['format'] == 'parquet':
+        if self.format == 'parquet':
             row = self.generate_row_parquet()
         else:  # format == 'csv'
             row = self.generate_row_csv()
