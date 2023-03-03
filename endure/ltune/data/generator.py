@@ -3,17 +3,24 @@ import numpy as np
 
 
 class LTuneGenerator:
-    def __init__(self, config: dict[str, ...], format: str = 'parquet'):
+    def __init__(
+        self,
+        config: dict[str, ...],
+        format: str = 'parquet',
+        precision: int = 3
+    ):
         self.log = logging.getLogger(config['log']['name'])
         self._config = config
         self._header = ['z0', 'z1', 'q', 'w']
         self.format = format
+        self.precision = precision
 
     def _sample_workload(self, dimensions: int) -> list:
         # See stackoverflow thread for why the simple solution is not uniform
         # https://stackoverflow.com/questions/8064629
-        workload = list(np.random.rand(dimensions - 1)) + [0, 1]
-        workload.sort()
+        workload = np.around(np.random.rand(dimensions - 1), self.precision)
+        workload = np.concatenate([workload, [0, 1]])
+        workload = np.sort(workload)
 
         return [b - a for a, b in zip(workload, workload[1:])]
 
