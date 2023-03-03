@@ -33,14 +33,16 @@ data_dir = "/data"
 [job]
 to_run = [
     # "LCMDataGen",
-    "LCMTrain",
+    # "LCMTrain",
     # "LTuneDataGen",
-    # "LTuneTrain",
+    "LTuneTrain",
     # TODO: "CreateTunings",
     # TODO: "RunExperiments",
 ]
 
+# -----------------------------------------------------------------------------
 [job.LCMDataGen]
+# -----------------------------------------------------------------------------
 format = "parquet"
 generator = "LevelCost"
 dir = "train-data/levelcost-parquet"
@@ -50,9 +52,11 @@ num_files = 8
 samples = 262144  # per file sample
 overwrite_if_exists = true
 
+# -----------------------------------------------------------------------------
 [job.LCMTrain]
+# -----------------------------------------------------------------------------
 max_epochs = 50
-save_dir = "models/level-02-15"
+save_dir = "models/level-02-25"
 use_gpu_if_avail = true
 
 # Different loss functions to train via
@@ -61,30 +65,24 @@ use_gpu_if_avail = true
 #   MSLE - Mean squared log error
 #   RMSE - Root mean square error
 #   RMSLE - Root mean squared log error
-#   PATH - Can use a path to load in a neural network module, note only works
-#          when training Learned Tuners
 loss_fn = "MSLE"
-# If using PATH, path to MODEL
-loss_model_path = "models/level-02-15"
 
-# List of optimizers supported
+# Supported optimizers
 #   SGD - Stochastic gradient descent
 #   Adam
 #   Adagrad
-optimizer = "SGD"
+optimizer = "Adam"
 
 # Learning rate schedulers
-#   CosineAnnealing
-#   None - Will keep learning rate constant without any decay
+#   [CosineAnnealing, Constant, None]
 lr_scheduler = "None"
-learning_rate = 0.0001
 
 [job.LCMTrain.train]
 dir = "train-data/levelcost-parquet"
 format = "parquet"
 batch_size = 8192
 shuffle = true
-num_workers = 4
+num_workers = 6
 drop_last = true
 use_dp = false
 
@@ -93,11 +91,13 @@ dir = "test-data/levelcost-parquet"
 format = "parquet"
 batch_size = 262114
 shuffle = false
-num_workers = 1
+num_workers = 2
 drop_last = true
 use_dp = false
 
+# -----------------------------------------------------------------------------
 [job.LTuneDataGen]
+# -----------------------------------------------------------------------------
 format = "parquet"
 generator = "default"
 dir = "test-data/workload-parquet"
@@ -107,22 +107,40 @@ num_files = 16
 samples = 262144  # per file sample
 overwrite_if_exists = true
 
+# -----------------------------------------------------------------------------
 [job.LTuneTrain]
+# -----------------------------------------------------------------------------
 max_epochs = 50
-save_dir = "models/level-02-15"
+save_dir = "models/level-tuner-03-03"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
-loss_fn_path = "models/level-02-15/best.model"
+loss_fn_path = "models/level-02-25/best.model"
 
+# Check train.optimizer for available options
 optimizer = "SGD"
 
 # Learning rate schedulers
-#   CosineAnnealing
-#   None - Will keep learning rate constant without any decay
-lr_scheduler = "None"
-learning_rate = 0.0001
+#   [CosineAnnealing, Constant, None]
+lr_scheduler = "CosineAnnealing"
 
+[job.LTuneTrain.train]
+dir = "train-data/workload-parquet"
+format = "parquet"
+batch_size = 1024
+shuffle = true
+num_workers = 4
+drop_last = true
+use_dp = false
+
+[job.LTuneTrain.test]
+dir = "test-data/workload-parquet"
+format = "parquet"
+batch_size = 262114
+shuffle = false
+num_workers = 1
+drop_last = true
+use_dp = false
 
 # =============================================================================
 # HEADER LSM
@@ -181,8 +199,6 @@ N = 1000000000
 #   Add configurations related to learned cost models
 # =============================================================================
 [lcm]
-# directory name to save the model
-dir = "models/level-02-15"
 
 # -----------------------------------------------------------------------------
 # HEADER LCM.MODELS
@@ -190,7 +206,7 @@ dir = "models/level-02-15"
 # -----------------------------------------------------------------------------
 [lcm.model.classic]
 out_dims = 4  # should match cost function output (z0, z1, q, h)
-hidden_layers = 16
+hidden_layers = 32
 
 # Number of continuous variables the NN will take, referring to bits per
 # element, workload, etc
@@ -200,7 +216,7 @@ num_cont_vars = 5
 # input will be
 #   num_cont_vars + (num_cate_vars * embedding_size)
 # As each categorical variable will be embedded down to size `embedding_size`
-embedding_size = 16
+embedding_size = 32
 
 [lcm.model.flexible]
 out_dims = 4  # should match cost function output (z0, z1, q, h)
@@ -240,8 +256,6 @@ precision = 3
 #   Learned tuner module
 # =============================================================================
 [ltune]
-dir = "models/ltune-02-21"
-loss_model_path = "models/level-02-15/best.model"
 
 # -----------------------------------------------------------------------------
 # HEADER LTUNE.MODEL
@@ -251,7 +265,7 @@ loss_model_path = "models/level-02-15/best.model"
 in_dim = 4
 
 [ltune.model.classic]
-hidden_layers = 16
+hidden_layers = 32
 
 [ltune.model.klsm]
 hidden_layers = 16
@@ -279,13 +293,13 @@ T_max = 5
 eta_min = 0  # minimum learning rate
 
 [train.optimizer.Adam]
-lr = 0.001
+lr = 0.01
 
 [train.optimizer.SGD]
-lr = 0.001
+lr = 0.01
 
 [train.optimizer.Adagrad]
-lr = 0.001
+lr = 0.01
 
 # =============================================================================
 # HEADER CREATETUNING

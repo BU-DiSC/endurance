@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 
-class ClassicTuner(nn.Module):
+class ClassicCompactTuner(nn.Module):
     def __init__(self, config: dict[str, ...]):
         super().__init__()
         self.params = config['ltune']['model']['classic']
@@ -31,7 +31,7 @@ class ClassicTuner(nn.Module):
         return torch.concat([out[:, 0].view(-1, 1), size_ratio], dim=-1)
 
 
-class ClassicExpandedTuner(nn.Module):
+class ClassicTuner(nn.Module):
     def __init__(self, config: dict[str, ...]):
         super().__init__()
         self.params = config['ltune']['model']['classic']
