@@ -17,7 +17,9 @@ class LCMDataGenerator:
                                  high=self._config['lsm']['size_ratio']['max'])
 
     def _sample_bloom_filter_bits(self) -> float:
-        sample = np.random.rand() * self._config['lsm']['bits_per_elem']['max']
+        max = self._config['lsm']['bits_per_elem']['max']
+        min = self._config['lsm']['bits_per_elem']['min']
+        sample = (max - min) * np.random.rand() + min
         return np.around(sample, self._config['lcm']['data']['precision'])
 
     def _sample_workload(self, dimensions: int) -> list:

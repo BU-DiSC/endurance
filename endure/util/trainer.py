@@ -1,10 +1,11 @@
-import os
-import logging
-import torch
 import csv
+import logging
+import os
+import torch
+
 from torch.utils.data import DataLoader, Dataset
-from typing import Optional, Union
 from tqdm import tqdm
+from typing import Optional, Union
 
 
 class Trainer:
@@ -40,7 +41,7 @@ class Trainer:
 
     def _move_to_available_device(self) -> None:
         self.device = torch.device('cpu')
-        if self.use_gpu_if_avail:
+        if self.use_gpu_if_avail and torch.cuda.is_available():
             self.device = torch.device('cuda')
 
         self.log.info(f'Training on device: {self.device}')

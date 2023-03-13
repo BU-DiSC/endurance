@@ -20,8 +20,10 @@ class LearnedCostModelLoss(torch.nn.Module):
     def forward(self, pred, label):
         # For learned cost model loss, pred is the DB configuration, label is
         # the workload
-        bpe = pred[:, 0].view(-1, 1)
+
+        # TODO normalize BPE by calculating mean and std from max/min
+        bpe = ((pred[:, 0] - 5) / 2.88).view(-1, 1)
         size_ratio = torch.argmax(pred[:, 1:], dim=-1).view(-1, 1)
-        inputs = torch.concat([label, bpe, size_ratio], dim=-1)
+        inputs = torch.concat([bpe, label, size_ratio], dim=-1)
 
         return self.model(inputs).sum(dim=-1).mean()
