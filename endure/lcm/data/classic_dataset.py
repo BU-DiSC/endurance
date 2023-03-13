@@ -27,7 +27,7 @@ class LCMDataSet(torch.utils.data.Dataset):
             self._df[self._label_cols].values).float()
 
     def _get_input_cols(self):
-        base = ['h', 'z0', 'z1', 'q', 'w', 'T']
+        base = ['z0', 'z1', 'q', 'w', 'h', 'T']
         choices = {
             'KLSM': [f'K_{i}'
                      for i in range(self._config['lsm']['max_levels'])],
@@ -51,8 +51,8 @@ class LCMDataSet(torch.utils.data.Dataset):
         return self._process_df(df)
 
     def _process_df(self, df):
-        df[['h', 'z0', 'z1', 'q', 'w']] -= self._mean
-        df[['h', 'z0', 'z1', 'q', 'w']] /= self._std
+        df[['z0', 'z1', 'q', 'w', 'h']] -= self._mean
+        df[['z0', 'z1', 'q', 'w', 'h']] /= self._std
         df['T'] = df['T'] - self._config['lsm']['size_ratio']['min']
         if self._config['lsm']['design'] == 'QLSM':
             df['Q'] -= (self._config['lsm']['size_ratio']['min'] - 1)
@@ -87,7 +87,7 @@ class LCMDataPipeGenerator():
         labels = np.array(row[0:4], np.float32)
         features = np.array(row[4:], np.float32)
 
-        # First 4 are h, z0, z1, w, q
+        # First 5 are z0, z1, w, q, h
         # TODO: Streamline this process
         continuous_data = features[0:5]
         continuous_data -= self.mean

@@ -59,7 +59,7 @@ class LevelGenerator(LCMDataGenerator):
         super().__init__(config)
         self.cf = CostFunc.EndureLevelCost(config)
         self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
-                       'h', 'z0', 'z1', 'q', 'w', 'T']
+                       'z0', 'z1', 'q', 'w', 'h', 'T']
 
     def generate_header(self) -> list:
         return self.header
@@ -73,7 +73,7 @@ class LevelGenerator(LCMDataGenerator):
                 z1 * self.cf.Z1(h, T),
                 q * self.cf.Q(h, T),
                 w * self.cf.W(h, T),
-                h, z0, z1, q, w, T]
+                z0, z1, q, w, h, T]
         return line
 
 
@@ -82,7 +82,7 @@ class TierGenerator(LCMDataGenerator):
         super().__init__(config)
         self.cf = CostFunc.EndureTierCost(config)
         self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
-                       'h', 'z0', 'z1', 'q', 'w', 'T']
+                       'z0', 'z1', 'q', 'w', 'h', 'T']
 
     def generate_header(self) -> list:
         return self.header
@@ -96,7 +96,7 @@ class TierGenerator(LCMDataGenerator):
                 z1 * self.cf.Z1(h, T),
                 q * self.cf.Q(h, T),
                 w * self.cf.W(h, T),
-                h, z0, z1, q, w, T]
+                z0, z1, q, w, h, T]
         return line
 
 
@@ -106,7 +106,7 @@ class KHybridGenerator(LCMDataGenerator):
         self.cf = CostFunc.EndureKCost(self._config)
         max_levels = self._config['lsm']['max_levels']
         self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
-                       'h', 'z0', 'z1', 'q', 'w', 'T']
+                       'z0', 'z1', 'q', 'w', 'h', 'T']
         self.header += [f'K_{i}' for i in range(max_levels)]
 
     def _gen_k_levels(self, levels: int, max_size_ratio: int) -> list:
@@ -128,7 +128,7 @@ class KHybridGenerator(LCMDataGenerator):
 
         line = [z0 * self.cf.Z0(h, T, K), z1 * self.cf.Z1(h, T, K),
                 q * self.cf.Q(h, T, K), w * self.cf.W(h, T, K),
-                h, z0, z1, q, w, T]
+                z0, z1, q, w, h, T]
         for level_idx in range(self._config['lsm']['max_levels']):
             line.append(K[level_idx])
         return line
@@ -139,7 +139,7 @@ class QCostGenerator(LCMDataGenerator):
         super(QCostGenerator, self).__init__(config)
         self.cf = CostFunc.EndureQCost(self._config)
         self.header = ['z0_cost', 'z1_cost', 'q_cost', 'w_cost',
-                       'h', 'z0', 'z1', 'q', 'w', 'T', 'Q']
+                       'z0', 'z1', 'q', 'w', 'h', 'T', 'Q']
 
     def _sample_q(self) -> int:
         return np.random.randint(
@@ -159,5 +159,5 @@ class QCostGenerator(LCMDataGenerator):
                 z1 * self.cf.Z1(h, T, Q),
                 q * self.cf.Q(h, T, Q),
                 w * self.cf.W(h, T, Q),
-                h, z0, z1, q, w, T, Q]
+                z0, z1, q, w, h, T, Q]
         return line
