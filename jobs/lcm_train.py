@@ -11,7 +11,7 @@ from endure.lcm.data.iterable_dataset import LCMIterableDataSet
 from endure.lcm.model.builder import LearnedCostModelBuilder
 from endure.util.trainer import Trainer
 from endure.util.optimizer import OptimizerBuilder
-import endure.util.losses as Losses
+from endure.util.losses import LossBuilder
 
 
 class LCMTrainJob:
@@ -22,19 +22,13 @@ class LCMTrainJob:
         self.log.info('Running Training Job')
 
     def _build_loss_fn(self) -> torch.nn.Module:
-        losses = {
-            'MSLE': Losses.MSLELoss(),
-            'NMSE': Losses.NMSELoss(),
-            'RMSLE': Losses.RMSLELoss(),
-            'RMSE': Losses.RMSELoss(),
-            'MSE': torch.nn.MSELoss(), }
         choice = self._setting['loss_fn']
         self.log.info(f'Loss function: {choice}')
 
-        loss = losses.get(choice, None)
+        loss = LossBuilder.build(choice)
         if loss is None:
             self.log.warn('Invalid loss func. Defaulting to MSE')
-            loss = loss.get('MSE')
+            loss = LossBuilder.build('MSE')
 
         return loss
 

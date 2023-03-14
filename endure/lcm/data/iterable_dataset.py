@@ -20,7 +20,7 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
         self._shuffle = shuffle
 
     def _get_input_cols(self):
-        base = ['h', 'z0', 'z1', 'q', 'w', 'T']
+        base = ['z0', 'z1', 'q', 'w', 'h', 'T']
         choices = {
             'KLSM': [f'K_{i}'
                      for i in range(self._config['lsm']['max_levels'])],
@@ -44,8 +44,8 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
         return self._process_df(df)
 
     def _process_df(self, df):
-        df[['h', 'z0', 'z1', 'q', 'w']] -= self._mean
-        df[['h', 'z0', 'z1', 'q', 'w']] /= self._std
+        df[['z0', 'z1', 'q', 'w', 'h']] -= self._mean
+        df[['z0', 'z1', 'q', 'w', 'h']] /= self._std
         df['T'] = df['T'] - self._config['lsm']['size_ratio']['min']
 
         if self._config['lsm']['design'] == 'QLSM':
