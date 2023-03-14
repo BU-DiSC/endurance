@@ -75,6 +75,19 @@ class LCMDataGenJob:
 
         return idx
 
+    def generate_file_single_thread(self) -> int:
+        generator = self._choose_generator()
+
+        if self.setting['format'] == 'parquet':
+            file_gen = self.generate_parquet_file
+        else:  # format == 'csv'
+            file_gen = self.generate_csv_file
+
+        for idx in range(self.setting['num_files']):
+            file_gen(generator, idx, 0)
+
+        return idx
+
     def generate_file(self, idx: int) -> int:
         pos = 0
         if len(mp.current_process()._identity) > 0:
@@ -99,7 +112,7 @@ class LCMDataGenJob:
         self.log.info(f'{threads=}')
 
         if threads == 1:
-            self.generate_file(0)
+            self.generate_file_single_thread()
         else:
             with mp.Pool(
                     threads,
