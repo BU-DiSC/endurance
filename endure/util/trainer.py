@@ -125,7 +125,7 @@ class Trainer:
         }
         checkpoint_name = os.path.join(
             self.checkpoint_dir,
-            f'epoch_{epoch:02f}.checkpoint'
+            f'epoch_{epoch:02d}.checkpoint'
         )
         torch.save(save_pt, checkpoint_name)
 
