@@ -32,8 +32,6 @@ class ClassicTuner(nn.Module):
         self.size_ratio = nn.Sequential(
             nn.Linear(out_dim, size_ratio_range),
         )
-        self.sigmoid = nn.Sigmoid()
-
         self.layers = nn.Sequential(*modules)
 
     def forward(self, x, temp=0.1, hard=False) -> torch.Tensor:
@@ -44,7 +42,6 @@ class ClassicTuner(nn.Module):
             tau=temp,
             hard=hard
         )
-        size_ratio = self.sigmoid(size_ratio)
         h = self.bits(out)
 
         return torch.concat([h, size_ratio], dim=-1)
