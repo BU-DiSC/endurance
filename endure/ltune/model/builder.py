@@ -23,7 +23,7 @@ class LTuneModelBuilder:
     def build_model(self, choice: str = None) -> torch.nn.Module:
         if choice is None:
             choice = self._config['lsm']['design']
-        self.log.info(f'Building model: {choice}')
+
         model = self._models.get(choice, None)
         if model is None:
             self.log.warn('Invalid model architecture. Defaulting to KLSM')

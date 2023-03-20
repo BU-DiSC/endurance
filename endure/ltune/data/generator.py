@@ -49,3 +49,12 @@ class LTuneGenerator:
             row = self.generate_row_csv()
 
         return row
+
+    def generate_workloads(self, num_samples: int, seed: int = 0) -> list:
+        workloads = []
+        np.random.seed(0)
+        for _ in range(num_samples):
+            workloads.append(self._sample_workload(4))
+
+        return workloads
+

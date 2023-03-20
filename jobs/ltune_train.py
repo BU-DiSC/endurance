@@ -4,8 +4,8 @@ import torch
 import logging
 import toml
 
-from torch.utils.data import DataLoader
 import torch.optim as Opt
+from torch.utils.data import DataLoader
 
 from endure.ltune.data.dataset import LTuneIterableDataSet
 from endure.ltune.model.builder import LTuneModelBuilder
@@ -104,6 +104,7 @@ class LTuneTrainJob:
         return
 
     def _make_save_dir(self) -> str:
+        self.log.info(f'Saving model in: {self._setting["save_dir"]}')
         save_dir = os.path.join(
             self._config['io']['data_dir'],
             self._setting['save_dir'],

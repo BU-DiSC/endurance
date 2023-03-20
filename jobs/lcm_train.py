@@ -110,6 +110,7 @@ class LCMTrainJob:
         return
 
     def _make_save_dir(self) -> str:
+        self.log.info(f'Saving tuner in {self._setting["save_dir"]}')
         save_dir = os.path.join(
             self._config['io']['data_dir'],
             self._setting['save_dir'],

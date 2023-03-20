@@ -1,5 +1,6 @@
 import os
 import torch
+
 from endure.lcm.model.builder import LearnedCostModelBuilder
 
 
@@ -25,5 +26,6 @@ class LearnedCostModelLoss(torch.nn.Module):
         bpe = ((pred[:, 0] - 5) / 2.88).view(-1, 1)
         size_ratio = torch.argmax(pred[:, 1:], dim=-1).view(-1, 1)
         inputs = torch.concat([label, bpe, size_ratio], dim=-1)
+        out = self.model(inputs)
 
-        return self.model(inputs).sum(dim=-1).mean()
+        return out.sum(dim=-1).square().mean()
