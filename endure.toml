@@ -74,7 +74,7 @@ loss_fn = "RMSE"
 optimizer = "Adam"
 
 # Learning rate schedulers
-#   [CosineAnnealing, Constant, None]
+#   [CosineAnnealing, Exponential, Constant, None]
 lr_scheduler = "CosineAnnealing"
 
 [job.LCMTrain.train]
@@ -111,7 +111,7 @@ overwrite_if_exists = true
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
 max_epochs = 50
-save_dir = "models/level-tuner-03-15-v2"
+save_dir = "models/level-tuner-03-21-v1"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
@@ -121,8 +121,8 @@ loss_fn_path = "models/level-03-14-v1/best.model"
 optimizer = "Adam"
 
 # Learning rate schedulers
-#   [CosineAnnealing, Constant, None]
-lr_scheduler = "None"
+#   [CosineAnnealing, Exponential, Constant, None]
+lr_scheduler = "Exponential"
 
 [job.LTuneTrain.train]
 dir = "train-data/workload-parquet"
@@ -263,7 +263,7 @@ precision = 3
 # -----------------------------------------------------------------------------
 [ltune.model]
 in_dim = 4
-dropout = 0.2  # percentage for dropout during training
+dropout = 0.0  # percentage for dropout during training
 
 [ltune.model.classic]
 layer_size = 128
@@ -293,6 +293,9 @@ precision = 3
 [train.scheduler.CosineAnnealingLR]
 T_max = 10
 eta_min = 0  # minimum learning rate
+
+[train.scheduler.Exponential]
+gamma = 0.5
 
 [train.optimizer.Adam]
 lr = 0.001

@@ -9,9 +9,10 @@ import torch.optim as TorchOpt
 
 from endure.lcm.data.iterable_dataset import LCMIterableDataSet
 from endure.lcm.model.builder import LearnedCostModelBuilder
-from endure.util.trainer import Trainer
-from endure.util.optimizer import OptimizerBuilder
 from endure.util.losses import LossBuilder
+from endure.util.lr_scheduler import LRSchedulerBuilder
+from endure.util.optimizer import OptimizerBuilder
+from endure.util.trainer import Trainer
 
 
 class LCMTrainJob:
@@ -43,31 +44,14 @@ class LCMTrainJob:
 
         return builder.build_optimizer(choice, model)
 
-    def _build_cosine_anneal(
-        self,
-        optimizer: TorchOpt.Optimizer,
-    ) -> TorchOpt.lr_scheduler.CosineAnnealingLR:
-        return TorchOpt.lr_scheduler.CosineAnnealingLR(
-            optimizer,
-            **self._config['train']['scheduler']['CosineAnnealingLR'],)
-
     def _build_scheduler(
         self,
         optimizer: TorchOpt.Optimizer
     ) -> TorchOpt.lr_scheduler._LRScheduler:
-        schedules = {
-            'CosineAnnealing': self._build_cosine_anneal,
-            'None': None, }
+        builder = LRSchedulerBuilder(self._config)
         choice = self._setting['lr_scheduler']
-        schedule_builder = schedules.get(choice, -1)
-        if schedule_builder == -1:
-            self.log.warn('Invalid scheduler, defaulting to none')
-            return None
-        if schedule_builder is None:
-            return None
-        scheduler = schedule_builder(optimizer)
 
-        return scheduler
+        return builder.build_scheduler(optimizer, choice)
 
     def _build_train(self) -> DataLoader:
         train_dir = os.path.join(
