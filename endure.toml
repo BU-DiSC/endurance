@@ -263,9 +263,11 @@ precision = 3
 # -----------------------------------------------------------------------------
 [ltune.model]
 in_dim = 4
+dropout = 0.2  # percentage for dropout during training
 
 [ltune.model.classic]
-hidden_layers = 32
+layer_size = 128
+num_layers = 8
 
 [ltune.model.klsm]
 hidden_layers = 16
