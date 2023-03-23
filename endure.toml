@@ -48,7 +48,7 @@ generator = "LevelCost"
 dir = "test-data/tmp"
 file_prefix = "levelcost"
 num_workers = -1  # -1 forces all cores to be used
-num_files = 2
+num_files = 32
 samples = 262144  # per file sample
 overwrite_if_exists = true
 
@@ -111,23 +111,23 @@ overwrite_if_exists = true
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
 max_epochs = 50
-save_dir = "models/level-tuner-03-21-v1"
+save_dir = "models/level-tuner-03-23-v1"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
 loss_fn_path = "models/level-03-14-v1/best.model"
 
 # Check train.optimizer for available options
-optimizer = "Adam"
+optimizer = "SGD"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
-lr_scheduler = "Exponential"
+lr_scheduler = "Constant"
 
 [job.LTuneTrain.train]
 dir = "train-data/workload-parquet"
 format = "parquet"
-batch_size = 4096
+batch_size = 1024
 shuffle = true
 num_workers = 4
 drop_last = true
@@ -263,11 +263,11 @@ precision = 3
 # -----------------------------------------------------------------------------
 [ltune.model]
 in_dim = 4
-dropout = 0.0  # percentage for dropout during training
+dropout = 0.2  # percentage for dropout during training
 
 [ltune.model.classic]
-layer_size = 128
-num_layers = 8
+layer_size = 256
+num_layers = 16
 
 [ltune.model.klsm]
 hidden_layers = 16

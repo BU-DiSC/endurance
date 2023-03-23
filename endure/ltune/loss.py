@@ -28,4 +28,4 @@ class LearnedCostModelLoss(torch.nn.Module):
         inputs = torch.concat([label, bpe, size_ratio], dim=-1)
         out = self.model(inputs)
 
-        return out.sum(dim=-1).mean()
+        return out.sum(dim=-1).square().mean()

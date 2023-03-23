@@ -33,7 +33,7 @@ class OptimizerBuilder:
             'Adam': self._build_adam,
             'Adagrad': self._build_adagrad,
             'SGD': self._build_sgd, }
-        self.log.info(f'Using optimizer : {optimizer_choice}')
+
         opt_builder = optimizers.get(optimizer_choice, None)
         if opt_builder is None:
             self.log.warn('Invalid optimizer choice, defaulting to SGD')
