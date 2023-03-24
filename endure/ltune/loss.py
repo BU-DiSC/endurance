@@ -18,12 +18,19 @@ class LearnedCostModelLoss(torch.nn.Module):
         assert (len(status.missing_keys) == 0)
         assert (len(status.unexpected_keys) == 0)
 
+        bpe_max = config['lsm']['bits_per_elem']['max']
+        bpe_min = config['lsm']['bits_per_elem']['min']
+        self._bpe_mean = torch.nn.Parameter(
+                torch.Tensor([(bpe_max + bpe_min) / 2]))
+        self._bpe_std = torch.nn.Parameter(
+                torch.Tensor([(bpe_max - bpe_min)**2 / 12]))
+
     def forward(self, pred, label):
         # For learned cost model loss, pred is the DB configuration, label is
         # the workload
 
         # TODO normalize BPE by calculating mean and std from max/min
-        bpe = ((pred[:, 0] - 5) / 2.88).view(-1, 1)
+        bpe = ((pred[:, 0] - self._bpe_mean) / self._bpe_std).view(-1, 1)
         size_ratio = torch.argmax(pred[:, 1:], dim=-1).view(-1, 1)
         inputs = torch.concat([label, bpe, size_ratio], dim=-1)
         out = self.model(inputs)

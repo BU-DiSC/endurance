@@ -113,6 +113,8 @@ class LCMTrainJob:
         train_data = self._build_train()
         test_data = self._build_test()
         loss_fn = self._build_loss_fn()
+        disable_tqdm = self.log.level == logging.DEBUG
+        self.log.info(f'{self.log.level=}')
 
         trainer = Trainer(
             log=self.log,
@@ -125,6 +127,7 @@ class LCMTrainJob:
             max_epochs=self._setting['max_epochs'],
             use_gpu_if_avail=self._setting['use_gpu_if_avail'],
             base_dir=model_base_dir,
+            disable_tqdm=disable_tqdm,
         )
         trainer.run()
 

@@ -21,6 +21,9 @@ class Trainer:
         max_epochs: Optional[int] = 10,
         base_dir: Optional[str] = './',
         use_gpu_if_avail: Optional[bool] = False,
+        model_train_kwargs: Optional[dict] = None,
+        model_test_kwargs: Optional[dict] = None,
+        disable_tqdm: Optional[bool] = False,
     ) -> None:
         self.log = log
         self.model = model
@@ -34,10 +37,17 @@ class Trainer:
         self.base_dir = base_dir
         self.use_gpu_if_avail = use_gpu_if_avail
         self.checkpoint_dir = os.path.join(self.base_dir, 'checkpoints')
+        self.disable_tqdm = disable_tqdm
         os.makedirs(self.checkpoint_dir, exist_ok=True)
 
         self._early_stop_ticks = 0
         self._move_to_available_device()
+        self.model_train_kwargs = model_train_kwargs
+        if self.model_train_kwargs is None:
+            self.model_train_kwargs = {}
+        self.model_test_kwargs = model_test_kwargs
+        if self.model_test_kwargs is None:
+            self.model_test_kwargs = {}
 
     def _move_to_available_device(self) -> None:
         self.device = torch.device('cpu')
@@ -58,7 +68,7 @@ class Trainer:
         label = label.to(self.device)
         features = features.to(self.device)
         self.optimizer.zero_grad()
-        pred = self.model(features)
+        pred = self.model(features, **self.model_train_kwargs)
         loss = self.loss_fn(pred, label)
         loss.backward()
         self.optimizer.step()
@@ -68,9 +78,10 @@ class Trainer:
     def _train_loop(self) -> float:
         self.model.train()
         if self.train_len == 0:
-            pbar = tqdm(self.train_data, ncols=80)
+            pbar = tqdm(self.train_data, ncols=80, disable=self.disable_tqdm)
         else:
-            pbar = tqdm(self.train_data, ncols=80, total=self.train_len)
+            pbar = tqdm(self.train_data, ncols=80, total=self.train_len,
+                        disable=self.disable_tqdm)
 
         total_loss = 0
         for batch, (labels, features) in enumerate(pbar):
@@ -80,6 +91,9 @@ class Trainer:
             total_loss += loss
             if self.scheduler is not None:
                 self.scheduler.step()
+            if (self.log.level == logging.DEBUG) and (batch % (100) == 0):
+                param = self.model.parameters()[1]
+                self.log.debug(f'{param.grad.sum()=}')
 
         if self.train_len == 0:
             self.train_len = batch + 1
@@ -94,7 +108,7 @@ class Trainer:
         with torch.no_grad():
             labels = labels.to(self.device)
             features = features.to(self.device)
-            pred = self.model(features)
+            pred = self.model(features, **self.model_test_kwargs)
             test_loss = self.loss_fn(pred, labels).item()
 
         return test_loss
@@ -103,10 +117,12 @@ class Trainer:
         self.model.eval()
         test_loss = 0
         if self.test_len == 0:
-            pbar = tqdm(self.test_data, desc='testing', ncols=80)
+            pbar = tqdm(self.test_data, desc='testing', ncols=80,
+                        disable=self.disable_tqdm)
         else:
             pbar = tqdm(self.test_data, desc='testing',
-                        ncols=80, total=self.test_len)
+                        ncols=80, total=self.test_len,
+                        disable=self.disable_tqdm)
         for batch, (labels, features) in enumerate(pbar):
             test_loss += self._test_step(labels, features)
 

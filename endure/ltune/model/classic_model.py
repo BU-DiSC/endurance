@@ -14,6 +14,10 @@ class ClassicTuner(nn.Module):
         hidden_dim = self.params['layer_size']
         modules = []
 
+        # Normalize layer
+        if self.params['normalize_layer']:
+            modules.append(nn.LayerNorm(in_dim))
+
         # First layer in
         modules.append(nn.Linear(in_dim, hidden_dim))
         nn.init.xavier_normal_(modules[-1].weight)
@@ -41,7 +45,7 @@ class ClassicTuner(nn.Module):
 
         self.layers = nn.Sequential(*modules)
 
-    def forward(self, x, temp=0.5, hard=False) -> torch.Tensor:
+    def forward(self, x, temp=0.1, hard=False) -> torch.Tensor:
         out = self.layers(x)
         size_ratio = self.size_ratio(out)
         size_ratio = nn.functional.gumbel_softmax(
