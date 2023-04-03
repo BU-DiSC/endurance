@@ -111,7 +111,7 @@ overwrite_if_exists = true
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
 max_epochs = 50
-save_dir = "models/level-tuner-03-23-v3"
+save_dir = "models/level-tuner-03-24-v1"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
@@ -122,7 +122,7 @@ optimizer = "Adam"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
-lr_scheduler = "Constant"
+lr_scheduler = "CosineAnnealing"
 
 [job.LTuneTrain.train]
 dir = "train-data/workload-parquet"
@@ -263,7 +263,7 @@ precision = 3
 # -----------------------------------------------------------------------------
 [ltune.model]
 in_dim = 4
-dropout = 0.3  # percentage for dropout during training
+dropout = 0.1  # percentage for dropout during training
 
 # kwargs specific to LTune models during forward pass
 [ltune.model.train_kwargs]

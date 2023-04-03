@@ -57,4 +57,3 @@ class LTuneGenerator:
             workloads.append(self._sample_workload(4))
 
         return workloads
-
