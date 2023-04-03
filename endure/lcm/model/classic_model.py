@@ -1,9 +1,10 @@
 import torch
 from torch import nn
+from typing import Union
 
 
 class ClassicModel(nn.Module):
-    def __init__(self, config):
+    def __init__(self, config: dict[str, Union[dict, int]]):
         super().__init__()
         self.params = config['lcm']['model']['classic']
 
