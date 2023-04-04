@@ -1,6 +1,21 @@
 import torch
 
 
+class LossBuilder():
+    @staticmethod
+    def build(choice):
+        losses = {
+            'MSLE': MSLELoss,
+            'NMSE': NMSELoss,
+            'RMSLE': RMSLELoss,
+            'RMSE': RMSELoss,
+            'MSE': torch.nn.MSELoss,
+        }
+        loss = losses.get(choice, None)
+
+        return loss()
+
+
 class MSLELoss(torch.nn.Module):
     def __init__(self):
         super().__init__()

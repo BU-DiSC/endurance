@@ -1,11 +1,12 @@
 import torch
 from torch import nn
+from typing import Union
 
 
-class TierLevelCost(nn.Module):
-    def __init__(self, config):
+class ClassicModel(nn.Module):
+    def __init__(self, config: dict[str, Union[dict, int]]):
         super().__init__()
-        self.params = config['model']
+        self.params = config['lcm']['model']['classic']
 
         self.embedding = nn.Embedding(
                 num_embeddings=config['lsm']['size_ratio']['max'],

@@ -8,11 +8,6 @@
 # =============================================================================
 [app]
 name = "ENDURE"
-jobs = [
-    # 'DataGen',
-    # 'Train',
-    # 'CreateTunings',
-]
 
 # =============================================================================
 # HEADER LOGGER
@@ -32,78 +27,37 @@ level = "INFO"
 data_dir = "/data"
 
 # =============================================================================
-# HEADER LSM
-#   Bounds for searching the LSM space
+# HEADER JOB
+#   Settings for each individual job (executable)
 # =============================================================================
-[lsm]
-max_levels = 16
+[job]
+to_run = [
+    # "LCMDataGen",
+    # "LCMTrain",
+    # "LTuneDataGen",
+    "LTuneTrain",
+    # TODO: "CreateTunings",
+    # TODO: "RunExperiments",
+]
 
-[lsm.size_ratio]
-max = 50
-min = 2
-
-[lsm.bits_per_elem]
-max = 9.5
-min = 0
-
-# =============================================================================
-# HEADER DATAGEN
-#   Generating data to be used for learning
-# =============================================================================
-[data]
-# h, z0, z1, q, w
-mean_bias = [4.75, 0.5, 0.5, 0.5, 0.5]
-std_bias =  [2.74, 0.3, 0.3, 0.3, 0.3]
-
-[data.gen]
-format = 'parquet'
-generator = 'QCost'
-dir = 'train-data/qcost-parquet'
-file_prefix = 'qcost'
+# -----------------------------------------------------------------------------
+[job.LCMDataGen]
+# -----------------------------------------------------------------------------
+format = "parquet"
+generator = "LevelCost"
+dir = "test-data/tmp"
+file_prefix = "levelcost"
 num_workers = -1  # -1 forces all cores to be used
-num_files = 16
-precision = 3
+num_files = 32
 samples = 262144  # per file sample
+overwrite_if_exists = true
 
-# =============================================================================
-# HEADER MODEL
-#   Configuration parameters for creating, training, and validating a model
-# =============================================================================
-[model]
-# Architecture to pick
-#   QCost - all levels same hold the same max files per level
-#   KCost - multiple different max files per level
-#   TierLevelCost - specifically for tiering and leveling
-arch = "QCost"
-
-# Name to save the model
-dir = 'qcost-11-19'
-out_dims = 4  # should match cost function output (z0, z1, q, h)
-
-# Number of continuous variables the NN will take, referring to bits per
-# element, workload, etc
-num_cont_vars = 5
-
-# Number of categorical variables we will need to encode, referring to size
-# ratios and number of files per level (if using that cost-model)
-num_cate_vars = 2
-
-# Hidden layers between the continous inputs + embedding to output
-hidden_layers = 16
-
-# Size of our cateogrical variable embedding, our overall cost-model network
-# input will be
-#   num_cont_vars + (num_cate_vars * embedding_size)
-# As each categorical variable will be embedded down to size `embedding_size`
-embedding_size = 16
-
-
-[train]
-batch_size = 4096
-shuffle = true
-drop_last = true  # drop last if unable to make full batch
-max_epochs = 50
-use_gpu_if_avail = true  # if gpu is avail, use for training
+# -----------------------------------------------------------------------------
+[job.LCMTrain]
+# -----------------------------------------------------------------------------
+max_epochs = 40
+save_dir = "models/level-03-23-v1"
+use_gpu_if_avail = true
 
 # Different loss functions to train via
 #   MSE - Mean squared error
@@ -111,60 +65,107 @@ use_gpu_if_avail = true  # if gpu is avail, use for training
 #   MSLE - Mean squared log error
 #   RMSE - Root mean square error
 #   RMSLE - Root mean squared log error
-loss_fn = 'MSLE'
+loss_fn = "RMSE"
 
-# List of optimizers supported
+# Supported optimizers
 #   SGD - Stochastic gradient descent
 #   Adam
-optimizer = 'SGD'
+#   Adagrad
+optimizer = "Adam"
 
 # Learning rate schedulers
-#   CosineAnnealing
-#   None - Will keep learning rate constant without any decay
-lr_scheduler = 'CosineAnnealing'
-learning_rate = 0.0001
+#   [CosineAnnealing, Exponential, Constant, None]
+lr_scheduler = "CosineAnnealing"
 
-# If decided to use cosine annealing, all settings will be taken from this dict
-# refer to pytorch docs for keywords as this dictionary will be passed by kwargs
-# https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.CosineAnnealingLR.html
-[train.scheduler.CosineAnnealingLR]
-T_max = 10
-eta_min = 0  # minimum learning rate
-
-# Early stopping will count the number of occurances where non improvement
-# happens and stop once we hit a certain threshold
-[train.early_stop]
-enabled = false
-threshold = 10  # number of non improvements to stop
-epsilon = 1e-6  # delta that counts as non improvement
-
-[train.data]
-num_workers = 4
-dir = "train-data/qcost-parquet"
-use_dp = false  # use datapipe (streamed) or dataset (legacy)
-# Format of the file to use
-#   csv
-#   parquet
-format = 'parquet'
-
-[test]
+[job.LCMTrain.train]
+dir = "train-data/levelcost-parquet"
+format = "parquet"
 batch_size = 8192
+shuffle = true
+num_workers = 4
 drop_last = true
-shuffle = false
-
-[test.data]
-num_workers = 2
-dir = "test-data/qcost-parquet"
 use_dp = false
-format = 'parquet'
+
+[job.LCMTrain.test]
+dir = "test-data/levelcost-parquet"
+format = "parquet"
+batch_size = 262114
+shuffle = false
+num_workers = 2
+drop_last = true
+use_dp = false
+
+# -----------------------------------------------------------------------------
+[job.LTuneDataGen]
+# -----------------------------------------------------------------------------
+format = "parquet"
+generator = "default"
+dir = "train-data/workload-parquet"
+file_prefix = "workload"
+num_workers = -1  # -1 forces all cores to be used
+num_files = 512
+samples = 262144  # per file sample
+overwrite_if_exists = true
+
+# -----------------------------------------------------------------------------
+[job.LTuneTrain]
+# -----------------------------------------------------------------------------
+max_epochs = 50
+save_dir = "models/level-tuner-03-24-v1"
+use_gpu_if_avail = true
+
+# Learned cost model is our loss, input full path to checkpoint or model file
+loss_fn_path = "models/level-03-14-v1/best.model"
+
+# Check train.optimizer for available options
+optimizer = "Adam"
+
+# Learning rate schedulers
+#   [CosineAnnealing, Exponential, Constant, None]
+lr_scheduler = "CosineAnnealing"
+
+[job.LTuneTrain.train]
+dir = "train-data/workload-parquet"
+format = "parquet"
+batch_size = 8192
+shuffle = true
+num_workers = 6
+drop_last = true
+use_dp = false
+
+[job.LTuneTrain.test]
+dir = "test-data/workload-parquet"
+format = "parquet"
+batch_size = 262114
+shuffle = false
+num_workers = 1
+drop_last = true
+use_dp = false
 
 # =============================================================================
-# HEADER SYSTEM
-#   System settings encapsulate physical components of the machine you're
-#   expecting to run your LSM tree on, and additionally starting budgets and
-#   number of element.
+# HEADER LSM
+#   Generic LSM settings including maximum bounds, system settings, starting
+#   budget for memory, number of elements, etc
 # =============================================================================
-[system]
+[lsm]
+# Design will effect everything else down stream (e.g. choice of neural network
+# architecture for learned cost model)
+#   Level
+#   Tier
+#   KLSM
+#   QLSM
+design = 'Level'
+max_levels = 20
+
+[lsm.size_ratio]
+max = 50
+min = 2
+
+[lsm.bits_per_elem]
+max = 9.9
+min = 0
+
+[lsm.system]
 # Number of physical entries per page
 B = 4
 
@@ -175,18 +176,143 @@ phi = 1
 # Range query selectivity, 0 implies the key range per range query would roughly
 # fit into 1 page. Selectivity 1 implies range queries will always query the
 # full key possible range
-s = 0.00
+s = 0.000000001
 
-# Size of a single entry in bytes
-E = 1024
+# Size of a single entry in bits
+E = 8192
 
 # Memory budget in terms of bits per element, this combined with number of
 # elements (N) will get you roughly the expected total memory we are allocating
 # between bloom filter memory and buffer memory
 H = 10
+# Can use ttotal memory instead of bits per element to budget, set M to -1 to
+# use H as it will take priority
+# M = 8589934592
+M = -1
 
 # Total number of elements our LSM tree will start off with
-N = 100000000
+N = 1000000000
+# N = 8589934592
+
+# =============================================================================
+# HEADER LCM
+#   Add configurations related to learned cost models
+# =============================================================================
+[lcm]
+
+# -----------------------------------------------------------------------------
+# HEADER LCM.MODELS
+#   Configuration for specific models
+# -----------------------------------------------------------------------------
+[lcm.model.classic]
+out_dims = 4  # should match cost function output (z0, z1, q, w)
+hidden_layers = 16
+
+# Number of continuous variables the NN will take, referring to bits per
+# element, workload, etc
+num_cont_vars = 5
+
+# Size of our cateogrical variable embedding, our overall cost-model network
+# input will be
+#   num_cont_vars + (num_cate_vars * embedding_size)
+# As each categorical variable will be embedded down to size `embedding_size`
+embedding_size = 32
+
+[lcm.model.flexible]
+out_dims = 4  # should match cost function output (z0, z1, q, h)
+
+# Number of continuous variables the NN will take, referring to bits per
+# element, workload, etc
+num_cont_vars = 5
+
+# Number of categorical variables we will need to encode, referring to size
+# ratios and number of files per level
+num_cate_vars = 2
+
+# Hidden layers between the continous inputs + embedding to output
+hidden_layers = 16
+# Size of our cateogrical variable embedding, our overall cost-model network
+# input will be
+#   num_cont_vars + (num_cate_vars * embedding_size)
+# As each categorical variable will be embedded down to size `embedding_size`
+embedding_size = 16
+
+# -----------------------------------------------------------------------------
+# HEADER LCM.DATA
+#   misc settings on data such as bias, precision, etc
+# -----------------------------------------------------------------------------
+[lcm.data]
+# z0, z1, q, w, h
+mean_bias = [0.5, 0.5, 0.5, 0.5, 5.0]
+std_bias =  [0.3, 0.3, 0.3, 0.3, 2.88]
+precision = 3
+
+# =============================================================================
+# END LCM
+# =============================================================================
+
+# =============================================================================
+# HEADER LTUNE
+#   Learned tuner module
+# =============================================================================
+[ltune]
+
+# -----------------------------------------------------------------------------
+# HEADER LTUNE.MODEL
+#   Model configurations
+# -----------------------------------------------------------------------------
+[ltune.model]
+in_dim = 4
+dropout = 0.1  # percentage for dropout during training
+
+# kwargs specific to LTune models during forward pass
+[ltune.model.train_kwargs]
+temp = 0.1
+
+[ltune.model.test_kwargs]
+hard = true
+
+[ltune.model.classic]
+normalize_layer = true
+layer_size = 1024
+num_layers = 4
+
+[ltune.model.klsm]
+hidden_layers = 16
+
+# -----------------------------------------------------------------------------
+# HEADER LTUNE.DATA
+#   Misc data items
+# -----------------------------------------------------------------------------
+[ltune.data]
+# z0, z1, q, w
+mean_bias = [0.5, 0.5, 0.5, 0.5]
+std_bias = [0.3, 0.3, 0.3, 0.3]
+precision = 3
+
+# =============================================================================
+# END LTUNE
+# =============================================================================
+
+# =============================================================================
+# HEADER TRAIN
+#   Generic settings for training options like optiimzers and schedulers
+# =============================================================================
+[train.scheduler.CosineAnnealingLR]
+T_max = 10
+eta_min = 0  # minimum learning rate
+
+[train.scheduler.Exponential]
+gamma = 0.5
+
+[train.optimizer.Adam]
+lr = 0.001
+
+[train.optimizer.SGD]
+lr = 0.001
+
+[train.optimizer.Adagrad]
+lr = 0.001
 
 # =============================================================================
 # HEADER CREATETUNING
@@ -200,7 +326,7 @@ N = 100000000
 #   TierCost - Traditional model fixed to tiering policy
 #   LevelCost - Traditional model fixed to leveling policy
 #   TierLevelCost - Model will solve both and pick the lowest of the two
-cost_model = 'YZCost'
+cost_model = "LevelCost"
 
 [tunings.rho]
 # Range of rhos we want to search over over
