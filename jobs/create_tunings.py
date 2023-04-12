@@ -31,8 +31,7 @@ class CreateTuningsJob:
             'QCost': Solvers.EndureQSolver(self.config),
             'TierCost': Solvers.EndureTierSolver(self.config),
             'LevelCost': Solvers.EndureLevelSolver(self.config),
-            'TierLevelCost': Solvers.EndureTierLevelSolver(self.config)
-        }
+            'TierLevelCost': Solvers.EndureTierLevelSolver(self.config)}
         solver = choices.get(choice, None)
         if solver is None:
             self.log.error('Invalid cost model choice. '

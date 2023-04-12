@@ -34,7 +34,7 @@ class EndureDriver:
 
         for job_name in jobs_list:
             job = jobs.get(job_name, None)
-            if (None):
+            if job is None:
                 self.log.warn(f'No job associated with {job_name}')
                 continue
             job = job(config)

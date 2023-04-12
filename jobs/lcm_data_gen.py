@@ -24,15 +24,16 @@ class LCMDataGenJob:
     def _choose_generator(self) -> Generators.LCMDataGenerator:
         choice = self.setting['generator']
         generators = {
-            'TierCost': Generators.TierGenerator(self.config),
-            'LevelCost': Generators.LevelGenerator(self.config),
-            'QCost': Generators.QCostGenerator(self.config),
-            'KHybridCost': Generators.KHybridGenerator(self.config)}
+            'TierCost': Generators.TierGenerator,
+            'LevelCost': Generators.LevelGenerator,
+            'QCost': Generators.QCostGenerator,
+            'KHybridCost': Generators.KHybridGenerator}
         generator = generators.get(choice, None)
         if generator is None:
             self.log.error('Invalid generator choice. '
                            'Defaulting to KHybridCost')
-            generator = Generators.KHybridGenerator(self.config)
+            generator = generators.get('KHybridCost')
+        generator = generator(self.config)
         return generator
 
     def generate_csv_file(self, generator, idx: int, pos: int) -> int:

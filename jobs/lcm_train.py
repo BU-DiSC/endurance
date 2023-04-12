@@ -3,6 +3,7 @@ import logging
 import os
 import toml
 import torch
+from typing import Any
 
 from torch.utils.data import DataLoader
 import torch.optim as TorchOpt
@@ -16,7 +17,7 @@ from endure.util.trainer import Trainer
 
 
 class LCMTrainJob:
-    def __init__(self, config: dict[str, ...]) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         self._config = config
         self._setting = config['job']['LCMTrain']
         self.log = logging.getLogger(self._config['log']['name'])

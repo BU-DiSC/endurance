@@ -2,6 +2,7 @@ import os
 import logging
 import glob
 import torch
+import torch.utils.data
 import numpy as np
 import pandas as pd
 import pyarrow.parquet as pa
@@ -19,7 +20,7 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
         self._fnames = glob.glob(os.path.join(folder, '*.' + format))
         self._shuffle = shuffle
 
-    def _get_input_cols(self):
+    def _get_input_cols(self) -> list[str]:
         base = ['z0', 'z1', 'q', 'w', 'h', 'T']
         choices = {
             'KLSM': [f'K_{i}'
@@ -29,21 +30,24 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
             'QLSM': ['Q'],
         }
         extension = choices.get(self._config['lsm']['design'], None)
-        if extension is None:
+        if extension is not None:
+            input_cols = base + extension
+        else:
             self.log.warn('Invalid design defaulting to Level')
-            extension = choices.get('Level')
+            input_cols = base
 
-        return base + extension
+        return input_cols
 
-    def _load_data(self, fname):
+    def _load_data(self, fname) -> pd.DataFrame:
         if self._format == 'parquet':
             df = pa.read_table(fname).to_pandas()
         else:  # default csv
             df = pd.read_csv(fname)
+        df = self._process_df(df)
 
-        return self._process_df(df)
+        return df
 
-    def _process_df(self, df):
+    def _process_df(self, df: pd.DataFrame) -> pd.DataFrame:
         df[['z0', 'z1', 'q', 'w', 'h']] -= self._mean
         df[['z0', 'z1', 'q', 'w', 'h']] /= self._std
         df['T'] = df['T'] - self._config['lsm']['size_ratio']['min']
