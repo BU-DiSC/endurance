@@ -204,13 +204,20 @@ N = 1000000000
 # HEADER LCM.MODELS
 #   Configuration for specific models
 # -----------------------------------------------------------------------------
+[lcm.model]
+dropout = 0.1
+
 [lcm.model.classic]
-out_dims = 4  # should match cost function output (z0, z1, q, w)
-hidden_layers = 16
+out_dim = 4  # should match cost function output (z0, z1, q, w)
+num_layers = 4
+layer_size = 256
+
+# None, Layer, Batch
+normalize = 'Batch'
 
 # Number of continuous variables the NN will take, referring to bits per
 # element, workload, etc
-num_cont_vars = 5
+num_cont_vars = 10
 
 # Size of our cateogrical variable embedding, our overall cost-model network
 # input will be

@@ -37,6 +37,10 @@ class LCMDataGenerator:
         return self._config['lsm']['system']['B']
         # return np.random.randint(low=2, high=512)
 
+    def _sample_selectivity(self) -> int:
+        return self._config['lsm']['system']['s']
+        # return np.random.random()
+
     def _sample_entry_size(self) -> int:
         return self._config['lsm']['system']['E']
         # return np.random.randint(low=1024, high=8192)
@@ -48,10 +52,6 @@ class LCMDataGenerator:
     def _sample_total_elements(self) -> int:
         return self._config['lsm']['system']['N']
         # return np.random.randint(low=10000000, high=1000000000)
-
-    def _sample_selectivity(self) -> int:
-        return self._config['lsm']['system']['s']
-        # return np.random.random()
 
     def _gen_system_header(self) -> list:
         return ['B', 's', 'E', 'H', 'N']
@@ -186,8 +186,10 @@ class KHybridGenerator(LCMDataGenerator):
         K = random.sample(self._gen_k_levels(levels, T - 1), 1)[0]
         K = np.pad(K, (0, self._config['lsm']['max_levels'] - len(K)))
 
-        line = [z0 * self.cf.Z0(h, T, K), z1 * self.cf.Z1(h, T, K),
-                q * self.cf.Q(h, T, K), w * self.cf.W(h, T, K),
+        line = [z0 * self.cf.Z0(h, T, K),
+                z1 * self.cf.Z1(h, T, K),
+                q * self.cf.Q(h, T, K),
+                w * self.cf.W(h, T, K),
                 z0, z1, q, w,
                 B, s, E, H, N,
                 h, T]

@@ -1,9 +1,10 @@
 import torch
 from torch import nn
+from typing import Any
 
 
 class ClassicTuner(nn.Module):
-    def __init__(self, config: dict[str, ...]):
+    def __init__(self, config: dict[str, Any]):
         super().__init__()
         self.params = config['ltune']['model']['classic']
         size_ratio_range = (config['lsm']['size_ratio']['max']

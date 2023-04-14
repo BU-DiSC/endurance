@@ -1,11 +1,11 @@
-import os
-import logging
 import glob
-import torch
-import torch.utils.data
+import logging
 import numpy as np
+import os
 import pandas as pd
 import pyarrow.parquet as pa
+import torch
+import torch.utils.data
 
 
 class LCMIterableDataSet(torch.utils.data.IterableDataset):
@@ -21,7 +21,7 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
         self._shuffle = shuffle
 
     def _get_input_cols(self) -> list[str]:
-        base = ['z0', 'z1', 'q', 'w', 'h', 'T']
+        base = ['z0', 'z1', 'q', 'w', 'B', 's', 'E', 'H', 'N', 'h', 'T']
         choices = {
             'KLSM': [f'K_{i}'
                      for i in range(self._config['lsm']['max_levels'])],
@@ -51,6 +51,7 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
         df[['z0', 'z1', 'q', 'w', 'h']] -= self._mean
         df[['z0', 'z1', 'q', 'w', 'h']] /= self._std
         df['T'] = df['T'] - self._config['lsm']['size_ratio']['min']
+        df[['B', 's', 'E', 'H', 'N']] -= df[['B', 's', 'E', 'H', 'N']].mean()
 
         if self._config['lsm']['design'] == 'QLSM':
             df['Q'] -= (self._config['lsm']['size_ratio']['min'] - 1)
@@ -73,6 +74,8 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
         if worker_info is None:
             files = self._fnames
         else:
+            if self._shuffle:
+                np.random.shuffle(self._fnames)
             file_bins = np.array_split(self._fnames, worker_info.num_workers)
             files = file_bins[worker_info.id]
             if self._shuffle:
@@ -81,6 +84,9 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
             df = self._load_data(file)
             labels = torch.from_numpy(df[self._label_cols].values).float()
             inputs = torch.from_numpy(df[self._input_cols].values).float()
-            for label, input in zip(labels, inputs):
-                yield label, input
+            indices = list(range(len(labels)))
+            if self._shuffle:
+                np.random.shuffle(indices)
+            for idx in indices:
+                yield labels[idx], inputs[idx]
             del df  # attempt to release dataframe memory
