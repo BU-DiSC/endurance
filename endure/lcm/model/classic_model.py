@@ -21,6 +21,7 @@ class ClassicModel(nn.Module):
             modules.append(nn.LayerNorm(in_dim))
         elif self.params['normalize'] == 'Batch':
             modules.append(nn.BatchNorm1d(in_dim))
+        # else no normalization layer
 
         modules.append(nn.Linear(in_dim, hidden_dim))
         nn.init.xavier_normal_(modules[-1].weight)

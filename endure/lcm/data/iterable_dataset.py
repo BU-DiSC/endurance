@@ -43,16 +43,22 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
             df = pa.read_table(fname).to_pandas()
         else:  # default csv
             df = pd.read_csv(fname)
-        df = self._process_df(df)
+
+        df = self._sanitize_df(df)
+        if self._config['lcm']['data']['normalize_inputs']:
+            df = self._normalize_df(df)
 
         return df
 
-    def _process_df(self, df: pd.DataFrame) -> pd.DataFrame:
+    def _normalize_df(self, df: pd.DataFrame) -> pd.DataFrame:
         df[['z0', 'z1', 'q', 'w', 'h']] -= self._mean
         df[['z0', 'z1', 'q', 'w', 'h']] /= self._std
-        df['T'] = df['T'] - self._config['lsm']['size_ratio']['min']
         df[['B', 's', 'E', 'H', 'N']] -= df[['B', 's', 'E', 'H', 'N']].mean()
 
+        return df
+
+    def _sanitize_df(self, df: pd.DataFrame) -> pd.DataFrame:
+        df['T'] = df['T'] - self._config['lsm']['size_ratio']['min']
         if self._config['lsm']['design'] == 'QLSM':
             df['Q'] -= (self._config['lsm']['size_ratio']['min'] - 1)
         elif self._config['lsm']['design'] == 'KLSM':
