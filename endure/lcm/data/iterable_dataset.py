@@ -84,8 +84,8 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
                 np.random.shuffle(self._fnames)
             file_bins = np.array_split(self._fnames, worker_info.num_workers)
             files = file_bins[worker_info.id]
-            if self._shuffle:
-                np.random.shuffle(files)
+        if self._shuffle:
+            np.random.shuffle(files)
         for file in files:
             df = self._load_data(file)
             labels = torch.from_numpy(df[self._label_cols].values).float()

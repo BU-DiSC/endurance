@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 import random
-from typing import Union
+from typing import Union, Optional
 from itertools import combinations_with_replacement
 
 import endure.lsm.cost_model as CostFunc
@@ -17,8 +17,9 @@ class LCMDataGenerator:
         return np.random.randint(low=self._config['lsm']['size_ratio']['min'],
                                  high=self._config['lsm']['size_ratio']['max'])
 
-    def _sample_bloom_filter_bits(self) -> float:
-        max = self._config['lsm']['bits_per_elem']['max']
+    def _sample_bloom_filter_bits(self, max: Optional[float] = None) -> float:
+        if max is None:
+            max = self._config['lsm']['bits_per_elem']['max']
         min = self._config['lsm']['bits_per_elem']['min']
         sample = (max - min) * np.random.rand() + min
         return np.around(sample, self._config['lcm']['data']['precision'])
@@ -37,21 +38,32 @@ class LCMDataGenerator:
         return self._config['lsm']['system']['B']
         # return np.random.randint(low=2, high=512)
 
-    def _sample_selectivity(self) -> int:
+    def _sample_selectivity(self) -> float:
         return self._config['lsm']['system']['s']
         # return np.random.random()
 
     def _sample_entry_size(self) -> int:
-        return self._config['lsm']['system']['E']
-        # return np.random.randint(low=1024, high=8192)
+        # return self._config['lsm']['system']['E']
+        return np.random.choice([1024, 2048, 4096, 8192])
 
-    def _sample_memory_budget(self) -> int:
+    def _sample_memory_budget(self) -> float:
         return self._config['lsm']['system']['H']
         # return np.random.randint(low=10, high=20)
 
     def _sample_total_elements(self) -> int:
         return self._config['lsm']['system']['N']
         # return np.random.randint(low=10000000, high=1000000000)
+
+    def _sample_valid_system(self) -> list[int]:
+        T = self._sample_size_ratio()
+        h = self._sample_bloom_filter_bits()
+        B = self._sample_entry_per_page()
+        s = self._sample_selectivity()
+        E = self._sample_entry_size()
+        H = self._sample_memory_budget()
+        N = self._sample_total_elements()
+
+        return (B, s, E, H, N, h, T)
 
     def _gen_system_header(self) -> list:
         return ['B', 's', 'E', 'H', 'N']
