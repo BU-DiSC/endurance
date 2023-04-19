@@ -1,6 +1,7 @@
 import logging
 import numpy as np
 import random
+from copy import deepcopy
 from typing import Union, Optional
 from itertools import combinations_with_replacement
 
@@ -34,34 +35,37 @@ class LCMDataGenerator:
 
     # TODO: Will want to configure environment to simulate larger ranges over
     # potential system values
-    def _sample_entry_per_page(self) -> int:
-        return self._config['lsm']['system']['B']
-        # return np.random.randint(low=2, high=512)
+    def _sample_entry_per_page(self, entry_size: int = 8192) -> int:
+        # Potential page sizes are 4KB, 8KB, 16KB
+        KB_TO_BITS = (8 * 1024)
+        entries_per_page = (np.array([4, 8, 16]) * KB_TO_BITS) / entry_size
+        return np.random.choice(entries_per_page)
 
     def _sample_selectivity(self) -> float:
-        return self._config['lsm']['system']['s']
-        # return np.random.random()
+        low, high = (1e-6, 1e-7)
+        return (high - low) * np.random.rand() + low
 
     def _sample_entry_size(self) -> int:
-        # return self._config['lsm']['system']['E']
         return np.random.choice([1024, 2048, 4096, 8192])
 
     def _sample_memory_budget(self) -> float:
-        return self._config['lsm']['system']['H']
-        # return np.random.randint(low=10, high=20)
+        low, high = (5, 20)
+        return (high - low) * np.random.rand() + low
 
     def _sample_total_elements(self) -> int:
-        return self._config['lsm']['system']['N']
-        # return np.random.randint(low=10000000, high=1000000000)
+        return np.random.randint(low=100000000, high=1000000000)
 
-    def _sample_valid_system(self) -> list[int]:
-        T = self._sample_size_ratio()
-        h = self._sample_bloom_filter_bits()
-        B = self._sample_entry_per_page()
-        s = self._sample_selectivity()
+    def _sample_valid_config(self) -> tuple:
+        EPSILON = 0.1
         E = self._sample_entry_size()
+        B = self._sample_entry_per_page(entry_size=E)
+        s = self._sample_selectivity()
         H = self._sample_memory_budget()
         N = self._sample_total_elements()
+
+        h = self._sample_bloom_filter_bits(max=(H - EPSILON))
+        T = self._sample_size_ratio()
+        self.log.debug(f'{B=}, {s=}, {E=}, {H=}, {N=}, {h=}, {T=}')
 
         return (B, s, E, H, N, h, T)
 
@@ -101,7 +105,6 @@ class LCMDataGenerator:
 class LevelGenerator(LCMDataGenerator):
     def __init__(self, config: dict):
         super().__init__(config)
-        self.cf = CostFunc.EndureLevelCost(config)
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
         system_header = self._gen_system_header()
@@ -113,18 +116,20 @@ class LevelGenerator(LCMDataGenerator):
 
     def generate_row_csv(self) -> list:
         z0, z1, q, w = self._sample_workload(4)
-        T = self._sample_size_ratio()
-        h = self._sample_bloom_filter_bits()
-        B = self._sample_entry_per_page()
-        s = self._sample_selectivity()
-        E = self._sample_entry_size()
-        H = self._sample_memory_budget()
-        N = self._sample_total_elements()
+        B, s, E, H, N, h, T = self._sample_valid_config()
 
-        line = [z0 * self.cf.Z0(h, T),
-                z1 * self.cf.Z1(h, T),
-                q * self.cf.Q(h, T),
-                w * self.cf.W(h, T),
+        config = deepcopy(self._config)
+        config['lsm']['system']['B'] = B
+        config['lsm']['system']['s'] = s
+        config['lsm']['system']['E'] = E
+        config['lsm']['system']['H'] = H
+        config['lsm']['system']['N'] = N
+        cf = CostFunc.EndureLevelCost(config)
+
+        line = [z0 * cf.Z0(h, T),
+                z1 * cf.Z1(h, T),
+                q * cf.Q(h, T),
+                w * cf.W(h, T),
                 z0, z1, q, w,
                 B, s, E, H, N,
                 h, T]
@@ -222,8 +227,9 @@ class QCostGenerator(LCMDataGenerator):
 
     def _sample_q(self) -> int:
         return np.random.randint(
-                low=self._config['lsm']['size_ratio']['min'] - 1,
-                high=self._config['lsm']['size_ratio']['max'] - 1,)
+            low=self._config['lsm']['size_ratio']['min'] - 1,
+            high=self._config['lsm']['size_ratio']['max'] - 1
+        )
 
     def generate_header(self) -> list:
         return self.header

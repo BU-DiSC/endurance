@@ -77,6 +77,9 @@ optimizer = "Adam"
 #   [CosineAnnealing, Exponential, Constant, None]
 lr_scheduler = "CosineAnnealing"
 
+# Stop checkpointing to improve training
+no_checkpoint = true
+
 [job.LCMTrain.train]
 dir = "train-data/levelcost-parquet"
 format = "parquet"

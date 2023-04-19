@@ -49,7 +49,8 @@ class LCMDataGenJob:
         with open(fpath, 'w') as fid:
             writer = csv.writer(fid)
             writer.writerow(header)
-            for _ in tqdm(samples, desc=fname, position=pos, ncols=80):
+            for _ in tqdm(samples, desc=fname, position=pos, ncols=80,
+                          disable=self.config['log']['disable_tqdm']):
                 row = generator.generate_row()
                 writer.writerow(row)
 
@@ -69,7 +70,8 @@ class LCMDataGenJob:
 
         samples = range(int(self.setting['samples']))
         table = []
-        for _ in tqdm(samples, desc=fname, position=pos, ncols=80):
+        for _ in tqdm(samples, desc=fname, position=pos, ncols=80,
+                      disable=self.config['log']['disable_tqdm']):
             table.append(generator.generate_row_parquet())
         table = pa.Table.from_pylist(table)
         pq.write_table(table, fpath)

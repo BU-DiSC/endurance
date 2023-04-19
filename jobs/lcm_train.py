@@ -129,6 +129,7 @@ class LCMTrainJob:
             use_gpu_if_avail=self._setting['use_gpu_if_avail'],
             base_dir=model_base_dir,
             disable_tqdm=disable_tqdm,
+            no_checkpoint=self._setting['no_checkpoint'],
         )
         trainer.run()
 

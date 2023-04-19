@@ -5,7 +5,7 @@ import torch
 
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
-from typing import Optional, Union
+from typing import Optional, Any, Iterable, Union
 
 
 class Trainer:
@@ -15,15 +15,16 @@ class Trainer:
         model: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         loss_fn: torch.nn.Module,
-        train_data: Union[DataLoader, Dataset],
-        test_data: Union[DataLoader, Dataset],
+        train_data: Iterable[Union[DataLoader, Dataset]],
+        test_data: Iterable[Union[DataLoader, Dataset]],
         scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
-        max_epochs: Optional[int] = 10,
-        base_dir: Optional[str] = './',
-        use_gpu_if_avail: Optional[bool] = False,
-        model_train_kwargs: Optional[dict] = None,
-        model_test_kwargs: Optional[dict] = None,
-        disable_tqdm: Optional[bool] = False,
+        max_epochs: int = 10,
+        base_dir: str = './',
+        use_gpu_if_avail: bool = False,
+        model_train_kwargs: dict[str, Any] = {},
+        model_test_kwargs: dict[str, Any] = {},
+        disable_tqdm: bool = False,
+        no_checkpoint: bool = False,
     ) -> None:
         self.log = log
         self.model = model
@@ -37,17 +38,14 @@ class Trainer:
         self.base_dir = base_dir
         self.use_gpu_if_avail = use_gpu_if_avail
         self.checkpoint_dir = os.path.join(self.base_dir, 'checkpoints')
+        self.no_checkpoint = no_checkpoint
         self.disable_tqdm = disable_tqdm
         os.makedirs(self.checkpoint_dir, exist_ok=True)
 
         self._early_stop_ticks = 0
         self._move_to_available_device()
         self.model_train_kwargs = model_train_kwargs
-        if self.model_train_kwargs is None:
-            self.model_train_kwargs = {}
         self.model_test_kwargs = model_test_kwargs
-        if self.model_test_kwargs is None:
-            self.model_test_kwargs = {}
 
     def _move_to_available_device(self) -> None:
         self.device = torch.device('cpu')
@@ -84,6 +82,7 @@ class Trainer:
                         disable=self.disable_tqdm)
 
         total_loss = 0
+        batch = 0
         for batch, (labels, features) in enumerate(pbar):
             loss = self._train_step(labels, features)
             if batch % (100) == 0:
@@ -91,20 +90,21 @@ class Trainer:
             total_loss += loss
             if self.scheduler is not None:
                 self.scheduler.step()
-            if (self.log.level == logging.DEBUG) and (batch % (100) == 0):
-                param = self.model.parameters()[1]
-                self.log.debug(f'{param.grad.sum()=}')
+            # if (self.log.level == logging.DEBUG) and (batch % (100) == 0):
+            #     param = self.model.parameters()[1]
+            #     self.log.debug(f'{param.grad.sum()=}')
 
         if self.train_len == 0:
             self.train_len = batch + 1
 
-        return total_loss.item() / self.train_len
+        return total_loss / self.train_len
 
     def _test_step(
         self,
         labels: torch.Tensor,
         features: torch.Tensor
     ) -> float:
+        assert self.model_test_kwargs is not None
         with torch.no_grad():
             labels = labels.to(self.device)
             features = features.to(self.device)
@@ -123,6 +123,7 @@ class Trainer:
             pbar = tqdm(self.test_data, desc='testing',
                         ncols=80, total=self.test_len,
                         disable=self.disable_tqdm)
+        batch = 0
         for batch, (labels, features) in enumerate(pbar):
             test_loss += self._test_step(labels, features)
 
@@ -133,6 +134,9 @@ class Trainer:
         return test_loss
 
     def _checkpoint(self, epoch: int, loss) -> None:
+        if self.no_checkpoint:
+            return
+
         save_pt = {
             'epoch': epoch,
             'model_state_dict': self.model.state_dict(),
