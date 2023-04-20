@@ -14,33 +14,34 @@ class EndureDriver:
     def __init__(self, config):
         self.config = config
 
-        logging.basicConfig(format=config['log']['format'],
-                            datefmt=config['log']['datefmt'])
-
-        self.log = logging.getLogger(config['log']['name'])
-        self.log.setLevel(config['log']['level'])
+        logging.basicConfig(
+            format=config["log"]["format"], datefmt=config["log"]["datefmt"]
+        )
+        self.log = logging.getLogger(config["log"]["name"])
+        self.log.setLevel(logging.getLevelName(config["log"]["level"]))
+        self.log.debug(f"Log level: {logging.getLevelName(self.log.getEffectiveLevel())}")
 
     def run(self):
         self.log.info(f'Staring app {self.config["app"]["name"]}')
 
         jobs = {
-            'LCMDataGen': LCMDataGenJob,
-            'LCMTrain': LCMTrainJob,
-            'LTuneDataGen': LTuneDataGenJob,
-            'LTuneTrain': LTuneTrainJob,
+            "LCMDataGen": LCMDataGenJob,
+            "LCMTrain": LCMTrainJob,
+            "LTuneDataGen": LTuneDataGenJob,
+            "LTuneTrain": LTuneTrainJob,
         }
 
-        jobs_list = self.config['job']['to_run']
+        jobs_list = self.config["job"]["to_run"]
 
         for job_name in jobs_list:
             job = jobs.get(job_name, None)
             if job is None:
-                self.log.warn(f'No job associated with {job_name}')
+                self.log.warn(f"No job associated with {job_name}")
                 continue
             job = job(config)
             job.run()
 
-        self.log.info('All jobs finished, exiting')
+        self.log.info("All jobs finished, exiting")
 
 
 if __name__ == "__main__":
@@ -48,7 +49,7 @@ if __name__ == "__main__":
         config_path = sys.argv[1]
     else:
         file_dir = os.path.dirname(__file__)
-        config_path = os.path.join(file_dir, 'endure.toml')
+        config_path = os.path.join(file_dir, "endure.toml")
 
     with open(config_path) as fid:
         config = toml.load(fid)

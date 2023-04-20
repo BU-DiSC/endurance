@@ -15,24 +15,23 @@ class ClassicTuner(nn.Module):
         hidden_dim = self.params["layer_size"]
         modules = []
 
-        # Normalize layer
-        if self.params["normalize_layer"]:
+        if self.params["normalize"] == "Layer":
             modules.append(nn.LayerNorm(in_dim))
+        elif self.params["normalize"] == "Batch":
+            modules.append(nn.BatchNorm1d(in_dim))
+        # else: No normalization layer
 
-        # First layer in
         modules.append(nn.Linear(in_dim, hidden_dim))
         nn.init.xavier_normal_(modules[-1].weight)
         modules.append(nn.Dropout(p=config["ltune"]["model"]["dropout"]))
         modules.append(nn.ReLU())
 
-        # Hidden layers
         for _ in range(self.params["num_layers"]):
             modules.append(nn.Linear(hidden_dim, hidden_dim))
             nn.init.xavier_normal_(modules[-1].weight)
             modules.append(nn.Dropout(p=config["ltune"]["model"]["dropout"]))
             modules.append(nn.ReLU())
 
-        # Decision layers
         self.bits = nn.Sequential(
             nn.Linear(hidden_dim, 1),
             nn.Hardtanh(

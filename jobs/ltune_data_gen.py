@@ -3,16 +3,19 @@ import csv
 import logging
 import multiprocessing as mp
 import os
+
+from tqdm import tqdm
 import pyarrow as pa
 import pyarrow.parquet as pq
+
 from endure.data.io import Reader
 from endure.ltune.data.generator import LTuneGenerator
-from tqdm import tqdm
 
 
 class LTuneDataGenJob:
     def __init__(self, config):
         self.log = logging.getLogger(config["log"]["name"])
+        self.log.info("Starting LTuneDataGenJob")
         self.config = config
         self.setting = config["job"]["LTuneDataGen"]
         self.output_dir = os.path.join(
@@ -26,17 +29,23 @@ class LTuneDataGenJob:
         fname_prefix = self.setting["file_prefix"]
         fname = f"{fname_prefix}-{idx:04}.csv"
         fpath = os.path.join(self.output_dir, fname)
-        early_exit = os.path.exists(fpath) and not self.setting["overwrite_if_exists"]
-        if early_exit:
+
+        if os.path.exists(fpath) and not self.setting["overwrite_if_exists"]:
             self.log.info(f"{fpath} exists, exiting.")
             return -1
 
-        samples = range(int(self.setting["samples"]))
+        samples = range(self.setting["samples"])
         header = generator.generate_header()
         with open(fpath, "w") as fid:
             writer = csv.writer(fid)
             writer.writerow(header)
-            for _ in tqdm(samples, desc=fname, position=pos, ncols=80):
+            for _ in tqdm(
+                samples,
+                desc=fname,
+                position=pos,
+                ncols=80,
+                disable=self.config["log"]["disable_tqdm"],
+            ):
                 row = generator.generate_row()
                 writer.writerow(row)
 
@@ -48,14 +57,20 @@ class LTuneDataGenJob:
         fname_prefix = self.setting["file_prefix"]
         fname = f"{fname_prefix}-{idx:04}.parquet"
         fpath = os.path.join(self.output_dir, fname)
-        early_exit = os.path.exists(fpath) and not self.setting["overwrite_if_exists"]
-        if early_exit:
+
+        if os.path.exists(fpath) and not self.setting["overwrite_if_exists"]:
             self.log.info(f"{fpath} exists, exiting.")
             return -1
 
-        samples = range(int(self.setting["samples"]))
+        samples = range(self.setting["samples"])
         table = []
-        for _ in tqdm(samples, desc=fname, position=pos, ncols=80):
+        for _ in tqdm(
+            samples,
+            desc=fname,
+            position=pos,
+            ncols=80,
+            disable=self.config["log"]["disable_tqdm"],
+        ):
             table.append(generator.generate_row_parquet())
         table = pa.Table.from_pylist(table)
         pq.write_table(table, fpath)
@@ -75,6 +90,17 @@ class LTuneDataGenJob:
 
         return idx
 
+    def generate_file_single_thread(self) -> None:
+        generator = self._choose_generator()
+
+        if self.setting["format"] == "parquet":
+            file_gen = self.generate_parquet_file
+        else:  # format == 'csv'
+            file_gen = self.generate_csv_file
+
+        for idx in range(self.setting["num_files"]):
+            file_gen(generator, idx, 0)
+
     def run(self) -> None:
         self.log.info("Creating workload data")
         os.makedirs(self.output_dir, exist_ok=True)
@@ -87,7 +113,7 @@ class LTuneDataGenJob:
         self.log.info(f"{threads=}")
 
         if threads == 1:
-            self.generate_file(0)
+            self.generate_file_single_thread()
         else:
             with mp.Pool(
                 threads, initializer=tqdm.set_lock, initargs=(mp.RLock(),)

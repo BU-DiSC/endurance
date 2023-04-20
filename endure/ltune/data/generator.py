@@ -1,7 +1,8 @@
-import logging
-import numpy as np
 from copy import deepcopy
 from typing import Any, Union
+import logging
+
+import numpy as np
 
 
 class LTuneGenerator:
@@ -9,6 +10,7 @@ class LTuneGenerator:
         self, config: dict[str, Any], format: str = "parquet", precision: int = 3
     ):
         self.log = logging.getLogger(config["log"]["name"])
+        self.log.info("Created LTuneGenerator")
         self._config = config
         cost_header = self._gen_workload_header()
         system_header = self._gen_system_header()
@@ -62,6 +64,9 @@ class LTuneGenerator:
     def _gen_workload_header(self) -> list:
         return ["z0", "z1", "q", "w"]
 
+    def generate_header(self) -> list:
+        return self._gen_workload_header() + self._gen_system_header()
+
     def generate_row_csv(self) -> list[float]:
         z0, z1, q, w = self._sample_workload(4)
         B, s, E, H, N = self._sample_system()
@@ -73,8 +78,7 @@ class LTuneGenerator:
         config["lsm"]["system"]["H"] = H
         config["lsm"]["system"]["N"] = N
 
-        line = [z0, z1, q, w, B, s, E, H, N]
-        return line
+        return [z0, z1, q, w, B, s, E, H, N]
 
     def generate_row_parquet(self) -> dict[str, Union[int, float]]:
         header = self.generate_header()
@@ -84,9 +88,6 @@ class LTuneGenerator:
             line[key] = val
 
         return line
-
-    def generate_header(self) -> list:
-        return self._header
 
     def generate_row(self) -> Union[list, dict[str, Union[int, float]]]:
         if self.format == "parquet":

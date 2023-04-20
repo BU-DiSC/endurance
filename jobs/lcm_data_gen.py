@@ -1,10 +1,10 @@
 #!/usr/bin/env python
+import csv
 import logging
 import multiprocessing as mp
 import os
-import csv
-from tqdm import tqdm
 
+from tqdm import tqdm
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -15,9 +15,9 @@ import endure.lcm.data.generator as Generators
 class LCMDataGenJob:
     def __init__(self, config):
         self.log = logging.getLogger(config["log"]["name"])
+        self.log.info("Running Data Generator Job")
         self.config = config
         self.setting = config["job"]["LCMDataGen"]
-        self.log.info("Running Data Generator Job")
         self.output_dir = os.path.join(
             self.config["io"]["data_dir"], self.setting["dir"]
         )

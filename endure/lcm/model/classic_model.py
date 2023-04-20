@@ -19,32 +19,22 @@ class ClassicModel(nn.Module):
             embedding_dim=self.params["embedding_size"],
             max_norm=True,
         )
-        # self.embedding = nn.Sequential(*[
-        #     nn.Embedding(
-        #         num_embeddings=config['lsm']['size_ratio']['max'],
-        #         embedding_dim=self.params['embedding_size'],
-        #         max_norm=True),
-        #     nn.Linear(
-        #         self.params['embedding_size'],
-        #         self.params['post_embedding_size']),
-        #     nn.ReLU(),
-        # ])
 
         if self.params["normalize"] == "Layer":
             modules.append(nn.LayerNorm(in_dim))
         elif self.params["normalize"] == "Batch":
             modules.append(nn.BatchNorm1d(in_dim))
-        # else no normalization layer
+        # else: No normalization layer
 
         modules.append(nn.Linear(in_dim, hidden_dim))
         nn.init.xavier_normal_(modules[-1].weight)
-        modules.append(nn.Dropout(p=config["ltune"]["model"]["dropout"]))
+        modules.append(nn.Dropout(p=config["lcm"]["model"]["dropout"]))
         modules.append(nn.ReLU())
 
         for _ in range(self.params["num_layers"]):
             modules.append(nn.Linear(hidden_dim, hidden_dim))
             nn.init.xavier_normal_(modules[-1].weight)
-            modules.append(nn.Dropout(p=config["ltune"]["model"]["dropout"]))
+            modules.append(nn.Dropout(p=config["lcm"]["model"]["dropout"]))
             modules.append(nn.ReLU())
 
         modules.append(nn.Linear(hidden_dim, out_dim))
