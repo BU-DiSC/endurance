@@ -19,27 +19,26 @@ class LSMSystem(typing.NamedTuple):
     s: float
 
 
-class LSMTree():
+class LSMTree:
     MAX_LEVELS = 12
 
     def __init__(
         self,
         system: LSMSystem,
-        h: float = 5.,
-        T: float = 5.,
+        h: float = 5.0,
+        T: float = 5.0,
         policy: Policy = Policy.Tiering,
-        Q: float = 1.,
+        Q: float = 1.0,
         K: list[float] = None,
-        Y: float = 1.,
-        Z: float = 1.,
+        Y: float = 1.0,
+        Z: float = 1.0,
     ) -> None:
-
         self.system = system
         self.h = h
         self.T = T
         self.policy = policy
         if K is None:
-            self.K = [1.] * self.MAX_LEVELS
+            self.K = [1.0] * self.MAX_LEVELS
         else:
             self.K = K
         self.Q = Q
@@ -48,19 +47,19 @@ class LSMTree():
 
     def as_dict(self) -> dict:
         d = {
-            'B': self.system.B,
-            'E': self.system.E,
-            'H': self.system.H,
-            'N': self.system.N,
-            'phi': self.system.phi,
-            's': self.system.s,
-            'T': self.T,
-            'h': self.h,
-            'policy': self.policy,
-            'Q': self.Q,
-            'K': self.K,
-            'Y': self.Y,
-            'Z': self.Z,
+            "B": self.system.B,
+            "E": self.system.E,
+            "H": self.system.H,
+            "N": self.system.N,
+            "phi": self.system.phi,
+            "s": self.system.s,
+            "T": self.T,
+            "h": self.h,
+            "policy": self.policy,
+            "Q": self.Q,
+            "K": self.K,
+            "Y": self.Y,
+            "Z": self.Z,
         }
 
         return d

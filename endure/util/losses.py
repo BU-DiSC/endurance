@@ -1,15 +1,15 @@
 import torch
 
 
-class LossBuilder():
+class LossBuilder:
     @staticmethod
     def build(choice):
         losses = {
-            'MSLE': MSLELoss,
-            'NMSE': NMSELoss,
-            'RMSLE': RMSLELoss,
-            'RMSE': RMSELoss,
-            'MSE': torch.nn.MSELoss,
+            "MSLE": MSLELoss,
+            "NMSE": NMSELoss,
+            "RMSLE": RMSLELoss,
+            "RMSE": RMSELoss,
+            "MSE": torch.nn.MSELoss,
         }
         loss = losses.get(choice, None)
 
@@ -58,5 +58,4 @@ class NMSLELoss(torch.nn.Module):
         self.msle = MSLELoss()
 
     def forward(self, pred, label):
-        return (self.msle(pred, label)
-                / torch.sum(torch.square(torch.log(pred + 1))))
+        return self.msle(pred, label) / torch.sum(torch.square(torch.log(pred + 1)))

@@ -6,10 +6,9 @@ import dill
 
 
 class Writer(object):
-
     def __init__(self, config):
         self._config = config
-        self.log = logging.getLogger('endure')
+        self.log = logging.getLogger("endure")
 
     def export_csv_file(self, df, filename):
         """
@@ -18,9 +17,9 @@ class Writer(object):
         :param df:
         :param filename:
         """
-        DATA_DIR = self._config['io']['data_dir']
+        DATA_DIR = self._config["io"]["data_dir"]
         filepath = os.path.join(DATA_DIR, filename)
-        df.to_csv(filepath, sep=',', header=True, index=False)
+        df.to_csv(filepath, sep=",", header=True, index=False)
 
     def export_dill_file(self, data, filename):
         """
@@ -29,9 +28,9 @@ class Writer(object):
         :param data:
         :param filename:
         """
-        DATA_DIR = self._config['io']['data_dir']
+        DATA_DIR = self._config["io"]["data_dir"]
         filepath = os.path.join(DATA_DIR, filename)
-        with open(filepath, 'wb') as f:
+        with open(filepath, "wb") as f:
             dill.dump(data, f)
 
     def export_figure(self, fig, figname, **kwargs):
@@ -41,7 +40,7 @@ class Writer(object):
         :param fig: Figure handle
         :param figname: Name of the figure with extension
         """
-        DATA_DIR = self._config['app']['data_dir']
+        DATA_DIR = self._config["app"]["data_dir"]
         filepath = os.path.join(DATA_DIR, figname, **kwargs)
         fig.savefig(filepath)
 
@@ -57,8 +56,8 @@ class Reader(object):
         :param config:
         """
         self._config = config
-        self.data_dir = self._config['io']['data_dir']
-        self.log = logging.getLogger('endure')
+        self.data_dir = self._config["io"]["data_dir"]
+        self.log = logging.getLogger("endure")
 
     @classmethod
     def read_config(cls, config_path):
@@ -76,10 +75,7 @@ class Reader(object):
         :param filename:
         """
         csv_path = os.path.join(self.data_dir, filename)
-        df = pd.read_csv(csv_path,
-                         header=0,
-                         index_col=False,
-                         **kwargs)
+        df = pd.read_csv(csv_path, header=0, index_col=False, **kwargs)
 
         return df
 
@@ -90,7 +86,7 @@ class Reader(object):
         """
         dill_path = os.path.join(self.data_dir, filename)
 
-        with open(dill_path, 'rb') as f:
+        with open(dill_path, "rb") as f:
             data = dill.load(f)
 
         return data

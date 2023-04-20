@@ -4,36 +4,29 @@ from numba import types
 from endure.lsm.types import Policy
 
 spec = [
-    ('B', types.float64),
-    ('E', types.float64),
-    ('H', types.float64),
-    ('N', types.float64),
-    ('M', types.float64),
-    ('phi', types.float64),
-    ('s', types.float64),
+    ("B", types.float64),
+    ("E", types.float64),
+    ("H", types.float64),
+    ("N", types.float64),
+    ("M", types.float64),
+    ("phi", types.float64),
+    ("s", types.float64),
 ]
 
 BITS_IN_BYTES = 8
 
 
 @jitclass(spec)
-class EndureKHybridCost():
+class EndureKHybridCost:
     def __init__(
-        self,
-        B: float,
-        E: float,
-        H: float,
-        M: float,
-        N: float,
-        phi: float,
-        s: float
+        self, B: float, E: float, H: float, M: float, N: float, phi: float, s: float
     ) -> None:
         self.B, self.E, self.H, self.N, self.M = B, E, H, N, M
         self.phi, self.s = phi, s
 
     def mbuff(self, h: float) -> float:
         if self.M == -1:
-            return ((self.H - h) * self.N)
+            return (self.H - h) * self.N
         return self.M - (h * self.N)
 
     def L(self, h: float, T: float, ceil: bool = False) -> float:
@@ -85,7 +78,7 @@ class EndureKHybridCost():
         L = int(self.L(h, T, ceil=True))
         # q = np.sum(K[:L])
         residual = 1 - (L - self.L(h, T, ceil=False))
-        q = sum(K[:(L - 1)])
+        q = sum(K[: (L - 1)])
         q += K[L - 1] * residual
         return (self.s * self.N / self.B) + q
 
@@ -109,15 +102,17 @@ class EndureKHybridCost():
         z0: float,
         z1: float,
         q: float,
-        w: float
+        w: float,
     ) -> float:
         if np.isnan(h) or np.isnan(T) or any(np.isnan(K)):
             return np.finfo(np.float64).max
 
-        cost = ((z0 * self.Z0(h, T, K))
-                + (z1 * self.Z1(h, T, K))
-                + (q * self.Q(h, T, K))
-                + (w * self.W(h, T, K)))
+        cost = (
+            (z0 * self.Z0(h, T, K))
+            + (z1 * self.Z1(h, T, K))
+            + (q * self.Q(h, T, K))
+            + (w * self.W(h, T, K))
+        )
 
         return cost
 
@@ -125,21 +120,14 @@ class EndureKHybridCost():
 @jitclass(spec)
 class EndureTierLevelCost:
     def __init__(
-        self,
-        B: float,
-        E: float,
-        H: float,
-        M: float,
-        N: float,
-        phi: float,
-        s: float
+        self, B: float, E: float, H: float, M: float, N: float, phi: float, s: float
     ) -> None:
         self.B, self.E, self.H, self.N, self.M = B, E, H, N, M
         self.phi, self.s = phi, s
 
     def mbuff(self, h: float) -> float:
         if self.M == -1:
-            return ((self.H - h) * self.N)
+            return (self.H - h) * self.N
         return self.M - (h * self.N)
 
     def L(self, h: float, T: float, ceil: bool = False) -> float:
@@ -149,9 +137,9 @@ class EndureTierLevelCost:
         return level
 
     def fp(self, h: float, T: float, level: int) -> float:
-        alpha = np.exp(-h * (np.log(2)**2))
-        top = (T ** (T / (T - 1)))
-        bot = (T ** (self.L(h, T, ceil=False) + 1 - level))
+        alpha = np.exp(-h * (np.log(2) ** 2))
+        top = T ** (T / (T - 1))
+        bot = T ** (self.L(h, T, ceil=False) + 1 - level)
         return alpha * (top / bot)
 
     def Nfull(self, h: float, T: float, levels: int) -> float:
@@ -170,7 +158,7 @@ class EndureTierLevelCost:
         for level in range(1, L + 1):
             z0 += self.fp(h, T, level)
         if policy == Policy.Tiering:
-            z0 *= (T - 1)
+            z0 *= T - 1
         return z0
 
     def Z1(self, h: float, T: float, policy: Policy) -> float:
@@ -185,7 +173,7 @@ class EndureTierLevelCost:
             for j in range(1, level):
                 upper_fp += self.fp(h, T, j)
             if policy == Policy.Tiering:
-                upper_fp *= (T - 1)
+                upper_fp *= T - 1
                 curr_fp = ((T - 2) / 2) * self.fp(h, T, level)
                 z1 += run_prob * (1 + upper_fp + curr_fp)
             else:  # Policy.Leveling
@@ -206,7 +194,7 @@ class EndureTierLevelCost:
         if policy == Policy.Tiering:
             w /= T
         else:
-            w /= (2)
+            w /= 2
         return w
 
     def calc_cost(
@@ -217,15 +205,17 @@ class EndureTierLevelCost:
         z0: float,
         z1: float,
         q: float,
-        w: float
+        w: float,
     ) -> float:
         if np.isnan(h) or np.isnan(T):
             return np.finfo(np.float64).max
 
-        return ((z0 * self.Z0(h, T, policy))
-                + (z1 * self.Z1(h, T, policy))
-                + (q * self.Q(h, T, policy))
-                + (w * self.W(h, T, policy)))
+        return (
+            (z0 * self.Z0(h, T, policy))
+            + (z1 * self.Z1(h, T, policy))
+            + (q * self.Q(h, T, policy))
+            + (w * self.W(h, T, policy))
+        )
 
 
 # @jitclass(spec)

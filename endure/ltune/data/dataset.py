@@ -5,32 +5,32 @@ import os
 import pandas as pd
 import pyarrow.parquet as pa
 import torch
-
-from typing import Optional
+import torch.utils.data
+from typing import Any
 
 
 class LTuneIterableDataSet(torch.utils.data.IterableDataset):
     def __init__(
         self,
-        config: dict[str, ...],
+        config: dict[str, Any],
         folder: str,
-        format: Optional[str] = 'parquet',
-        shuffle: Optional[bool] = False
+        format: str = "parquet",
+        shuffle: bool = False,
     ):
-        self.log = logging.getLogger(config['log']['name'])
+        self.log = logging.getLogger(config["log"]["name"])
         self._config = config
-        self._mean = np.array(config['ltune']['data']['mean_bias'], np.float32)
-        self._std = np.array(config['ltune']['data']['std_bias'], np.float32)
+        self._mean = np.array(config["ltune"]["data"]["mean_bias"], np.float32)
+        self._std = np.array(config["ltune"]["data"]["std_bias"], np.float32)
         self._input_cols = self._get_input_cols()
         self._format = format
-        self._fnames = glob.glob(os.path.join(folder, '*.' + format))
+        self._fnames = glob.glob(os.path.join(folder, "*." + format))
         self._shuffle = shuffle
 
     def _get_input_cols(self):
-        return ['z0', 'z1', 'q', 'w']
+        return ["z0", "z1", "q", "w"]
 
     def _load_data(self, fname):
-        if self._format == 'parquet':
+        if self._format == "parquet":
             df = pa.read_table(fname).to_pandas()
         else:
             df = pd.read_csv(fname)
@@ -38,8 +38,8 @@ class LTuneIterableDataSet(torch.utils.data.IterableDataset):
         return self._process_df(df)
 
     def _process_df(self, df):
-        df[['z0', 'z1', 'q', 'w']] -= self._mean
-        df[['z0', 'z1', 'q', 'w']] /= self._std
+        df[["z0", "z1", "q", "w"]] -= self._mean
+        df[["z0", "z1", "q", "w"]] /= self._std
 
         return df
 
