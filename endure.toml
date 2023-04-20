@@ -18,6 +18,7 @@ name = 'endure-logger'
 format = "[%(levelname)s][%(asctime)-15s][%(filename)s] %(message)s"
 datefmt = '%d-%m-%y:%H:%M:%S'
 level = "INFO"
+disable_tqdm = false
 
 # =============================================================================
 # HEADER IO
@@ -33,9 +34,9 @@ data_dir = "/data"
 [job]
 to_run = [
     # "LCMDataGen",
-    # "LCMTrain",
+    "LCMTrain",
     # "LTuneDataGen",
-    "LTuneTrain",
+    # "LTuneTrain",
     # TODO: "CreateTunings",
     # TODO: "RunExperiments",
 ]
@@ -45,18 +46,18 @@ to_run = [
 # -----------------------------------------------------------------------------
 format = "parquet"
 generator = "LevelCost"
-dir = "test-data/tmp"
+dir = "train-data/lcm-level"
 file_prefix = "levelcost"
 num_workers = -1  # -1 forces all cores to be used
-num_files = 32
-samples = 262144  # per file sample
+num_files = 256
+samples = 1048576  # per file sample
 overwrite_if_exists = true
 
 # -----------------------------------------------------------------------------
 [job.LCMTrain]
 # -----------------------------------------------------------------------------
 max_epochs = 40
-save_dir = "models/level-03-23-v1"
+save_dir = "models/level-04-20"
 use_gpu_if_avail = true
 
 # Different loss functions to train via
@@ -65,7 +66,7 @@ use_gpu_if_avail = true
 #   MSLE - Mean squared log error
 #   RMSE - Root mean square error
 #   RMSLE - Root mean squared log error
-loss_fn = "RMSE"
+loss_fn = "MSLE"
 
 # Supported optimizers
 #   SGD - Stochastic gradient descent
@@ -75,13 +76,13 @@ optimizer = "Adam"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
-lr_scheduler = "CosineAnnealing"
+lr_scheduler = "Constant"
 
 # Stop checkpointing to improve training
-no_checkpoint = true
+no_checkpoint = false
 
 [job.LCMTrain.train]
-dir = "train-data/levelcost-parquet"
+dir = "train-data/lcm-level"
 format = "parquet"
 batch_size = 8192
 shuffle = true
@@ -90,9 +91,9 @@ drop_last = true
 use_dp = false
 
 [job.LCMTrain.test]
-dir = "test-data/levelcost-parquet"
+dir = "test-data/lcm-level"
 format = "parquet"
-batch_size = 262114
+batch_size = 65536
 shuffle = false
 num_workers = 2
 drop_last = true
@@ -114,7 +115,7 @@ overwrite_if_exists = true
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
 max_epochs = 50
-save_dir = "models/level-tuner-03-24-v1"
+save_dir = "models/level-tuner-04-07-v1"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
@@ -125,7 +126,7 @@ optimizer = "Adam"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
-lr_scheduler = "CosineAnnealing"
+lr_scheduler = "Constant"
 
 [job.LTuneTrain.train]
 dir = "train-data/workload-parquet"
@@ -139,7 +140,7 @@ use_dp = false
 [job.LTuneTrain.test]
 dir = "test-data/workload-parquet"
 format = "parquet"
-batch_size = 262114
+batch_size = 16384
 shuffle = false
 num_workers = 1
 drop_last = true
@@ -176,7 +177,7 @@ B = 4
 # roughly the same the current storage device
 phi = 1
 
-# Range query selectivity, 0 implies the key range per range query would roughly
+# Range query selectivity, 0 implies the key range per range Exponentialquery would roughly
 # fit into 1 page. Selectivity 1 implies range queries will always query the
 # full key possible range
 s = 0.000000001
@@ -209,7 +210,7 @@ desc = 'Learned Cost Model'
 #   Configuration for specific models
 # -----------------------------------------------------------------------------
 [lcm.model]
-dropout = 0.1
+dropout = 0
 
 [lcm.model.classic]
 out_dim = 4  # should match cost function output (z0, z1, q, w)
@@ -227,7 +228,8 @@ num_cont_vars = 10
 # input will be
 #   num_cont_vars + (num_cate_vars * embedding_size)
 # As each categorical variable will be embedded down to size `embedding_size`
-embedding_size = 32
+embedding_size = 128
+post_embedding_size = 64  # quick linear layer after embedding
 
 [lcm.model.flexible]
 out_dims = 4  # should match cost function output (z0, z1, q, h)
@@ -276,19 +278,20 @@ desc = 'Learned Tuner'
 # -----------------------------------------------------------------------------
 [ltune.model]
 in_dim = 4
-dropout = 0.1  # percentage for dropout during training
+dropout = 0.0  # percentage for dropout during training
 
 # kwargs specific to LTune models during forward pass
 [ltune.model.train_kwargs]
 temp = 0.1
+hard = false
 
 [ltune.model.test_kwargs]
 hard = true
 
 [ltune.model.classic]
 normalize_layer = true
-layer_size = 1024
-num_layers = 4
+layer_size = 128
+num_layers = 16
 
 [ltune.model.klsm]
 hidden_layers = 16
