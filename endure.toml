@@ -48,9 +48,9 @@ format = "parquet"
 generator = "LevelCost"
 dir = "train-data/lcm-level"
 file_prefix = "levelcost"
-num_workers = -1  # -1 forces all cores to be used
-num_files = 256
-samples = 1048576  # per file sample
+num_workers = 1  # -1 forces all cores to be used
+num_files = 2
+samples = 8192  # per file sample
 overwrite_if_exists = true
 
 # -----------------------------------------------------------------------------
@@ -72,7 +72,7 @@ loss_fn = "MSLE"
 #   SGD - Stochastic gradient descent
 #   Adam
 #   Adagrad
-optimizer = "Adam"
+optimizer = "SGD"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
@@ -84,18 +84,18 @@ no_checkpoint = false
 [job.LCMTrain.train]
 dir = "train-data/lcm-level"
 format = "parquet"
-batch_size = 8192
+batch_size = 32
 shuffle = true
-num_workers = 4
+num_workers = 1
 drop_last = true
 use_dp = false
 
 [job.LCMTrain.test]
 dir = "test-data/lcm-level"
 format = "parquet"
-batch_size = 65536
+batch_size = 4096
 shuffle = false
-num_workers = 2
+num_workers = 1
 drop_last = true
 use_dp = false
 
@@ -214,8 +214,8 @@ dropout = 0
 
 [lcm.model.classic]
 out_dim = 4  # should match cost function output (z0, z1, q, w)
-num_layers = 4
-layer_size = 256
+num_layers = 2
+layer_size = 128
 
 # None, Layer, Batch
 normalize = 'Batch'
