@@ -3,6 +3,7 @@ import os
 import torch
 import logging
 import toml
+from typing import Any, Optional
 
 import torch.optim as Opt
 from torch.utils.data import DataLoader
@@ -16,7 +17,7 @@ from endure.util.trainer import Trainer
 
 
 class LTuneTrainJob:
-    def __init__(self, config: dict[str, ...]) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         self._config = config
         self._setting = config["job"]["LTuneTrain"]
         self.log = logging.getLogger(self._config["log"]["name"])
@@ -86,25 +87,28 @@ class LTuneTrainJob:
 
         return test
 
-    def _dumpconfig(self, save_dir: str) -> None:
-        with open(os.path.join(save_dir, "endure.toml"), "w") as fid:
-            toml.dump(self._config, fid)
-
-        return
-
-    def _make_save_dir(self) -> str:
+    def _make_save_dir(self) -> Optional[str]:
         self.log.info(f'Saving model in: {self._setting["save_dir"]}')
         save_dir = os.path.join(
             self._config["io"]["data_dir"],
             self._setting["save_dir"],
         )
-        os.makedirs(save_dir, exist_ok=True)
-        self._dumpconfig(save_dir)
+        try:
+            os.makedirs(save_dir, exist_ok=False)
+        except FileExistsError:
+            return None
+
+        # dump configuration file
+        with open(os.path.join(save_dir, "endure.toml"), "w") as fid:
+            toml.dump(self._config, fid)
 
         return save_dir
 
-    def run(self) -> Trainer:
+    def run(self) -> Optional[Trainer]:
         model_base_dir = self._make_save_dir()
+        if model_base_dir is None:
+            self.log.info("Model directory already exists, exiting...")
+            return None
 
         model = self._build_model()
         optimizer = self._build_optimizer(model)

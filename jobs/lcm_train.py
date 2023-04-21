@@ -3,7 +3,7 @@ import logging
 import os
 import toml
 import torch
-from typing import Any
+from typing import Any, Optional
 
 from torch.utils.data import DataLoader
 import torch.optim as TorchOpt
@@ -93,25 +93,28 @@ class LCMTrainJob:
 
         return test
 
-    def _dumpconfig(self, save_dir: str) -> None:
-        with open(os.path.join(save_dir, "endure.toml"), "w") as fid:
-            toml.dump(self._config, fid)
-
-        return
-
-    def _make_save_dir(self) -> str:
+    def _make_save_dir(self) -> Optional[str]:
         self.log.info(f'Saving tuner in {self._setting["save_dir"]}')
         save_dir = os.path.join(
             self._config["io"]["data_dir"],
             self._setting["save_dir"],
         )
-        os.makedirs(save_dir, exist_ok=True)
-        self._dumpconfig(save_dir)
+        try:
+            os.makedirs(save_dir, exist_ok=False)
+        except FileExistsError:
+            return None
+
+        # dump configuration file
+        with open(os.path.join(save_dir, "endure.toml"), "w") as fid:
+            toml.dump(self._config, fid)
 
         return save_dir
 
-    def run(self) -> Trainer:
+    def run(self) -> Optional[Trainer]:
         model_base_dir = self._make_save_dir()
+        if model_base_dir is None:
+            self.log.info("Model directory already exists, exiting...")
+            return None
 
         model = self._build_model()
         optimizer = self._build_optimizer(model)

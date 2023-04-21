@@ -305,6 +305,7 @@ hidden_layers = 16
 mean_bias = [0.5, 0.5, 0.5, 0.5]
 std_bias = [0.3, 0.3, 0.3, 0.3]
 precision = 3
+normalize_inputs = false
 
 # =============================================================================
 # END LTUNE

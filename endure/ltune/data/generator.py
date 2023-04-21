@@ -10,7 +10,7 @@ class LTuneGenerator:
         self, config: dict[str, Any], format: str = "parquet", precision: int = 3
     ):
         self.log = logging.getLogger(config["log"]["name"])
-        self.log.info("Created LTuneGenerator")
+        self.log.debug("Init LTuneGenerator")
         self._config = config
         cost_header = self._gen_workload_header()
         system_header = self._gen_system_header()

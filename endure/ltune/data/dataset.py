@@ -27,17 +27,19 @@ class LTuneIterableDataSet(torch.utils.data.IterableDataset):
         self._shuffle = shuffle
 
     def _get_input_cols(self):
-        return ["z0", "z1", "q", "w"]
+        return ["z0", "z1", "q", "w", "B", "s", "E", "H", "N"]
 
     def _load_data(self, fname):
         if self._format == "parquet":
             df = pa.read_table(fname).to_pandas()
         else:
             df = pd.read_csv(fname)
+        if self._config["ltune"]["data"]["normalize_inputs"]:
+            df = self._normalize_df(df)
 
-        return self._process_df(df)
+        return df
 
-    def _process_df(self, df):
+    def _normalize_df(self, df):
         df[["z0", "z1", "q", "w"]] -= self._mean
         df[["z0", "z1", "q", "w"]] /= self._std
 
@@ -54,7 +56,7 @@ class LTuneIterableDataSet(torch.utils.data.IterableDataset):
                 np.random.shuffle(files)
         for file in files:
             df = self._load_data(file)
-            inputs = torch.from_numpy(df[self._input_cols].values).float()
+            inputs = torch.from_numpy(df[self._get_input_cols()].values).float()
             for input in inputs:
                 # We return input twice, as the loss function for our learned
                 # tuner will be taking in the workload as a label, and the

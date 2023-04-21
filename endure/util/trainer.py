@@ -71,7 +71,7 @@ class Trainer:
         loss.backward()
         self.optimizer.step()
 
-        return loss
+        return loss.item()
 
     def _train_loop(self) -> float:
         self.model.train()

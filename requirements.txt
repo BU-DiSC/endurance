@@ -3,6 +3,7 @@ joblib
 numba
 numpy
 pandas
+pandas-stubs
 pyarrow
 scipy
 toml
