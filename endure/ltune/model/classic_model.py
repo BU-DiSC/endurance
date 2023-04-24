@@ -34,10 +34,6 @@ class ClassicTuner(nn.Module):
 
         self.bits = nn.Sequential(
             nn.Linear(hidden_dim, 1),
-            nn.Hardtanh(
-                min_val=config["lsm"]["bits_per_elem"]["min"],
-                max_val=config["lsm"]["bits_per_elem"]["max"],
-            ),
         )
         self.size_ratio = nn.Sequential(
             nn.Linear(hidden_dim, size_ratio_range),
