@@ -34,9 +34,9 @@ data_dir = "/data"
 [job]
 to_run = [
     # "LCMDataGen",
-    "LCMTrain",
+    # "LCMTrain",
     # "LTuneDataGen",
-    # "LTuneTrain",
+    "LTuneTrain",
     # TODO: "CreateTunings",
     # TODO: "RunExperiments",
 ]
@@ -48,15 +48,15 @@ format = "parquet"
 generator = "LevelCost"
 dir = "train-data/lcm-level"
 file_prefix = "levelcost"
-num_workers = 1  # -1 forces all cores to be used
-num_files = 2
-samples = 8192  # per file sample
+num_workers = -1  # -1 forces all cores to be used
+num_files = 256
+samples = 1048576  # per file sample
 overwrite_if_exists = true
 
 # -----------------------------------------------------------------------------
 [job.LCMTrain]
 # -----------------------------------------------------------------------------
-max_epochs = 40
+max_epochs = 50
 save_dir = "models/level-04-20"
 use_gpu_if_avail = true
 
@@ -72,7 +72,7 @@ loss_fn = "MSLE"
 #   SGD - Stochastic gradient descent
 #   Adam
 #   Adagrad
-optimizer = "SGD"
+optimizer = "Adam"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
@@ -84,18 +84,18 @@ no_checkpoint = false
 [job.LCMTrain.train]
 dir = "train-data/lcm-level"
 format = "parquet"
-batch_size = 32
+batch_size = 8192
 shuffle = true
-num_workers = 1
+num_workers = 6
 drop_last = true
 use_dp = false
 
 [job.LCMTrain.test]
 dir = "test-data/lcm-level"
 format = "parquet"
-batch_size = 4096
+batch_size = 65536
 shuffle = false
-num_workers = 1
+num_workers = 2
 drop_last = true
 use_dp = false
 
@@ -104,45 +104,45 @@ use_dp = false
 # -----------------------------------------------------------------------------
 format = "parquet"
 generator = "default"
-dir = "train-data/workload-parquet"
+dir = "test-data/ltune/level"
 file_prefix = "workload"
-num_workers = -1  # -1 forces all cores to be used
-num_files = 512
-samples = 262144  # per file sample
+num_workers = 6  # -1 forces all cores to be used
+num_files = 8
+samples = 1048576  # per file sample
 overwrite_if_exists = true
 
 # -----------------------------------------------------------------------------
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
 max_epochs = 50
-save_dir = "models/level-tuner-04-07-v1"
+save_dir = "models/level-tuner-04-26"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
-loss_fn_path = "models/level-03-14-v1/best.model"
+loss_fn_path = "models/level-04-20/checkpoints/epoch_20.checkpoint"
 
 # Check train.optimizer for available options
-optimizer = "Adam"
+optimizer = "SGD"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
 lr_scheduler = "Constant"
 
 [job.LTuneTrain.train]
-dir = "train-data/workload-parquet"
+dir = "train-data/ltune/level"
 format = "parquet"
-batch_size = 8192
+batch_size = 1024
 shuffle = true
 num_workers = 6
 drop_last = true
 use_dp = false
 
 [job.LTuneTrain.test]
-dir = "test-data/workload-parquet"
+dir = "test-data/ltune/level"
 format = "parquet"
-batch_size = 16384
+batch_size = 65536
 shuffle = false
-num_workers = 1
+num_workers = 2
 drop_last = true
 use_dp = false
 
@@ -271,27 +271,28 @@ normalize_inputs = false
 # =============================================================================
 [ltune]
 desc = 'Learned Tuner'
+penalty_factor = 1000
 
 # -----------------------------------------------------------------------------
 # HEADER LTUNE.MODEL
 #   Model configurations
 # -----------------------------------------------------------------------------
 [ltune.model]
-in_dim = 4
-dropout = 0.0  # percentage for dropout during training
+in_dim = 9
+dropout = 0.1  # percentage for dropout during training
 
 # kwargs specific to LTune models during forward pass
 [ltune.model.train_kwargs]
-temp = 0.1
+temp = 0.5
 hard = false
 
 [ltune.model.test_kwargs]
 hard = true
 
 [ltune.model.classic]
-normalize_layer = true
-layer_size = 128
-num_layers = 16
+normalize = 'Batch'
+layer_size = 256
+num_layers = 8
 
 [ltune.model.klsm]
 hidden_layers = 16
@@ -317,7 +318,7 @@ normalize_inputs = false
 # =============================================================================
 [train.scheduler.CosineAnnealingLR]
 T_max = 10
-eta_min = 0  # minimum learning rate
+eta_min = 0.0001  # minimum learning rate
 
 [train.scheduler.Exponential]
 gamma = 0.5
@@ -326,7 +327,7 @@ gamma = 0.5
 lr = 0.001
 
 [train.optimizer.SGD]
-lr = 0.001
+lr = 0.01
 
 [train.optimizer.Adagrad]
 lr = 0.001
