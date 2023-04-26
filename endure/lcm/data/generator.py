@@ -57,17 +57,20 @@ class LCMDataGenerator:
     def _sample_total_elements(self) -> int:
         return np.random.randint(low=100000000, high=1000000000)
 
-    def _sample_valid_config(self) -> tuple:
-        EPSILON = 0.1
+    def _sample_valid_system(self) -> tuple:
         E = self._sample_entry_size()
         B = self._sample_entry_per_page(entry_size=E)
         s = self._sample_selectivity()
         H = self._sample_memory_budget()
         N = self._sample_total_elements()
 
+        return (B, s, E, H, N)
+
+    def _sample_valid_config(self) -> tuple:
+        EPSILON = 0.1
+        (B, s, E, H, N) = self._sample_valid_system()
         h = self._sample_bloom_filter_bits(max=(H - EPSILON))
         T = self._sample_size_ratio()
-        self.log.debug(f"{B=}, {s=}, {E=}, {H=}, {N=}, {h=}, {T=}")
 
         return (B, s, E, H, N, h, T)
 
