@@ -132,6 +132,7 @@ class LTuneTrainJob:
             model_train_kwargs=self._config["ltune"]["model"]["train_kwargs"],
             model_test_kwargs=self._config["ltune"]["model"]["test_kwargs"],
             disable_tqdm=disable_tqdm,
+            no_checkpoint=self._config["job"]["LTuneTrain"]["no_checkpoint"],
         )
         trainer.run()
 

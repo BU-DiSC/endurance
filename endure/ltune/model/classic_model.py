@@ -11,7 +11,7 @@ class ClassicTuner(nn.Module):
             config["lsm"]["size_ratio"]["max"] - config["lsm"]["size_ratio"]["min"] + 1
         )
 
-        in_dim = config["ltune"]["model"]["in_dim"]
+        in_dim = len(config["ltune"]["input_features"])
         hidden_dim = self.params["layer_size"]
         modules = []
 

@@ -10,32 +10,22 @@ import torch.utils.data
 
 class LCMIterableDataSet(torch.utils.data.IterableDataset):
     def __init__(self, config, folder, format="csv", shuffle=False):
-        self._config = config
-        self.log = logging.getLogger(config["log"]["name"])
-        self._mean = np.array(config["lcm"]["data"]["mean_bias"], np.float32)
-        self._std = np.array(config["lcm"]["data"]["std_bias"], np.float32)
-        self._label_cols = ["z0_cost", "z1_cost", "q_cost", "w_cost"]
-        self._input_cols = self._get_input_cols()
-        self._format = format
-        self._fnames = glob.glob(os.path.join(folder, "*." + format))
-        self._shuffle = shuffle
+        self._config: dict = config
+        self.log: logging.Logger = logging.getLogger(config["log"]["name"])
+        self._label_cols: list[str] = config["lcm"]["output_features"]
+        self._input_cols: list[str] = self._get_input_cols()
+        self._format: str = format
+        self._fnames: list[str] = glob.glob(os.path.join(folder, "*." + format))
+        self._shuffle: bool = shuffle
 
     def _get_input_cols(self) -> list[str]:
-        base = ["z0", "z1", "q", "w", "B", "s", "E", "H", "N", "h", "T"]
-        choices = {
-            "KLSM": [f"K_{i}" for i in range(self._config["lsm"]["max_levels"])],
-            "Tier": [],
-            "Level": [],
-            "QLSM": ["Q"],
-        }
-        extension = choices.get(self._config["lsm"]["design"], None)
-        if extension is not None:
-            input_cols = base + extension
-        else:
-            self.log.warn("Invalid design defaulting to Level")
-            input_cols = base
+        base_features : list[str] = self._config["lcm"]["input_features"]
+        if "K" in base_features:
+            k_cols = [f"K_{i}" for i in range(self._config["lsm"]["max_levels"])]
+            base_features = list(filter(lambda x: x != "K", base_features))
+            base_features = base_features + k_cols
 
-        return input_cols
+        return base_features
 
     def _load_data(self, fname) -> pd.DataFrame:
         if self._format == "parquet":
@@ -50,9 +40,10 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
         return df
 
     def _normalize_df(self, df: pd.DataFrame) -> pd.DataFrame:
-        df[["z0", "z1", "q", "w", "h"]] -= self._mean
-        df[["z0", "z1", "q", "w", "h"]] /= self._std
+        df[["z0", "z1", "q", "w"]] -= np.array([0.5, 0.5, 0.5, 0.5])
+        df[["z0", "z1", "q", "w"]] /= np.array([0.3, 0.3, 0.3, 0.3])
         df[["B", "s", "E", "H", "N"]] -= df[["B", "s", "E", "H", "N"]].mean()
+        df[["B", "s", "E", "H", "N"]] /= df[["B", "s", "E", "H", "N"]].std()
 
         return df
 

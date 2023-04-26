@@ -11,14 +11,15 @@ from endure.lcm.model.builder import LearnedCostModelBuilder
 class LearnedCostModelLoss(torch.nn.Module):
     def __init__(self, config: dict[str, Any], model_path: str):
         super().__init__()
-        bpe_max = config["lsm"]["bits_per_elem"]["max"]
-        bpe_min = config["lsm"]["bits_per_elem"]["min"]
-        self._bpe_mean = Parameter(torch.Tensor([(bpe_max + bpe_min) / 2]))
-        self._bpe_std = Parameter(
-            torch.sqrt(torch.Tensor([(bpe_max - bpe_min) ** 2 / 12]))
-        )
+        # bpe_max = config["lsm"]["bits_per_elem"]["max"]
+        # bpe_min = config["lsm"]["bits_per_elem"]["min"]
+        # self._bpe_mean = Parameter(torch.Tensor([(bpe_max + bpe_min) / 2]))
+        # self._bpe_std = Parameter(
+        #     torch.sqrt(torch.Tensor([(bpe_max - bpe_min) ** 2 / 12]))
+        # )
         self.normalize_bpe = config["ltune"]["data"]["normalize_inputs"]
         self.penalty_factor = config["ltune"]["penalty_factor"]
+        self.mem_budget_idx = config["ltune"]["input_features"].index("H")
 
         self.lcm_builder = LearnedCostModelBuilder(config)
         self.model = self.lcm_builder.build_model()
@@ -46,16 +47,15 @@ class LearnedCostModelLoss(torch.nn.Module):
     def forward(self, pred, label):
         # For learned cost model loss, pred is the DB configuration, label is
         # the workload
-        # label = [z0, z1, w, q, B, s, E, H, N]
 
         bpe = pred[:, 0]
-        mem_budget = label[:, 7]
+        mem_budget = label[:, self.mem_budget_idx]
         penalty = self.create_penalty_vector(bpe, mem_budget)
 
         bpe = bpe.view(-1, 1)
         size_ratio = torch.argmax(pred[:, 1:], dim=-1).view(-1, 1)
-        if self.normalize_bpe:
-            bpe = ((bpe - self._bpe_mean) / self._bpe_std)
+        # if self.normalize_bpe:
+        #     bpe = ((bpe - self._bpe_mean) / self._bpe_std)
 
         inputs = torch.concat([label, bpe, size_ratio], dim=-1)
         out = self.model(inputs)

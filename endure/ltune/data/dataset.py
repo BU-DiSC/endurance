@@ -19,15 +19,12 @@ class LTuneIterableDataSet(torch.utils.data.IterableDataset):
     ):
         self.log = logging.getLogger(config["log"]["name"])
         self._config = config
-        self._mean = np.array(config["ltune"]["data"]["mean_bias"], np.float32)
-        self._std = np.array(config["ltune"]["data"]["std_bias"], np.float32)
-        self._input_cols = self._get_input_cols()
         self._format = format
         self._fnames = glob.glob(os.path.join(folder, "*." + format))
         self._shuffle = shuffle
 
     def _get_input_cols(self):
-        return ["z0", "z1", "q", "w", "B", "s", "E", "H", "N"]
+        return self._config["ltune"]["input_features"]
 
     def _load_data(self, fname):
         if self._format == "parquet":
@@ -40,8 +37,8 @@ class LTuneIterableDataSet(torch.utils.data.IterableDataset):
         return df
 
     def _normalize_df(self, df):
-        df[["z0", "z1", "q", "w"]] -= self._mean
-        df[["z0", "z1", "q", "w"]] /= self._std
+        df[["z0", "z1", "q", "w"]] -= [0.5, 0.5, 0.5, 0.5]
+        df[["z0", "z1", "q", "w"]] /= [0.3, 0.3, 0.3, 0.3]
 
         return df
 

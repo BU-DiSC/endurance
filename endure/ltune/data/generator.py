@@ -12,9 +12,7 @@ class LTuneGenerator:
         self.log = logging.getLogger(config["log"]["name"])
         self.log.debug("Init LTuneGenerator")
         self._config = config
-        cost_header = self._gen_workload_header()
-        system_header = self._gen_system_header()
-        self._header = cost_header + system_header
+        self._header = self._gen_workload_header() + self._gen_system_header()
         self.format = format
         self.precision = precision
 

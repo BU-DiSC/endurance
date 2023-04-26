@@ -57,7 +57,7 @@ class LCMDataGenerator:
     def _sample_total_elements(self) -> int:
         return np.random.randint(low=100000000, high=1000000000)
 
-    def _sample_valid_system(self) -> tuple:
+    def _sample_system(self) -> tuple:
         E = self._sample_entry_size()
         B = self._sample_entry_per_page(entry_size=E)
         s = self._sample_selectivity()
@@ -66,9 +66,9 @@ class LCMDataGenerator:
 
         return (B, s, E, H, N)
 
-    def _sample_valid_config(self) -> tuple:
+    def _sample_config(self) -> tuple:
         EPSILON = 0.1
-        (B, s, E, H, N) = self._sample_valid_system()
+        (B, s, E, H, N) = self._sample_system()
         h = self._sample_bloom_filter_bits(max=(H - EPSILON))
         T = self._sample_size_ratio()
 
@@ -121,7 +121,7 @@ class LevelGenerator(LCMDataGenerator):
 
     def generate_row_csv(self) -> list:
         z0, z1, q, w = self._sample_workload(4)
-        B, s, E, H, N, h, T = self._sample_valid_config()
+        B, s, E, H, N, h, T = self._sample_config()
 
         config = deepcopy(self._config)
         config["lsm"]["system"]["B"] = B
@@ -129,6 +129,7 @@ class LevelGenerator(LCMDataGenerator):
         config["lsm"]["system"]["E"] = E
         config["lsm"]["system"]["H"] = H
         config["lsm"]["system"]["N"] = N
+        # TODO: Change cost function to dynamically take in system var
         cf = CostFunc.EndureLevelCost(config)
 
         line = [

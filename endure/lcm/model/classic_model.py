@@ -7,11 +7,9 @@ class ClassicModel(nn.Module):
     def __init__(self, config: dict[str, Any]):
         super().__init__()
         self.params = config["lcm"]["model"]["classic"]
-        # in_dim = (self.params['num_cont_vars']
-        #           + self.params['post_embedding_size'])
         in_dim = self.params["num_cont_vars"] + self.params["embedding_size"]
         hidden_dim = self.params["layer_size"]
-        out_dim = self.params["out_dim"]
+        out_dim = len(config["lcm"]["output_features"])
         modules = []
 
         self.embedding = nn.Embedding(

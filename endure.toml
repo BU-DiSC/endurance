@@ -46,18 +46,18 @@ to_run = [
 # -----------------------------------------------------------------------------
 format = "parquet"
 generator = "LevelCost"
-dir = "train-data/lcm-level"
+dir = "test-data/lcm/level"
 file_prefix = "levelcost"
-num_workers = -1  # -1 forces all cores to be used
-num_files = 256
-samples = 1048576  # per file sample
+num_workers = 2  # -1 forces all cores to be used
+num_files = 2
+samples = 8192  # per file sample
 overwrite_if_exists = true
 
 # -----------------------------------------------------------------------------
 [job.LCMTrain]
 # -----------------------------------------------------------------------------
-max_epochs = 50
-save_dir = "models/level-04-20"
+max_epochs = 10
+save_dir = "models/level-04-26"
 use_gpu_if_avail = true
 
 # Different loss functions to train via
@@ -72,30 +72,30 @@ loss_fn = "MSLE"
 #   SGD - Stochastic gradient descent
 #   Adam
 #   Adagrad
-optimizer = "Adam"
+optimizer = "SGD"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
 lr_scheduler = "Constant"
 
 # Stop checkpointing to improve training
-no_checkpoint = false
+no_checkpoint = true
 
 [job.LCMTrain.train]
-dir = "train-data/lcm-level"
+dir = "train-data/lcm/level"
 format = "parquet"
-batch_size = 8192
+batch_size = 128
 shuffle = true
-num_workers = 6
+num_workers = 1
 drop_last = true
 use_dp = false
 
 [job.LCMTrain.test]
-dir = "test-data/lcm-level"
+dir = "test-data/lcm/level"
 format = "parquet"
-batch_size = 65536
+batch_size = 1024
 shuffle = false
-num_workers = 2
+num_workers = 1
 drop_last = true
 use_dp = false
 
@@ -104,22 +104,22 @@ use_dp = false
 # -----------------------------------------------------------------------------
 format = "parquet"
 generator = "default"
-dir = "test-data/ltune/level"
+dir = "train-data/ltune/level"
 file_prefix = "workload"
-num_workers = 6  # -1 forces all cores to be used
+num_workers = 2  # -1 forces all cores to be used
 num_files = 8
-samples = 1048576  # per file sample
+samples = 8192  # per file sample
 overwrite_if_exists = true
 
 # -----------------------------------------------------------------------------
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
-max_epochs = 50
+max_epochs = 10
 save_dir = "models/level-tuner-04-26"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
-loss_fn_path = "models/level-04-20/checkpoints/epoch_20.checkpoint"
+loss_fn_path = "models/level-04-26/best.model"
 
 # Check train.optimizer for available options
 optimizer = "SGD"
@@ -128,21 +128,23 @@ optimizer = "SGD"
 #   [CosineAnnealing, Exponential, Constant, None]
 lr_scheduler = "Constant"
 
+no_checkpoint = true
+
 [job.LTuneTrain.train]
 dir = "train-data/ltune/level"
 format = "parquet"
-batch_size = 1024
+batch_size = 128
 shuffle = true
-num_workers = 6
+num_workers = 1
 drop_last = true
 use_dp = false
 
 [job.LTuneTrain.test]
 dir = "test-data/ltune/level"
 format = "parquet"
-batch_size = 65536
+batch_size = 1024
 shuffle = false
-num_workers = 2
+num_workers = 1
 drop_last = true
 use_dp = false
 
@@ -204,6 +206,8 @@ N = 1000000000
 # =============================================================================
 [lcm]
 desc = 'Learned Cost Model'
+input_features = ["z0", "z1", "q", "w", "B", "s", "E", "H", "N", "h", "T"]
+output_features = ["z0_cost", "z1_cost", "q_cost", "w_cost"]
 
 # -----------------------------------------------------------------------------
 # HEADER LCM.MODELS
@@ -213,7 +217,6 @@ desc = 'Learned Cost Model'
 dropout = 0
 
 [lcm.model.classic]
-out_dim = 4  # should match cost function output (z0, z1, q, w)
 num_layers = 2
 layer_size = 128
 
@@ -229,7 +232,6 @@ num_cont_vars = 10
 #   num_cont_vars + (num_cate_vars * embedding_size)
 # As each categorical variable will be embedded down to size `embedding_size`
 embedding_size = 128
-post_embedding_size = 64  # quick linear layer after embedding
 
 [lcm.model.flexible]
 out_dims = 4  # should match cost function output (z0, z1, q, h)
@@ -255,9 +257,6 @@ embedding_size = 16
 #   misc settings on data such as bias, precision, etc
 # -----------------------------------------------------------------------------
 [lcm.data]
-# z0, z1, q, w, h
-mean_bias = [0.5, 0.5, 0.5, 0.5, 5.0]
-std_bias =  [0.3, 0.3, 0.3, 0.3, 2.88]
 precision = 3
 normalize_inputs = false
 
@@ -272,6 +271,8 @@ normalize_inputs = false
 [ltune]
 desc = 'Learned Tuner'
 penalty_factor = 1000
+input_features = ["z0", "z1", "q", "w", "B", "s", "E", "H", "N"]
+output_features = ["h", "T"]
 
 # -----------------------------------------------------------------------------
 # HEADER LTUNE.MODEL
@@ -302,9 +303,6 @@ hidden_layers = 16
 #   Misc data items
 # -----------------------------------------------------------------------------
 [ltune.data]
-# z0, z1, q, w
-mean_bias = [0.5, 0.5, 0.5, 0.5]
-std_bias = [0.3, 0.3, 0.3, 0.3]
 precision = 3
 normalize_inputs = false
 
