@@ -33,10 +33,14 @@ class ClassicTuner(nn.Module):
             modules.append(nn.ReLU())
 
         self.bits = nn.Sequential(
-            nn.Linear(hidden_dim, 1),
+            nn.Linear(hidden_dim, int(hidden_dim / 2)),
+            nn.ReLU(),
+            nn.Linear(int(hidden_dim / 2), 1),
         )
         self.size_ratio = nn.Sequential(
-            nn.Linear(hidden_dim, size_ratio_range),
+            nn.Linear(hidden_dim, int(hidden_dim / 2)),
+            nn.ReLU(),
+            nn.Linear(int(hidden_dim / 2), size_ratio_range),
         )
 
         self.layers = nn.Sequential(*modules)

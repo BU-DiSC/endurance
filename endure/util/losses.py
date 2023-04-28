@@ -1,9 +1,11 @@
+from typing import Optional
+
 import torch
 
 
 class LossBuilder:
     @staticmethod
-    def build(choice):
+    def build(choice) -> Optional[torch.nn.Module]:
         losses = {
             "MSLE": MSLELoss,
             "NMSE": NMSELoss,
@@ -12,6 +14,8 @@ class LossBuilder:
             "MSE": torch.nn.MSELoss,
         }
         loss = losses.get(choice, None)
+        if loss is None:
+            return None
 
         return loss()
 

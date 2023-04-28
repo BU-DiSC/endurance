@@ -2,8 +2,8 @@ import os
 import torch
 from typing import Any
 
+import toml
 from torch.functional import Tensor
-from torch.nn.parameter import Parameter
 
 from endure.lcm.model.builder import LearnedCostModelBuilder
 
@@ -21,20 +21,21 @@ class LearnedCostModelLoss(torch.nn.Module):
         self.penalty_factor = config["ltune"]["penalty_factor"]
         self.mem_budget_idx = config["ltune"]["input_features"].index("H")
 
-        self.lcm_builder = LearnedCostModelBuilder(config)
+        self._lcm_config = toml.load(
+            os.path.join(config["io"]["data_dir"], model_path, "endure.toml")
+        )
+        self.lcm_builder = LearnedCostModelBuilder(self._lcm_config)
         self.model = self.lcm_builder.build_model()
 
-        _, extension = os.path.splitext(model_path)
-        is_checkpoint = extension == ".checkpoint"
-        data = torch.load(os.path.join(config["io"]["data_dir"], model_path))
-        if is_checkpoint:
-            data = data["model_state_dict"]
+        data = torch.load(
+            os.path.join(config["io"]["data_dir"], model_path, "best.model")
+        )
         status = self.model.load_state_dict(data)
         assert len(status.missing_keys) == 0
         assert len(status.unexpected_keys) == 0
 
     def create_penalty_vector(self, bpe: Tensor, mem_budget: Tensor):
-        penalty = torch.ones(bpe.size(dim=-1)).to(bpe.device)
+        penalty = torch.ones(bpe.size()).to(bpe.device)
         # for BPE guesses that exceed the maximum memory budget
         idx = bpe >= mem_budget
         penalty[idx] = self.penalty_factor * (bpe[idx] - mem_budget[idx])
@@ -44,22 +45,29 @@ class LearnedCostModelLoss(torch.nn.Module):
 
         return penalty
 
+    def convert_tuner_output(self, tuner_out):
+        bpe = tuner_out[:, 0]
+        bpe = bpe.view(-1, 1)
+        size_ratio = torch.argmax(tuner_out[:, 1:], dim=-1).view(-1, 1)
+
+        return bpe, size_ratio
+
+
     def forward(self, pred, label):
         # For learned cost model loss, pred is the DB configuration, label is
         # the workload
 
-        bpe = pred[:, 0]
-        mem_budget = label[:, self.mem_budget_idx]
-        penalty = self.create_penalty_vector(bpe, mem_budget)
-
-        bpe = bpe.view(-1, 1)
-        size_ratio = torch.argmax(pred[:, 1:], dim=-1).view(-1, 1)
+        bpe, size_ratio = self.convert_tuner_output(pred)
+        penalty = self.create_penalty_vector(
+            bpe,                                        # BPE
+            label[:, self.mem_budget_idx].view(-1, 1)   # maximum memory
+        )
         # if self.normalize_bpe:
         #     bpe = ((bpe - self._bpe_mean) / self._bpe_std)
 
         inputs = torch.concat([label, bpe, size_ratio], dim=-1)
         out = self.model(inputs)
         out = out.sum(dim=-1)
-        out = out * penalty.view(-1, 1)
+        out = out * penalty
 
         return out.mean()

@@ -69,13 +69,6 @@ class LTuneGenerator:
         z0, z1, q, w = self._sample_workload(4)
         B, s, E, H, N = self._sample_system()
 
-        config = deepcopy(self._config)
-        config["lsm"]["system"]["B"] = B
-        config["lsm"]["system"]["s"] = s
-        config["lsm"]["system"]["E"] = E
-        config["lsm"]["system"]["H"] = H
-        config["lsm"]["system"]["N"] = N
-
         return [z0, z1, q, w, B, s, E, H, N]
 
     def generate_row_parquet(self) -> dict[str, Union[int, float]]:

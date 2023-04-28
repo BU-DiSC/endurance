@@ -1,7 +1,8 @@
 import glob
 import logging
-import numpy as np
 import os
+
+import numpy as np
 import pandas as pd
 import pyarrow.parquet as pa
 import torch
@@ -12,14 +13,15 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
     def __init__(self, config, folder, format="csv", shuffle=False):
         self._config: dict = config
         self.log: logging.Logger = logging.getLogger(config["log"]["name"])
-        self._label_cols: list[str] = config["lcm"]["output_features"]
-        self._input_cols: list[str] = self._get_input_cols()
         self._format: str = format
         self._fnames: list[str] = glob.glob(os.path.join(folder, "*." + format))
         self._shuffle: bool = shuffle
 
+    def _get_output_cols(self):
+        return self._config["lcm"]["output_features"]
+
     def _get_input_cols(self) -> list[str]:
-        base_features : list[str] = self._config["lcm"]["input_features"]
+        base_features: list[str] = self._config["lcm"]["input_features"]
         if "K" in base_features:
             k_cols = [f"K_{i}" for i in range(self._config["lsm"]["max_levels"])]
             base_features = list(filter(lambda x: x != "K", base_features))
@@ -78,8 +80,8 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
             np.random.shuffle(files)
         for file in files:
             df = self._load_data(file)
-            labels = torch.from_numpy(df[self._label_cols].values).float()
-            inputs = torch.from_numpy(df[self._input_cols].values).float()
+            labels = torch.from_numpy(df[self._get_output_cols()].values).float()
+            inputs = torch.from_numpy(df[self._get_input_cols()].values).float()
             indices = list(range(len(labels)))
             if self._shuffle:
                 np.random.shuffle(indices)

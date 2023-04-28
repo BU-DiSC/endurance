@@ -1,11 +1,12 @@
-import numpy as np
+from typing import Any
 
 from endure.lsm.types import Policy
 import endure.lsm.lsm_models as Model
+import numpy as np
 
 
 class EndureTierCost:
-    def __init__(self, config: dict[str, ...]):
+    def __init__(self, config: dict[str, Any]):
         self._config = config
         self.cf = Model.EndureKHybridCost(**self._config["lsm"]["system"])
 
@@ -37,7 +38,7 @@ class EndureTierCost:
 
 
 class EndureLevelCost:
-    def __init__(self, config: dict[str, ...]):
+    def __init__(self, config: dict[str, Any]):
         self._config = config
         self.cf = Model.EndureKHybridCost(**self._config["lsm"]["system"])
 
@@ -69,7 +70,7 @@ class EndureLevelCost:
 
 
 class EndureYZCost:
-    def __init__(self, config: dict[str, ...]):
+    def __init__(self, config: dict[str, Any]):
         self._config = config
         self.cf = Model.EndureKHybridCost(**self._config["lsm"]["system"])
 
@@ -141,7 +142,7 @@ class EndureYZCost:
 
 
 class EndureQCost:
-    def __init__(self, config: dict[str, ...]):
+    def __init__(self, config: dict[str, Any]):
         self._config = config
         self.cf = Model.EndureKHybridCost(**self._config["lsm"]["system"])
 
@@ -173,7 +174,7 @@ class EndureQCost:
 
 
 class EndureKCost:
-    def __init__(self, config: dict[str, ...]):
+    def __init__(self, config: dict[str, Any]):
         self._config = config
         self.cf = Model.EndureKHybridCost(**self._config["lsm"]["system"])
 
@@ -208,7 +209,7 @@ class EndureKCost:
 
 
 class EndureLevelTrueCost:
-    def __init__(self, config: dict[str, ...]):
+    def __init__(self, config: dict[str, Any]):
         self._config = config
         self.cf = Model.EndureTierLevelCost(**self._config["lsm"]["system"])
 
@@ -236,7 +237,7 @@ class EndureLevelTrueCost:
 
 
 class EndureOneLevelingCost:
-    def __init__(self, config: dict[str, ...]):
+    def __init__(self, config: dict[str, Any]):
         self._config = config
         self.cf = Model.EndureKHybridCost(**self._config["lsm"]["system"])
 

@@ -56,8 +56,8 @@ overwrite_if_exists = true
 # -----------------------------------------------------------------------------
 [job.LCMTrain]
 # -----------------------------------------------------------------------------
-max_epochs = 10
-save_dir = "models/level-04-26"
+max_epochs = 50
+save_dir = "models/lcm/level-04-26-v2"
 use_gpu_if_avail = true
 
 # Different loss functions to train via
@@ -66,38 +66,36 @@ use_gpu_if_avail = true
 #   MSLE - Mean squared log error
 #   RMSE - Root mean square error
 #   RMSLE - Root mean squared log error
-loss_fn = "MSLE"
+loss_fn = "RMSE"
 
 # Supported optimizers
 #   SGD - Stochastic gradient descent
 #   Adam
 #   Adagrad
-optimizer = "SGD"
+optimizer = "Adam"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
 lr_scheduler = "Constant"
 
 # Stop checkpointing to improve training
-no_checkpoint = true
+no_checkpoint = false
 
 [job.LCMTrain.train]
 dir = "train-data/lcm/level"
 format = "parquet"
-batch_size = 128
+batch_size = 8192
 shuffle = true
-num_workers = 1
+num_workers = 6
 drop_last = true
-use_dp = false
 
 [job.LCMTrain.test]
 dir = "test-data/lcm/level"
 format = "parquet"
-batch_size = 1024
+batch_size = 65536
 shuffle = false
-num_workers = 1
+num_workers = 2
 drop_last = true
-use_dp = false
 
 # -----------------------------------------------------------------------------
 [job.LTuneDataGen]
@@ -114,39 +112,37 @@ overwrite_if_exists = true
 # -----------------------------------------------------------------------------
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
-max_epochs = 10
-save_dir = "models/level-tuner-04-26"
+max_epochs = 100
+save_dir = "models/ltune/level-04-28-v0"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
-loss_fn_path = "models/level-04-26/best.model"
+loss_fn_path = "models/lcm/level-04-26-v2"
 
 # Check train.optimizer for available options
-optimizer = "SGD"
+optimizer = "Adam"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
-lr_scheduler = "Constant"
+lr_scheduler = "CosineAnnealing"
 
-no_checkpoint = true
+no_checkpoint = false
 
 [job.LTuneTrain.train]
 dir = "train-data/ltune/level"
 format = "parquet"
-batch_size = 128
+batch_size = 8192
 shuffle = true
-num_workers = 1
+num_workers = 6
 drop_last = true
-use_dp = false
 
 [job.LTuneTrain.test]
 dir = "test-data/ltune/level"
 format = "parquet"
-batch_size = 1024
+batch_size = 65536
 shuffle = false
-num_workers = 1
+num_workers = 2
 drop_last = true
-use_dp = false
 
 # =============================================================================
 # HEADER LSM
@@ -182,7 +178,7 @@ phi = 1
 # Range query selectivity, 0 implies the key range per range Exponentialquery would roughly
 # fit into 1 page. Selectivity 1 implies range queries will always query the
 # full key possible range
-s = 0.000000001
+s = 1e-7
 
 # Size of a single entry in bits
 E = 8192
@@ -218,7 +214,7 @@ dropout = 0
 
 [lcm.model.classic]
 num_layers = 2
-layer_size = 128
+layer_size = 256
 
 # None, Layer, Batch
 normalize = 'Batch'
@@ -231,7 +227,7 @@ num_cont_vars = 10
 # input will be
 #   num_cont_vars + (num_cate_vars * embedding_size)
 # As each categorical variable will be embedded down to size `embedding_size`
-embedding_size = 128
+embedding_size = 64
 
 [lcm.model.flexible]
 out_dims = 4  # should match cost function output (z0, z1, q, h)
@@ -270,7 +266,7 @@ normalize_inputs = false
 # =============================================================================
 [ltune]
 desc = 'Learned Tuner'
-penalty_factor = 1000
+penalty_factor = 100
 input_features = ["z0", "z1", "q", "w", "B", "s", "E", "H", "N"]
 output_features = ["h", "T"]
 
@@ -279,12 +275,11 @@ output_features = ["h", "T"]
 #   Model configurations
 # -----------------------------------------------------------------------------
 [ltune.model]
-in_dim = 9
 dropout = 0.1  # percentage for dropout during training
 
 # kwargs specific to LTune models during forward pass
 [ltune.model.train_kwargs]
-temp = 0.5
+temp = 0.001
 hard = false
 
 [ltune.model.test_kwargs]
@@ -292,8 +287,8 @@ hard = true
 
 [ltune.model.classic]
 normalize = 'Batch'
-layer_size = 256
-num_layers = 8
+layer_size = 128
+num_layers = 4
 
 [ltune.model.klsm]
 hidden_layers = 16
@@ -325,7 +320,7 @@ gamma = 0.5
 lr = 0.001
 
 [train.optimizer.SGD]
-lr = 0.01
+lr = 0.001
 
 [train.optimizer.Adagrad]
 lr = 0.001
