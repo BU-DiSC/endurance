@@ -121,7 +121,7 @@ use_gpu_if_avail = true
 loss_fn_path = "models/lcm/level-05-02-v0"
 
 # Check train.optimizer for available options
-optimizer = "SGD"
+optimizer = "Adam"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
@@ -130,19 +130,19 @@ lr_scheduler = "Constant"
 no_checkpoint = false
 
 [job.LTuneTrain.train]
-dir = "train-data/ltune/level"
+dir = "train-data/lcm/level-small"
 format = "parquet"
-batch_size = 64
+batch_size = 8192
 shuffle = true
-num_workers = 6
+num_workers = 4
 drop_last = true
 
 [job.LTuneTrain.test]
-dir = "test-data/ltune/level"
+dir = "test-data/lcm/level-small"
 format = "parquet"
 batch_size = 65536
 shuffle = false
-num_workers = 2
+num_workers = 1
 drop_last = true
 
 # =============================================================================
@@ -268,8 +268,8 @@ normalize_inputs = false
 [ltune]
 desc = 'Learned Tuner'
 penalty_factor = 100
-input_features = ["z0", "z1", "q", "w", "B", "s", "E", "H", "N"]
-output_features = ["h", "T"]
+input_features = ["z0", "z1", "q", "w", "B", "s", "E", "H", "N", "T"]
+output_features = ["h"]
 
 # -----------------------------------------------------------------------------
 # HEADER LTUNE.MODEL
@@ -280,15 +280,15 @@ dropout = 0.1  # percentage for dropout during training
 
 # kwargs specific to LTune models during forward pass
 [ltune.model.train_kwargs]
-temp = 0.001
-hard = false
+temp = 0.5
+hard = true
 
 [ltune.model.test_kwargs]
 hard = true
 
 [ltune.model.classic]
 normalize = 'Batch'
-layer_size = 128
+layer_size = 256
 num_layers = 4
 
 [ltune.model.klsm]

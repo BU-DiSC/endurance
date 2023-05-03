@@ -116,7 +116,7 @@ class LTuneTrainJob:
         train_data = self._build_train()
         test_data = self._build_test()
         loss_fn = self._build_loss_fn()
-        disable_tqdm = self.log.level == logging.DEBUG
+        disable_tqdm = self._config["log"]["disable_tqdm"]
 
         trainer = Trainer(
             log=self.log,
