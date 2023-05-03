@@ -54,27 +54,26 @@ class LearnedCostModelLoss(torch.nn.Module):
     def convert_tuner_output(self, tuner_out):
         bpe = tuner_out[:, 0]
         bpe = bpe.view(-1, 1)
-        # size_ratio = torch.argmax(tuner_out[:, 1:], dim=-1).view(-1, 1)
+        size_ratio = torch.argmax(tuner_out[:, 1:], dim=-1).view(-1, 1)
         # size_ratio = torch.ceil(tuner_out[:, 1:] - 2).view(-1, 1)
 
-        return bpe
+        return bpe, size_ratio
 
     def forward(self, pred, label):
         assert self.model.training is False
         # For learned cost model loss, pred is the DB configuration, label is
         # the workload
-        # bpe, size_ratio = self.convert_tuner_output(pred)
-        bpe = self.convert_tuner_output(pred)
+        bpe, size_ratio = self.convert_tuner_output(pred)
+        # bpe = self.convert_tuner_output(pred)
         penalty = self.create_penalty_vector(
             bpe, label[:, self.mem_budget_idx].view(-1, 1)
         )
         # if self.normalize_bpe:
         #     bpe = ((bpe - self._bpe_mean) / self._bpe_std)
-        size_ratio = label[:, -1].view(-1, 1) - 2
 
-        inputs = torch.concat([label[:, :-1], bpe, size_ratio], dim=-1)
+        inputs = torch.concat([label, bpe, size_ratio], dim=-1)
         out = self.model(inputs)
-        out = out.sum(dim=-1)
+        out = out.sum(dim=-1).square()
         out = out * penalty
 
         return out.mean()
