@@ -19,7 +19,8 @@ class EndureDriver:
         )
         self.log = logging.getLogger(config["log"]["name"])
         self.log.setLevel(logging.getLevelName(config["log"]["level"]))
-        self.log.debug(f"Log level: {logging.getLevelName(self.log.getEffectiveLevel())}")
+        log_level = logging.getLevelName(self.log.getEffectiveLevel())
+        self.log.debug(f"Log level: {log_level}")
 
     def run(self):
         self.log.info(f'Staring app {self.config["app"]["name"]}')

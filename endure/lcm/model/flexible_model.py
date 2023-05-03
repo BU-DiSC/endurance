@@ -1,9 +1,11 @@
-import torch
+from typing import Any
+
 from torch import nn
+import torch
 
 
 class FlexibleModel(nn.Module):
-    def __init__(self, config: dict[str, ...]):
+    def __init__(self, config: dict[str, Any]):
         super().__init__()
         self.params = config["lcm"]["model"]["flexible"]
         num_classes = (

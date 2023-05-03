@@ -1,6 +1,7 @@
-import torch
-from torch import nn
 from typing import Any
+
+from torch import nn
+import torch
 
 
 class ClassicModel(nn.Module):
@@ -13,7 +14,11 @@ class ClassicModel(nn.Module):
         modules = []
 
         self.embedding = nn.Embedding(
-            num_embeddings=config["lsm"]["size_ratio"]["max"],
+            num_embeddings=(
+                config["lsm"]["size_ratio"]["max"]
+                - config["lsm"]["size_ratio"]["min"]
+                + 1
+            ),
             embedding_dim=self.params["embedding_size"],
             max_norm=True,
         )
@@ -27,17 +32,17 @@ class ClassicModel(nn.Module):
         modules.append(nn.Linear(in_dim, hidden_dim))
         nn.init.xavier_normal_(modules[-1].weight)
         modules.append(nn.Dropout(p=config["lcm"]["model"]["dropout"]))
-        modules.append(nn.ReLU())
+        modules.append(nn.LeakyReLU())
 
         for _ in range(self.params["num_layers"]):
             modules.append(nn.Linear(hidden_dim, hidden_dim))
             nn.init.xavier_normal_(modules[-1].weight)
             modules.append(nn.Dropout(p=config["lcm"]["model"]["dropout"]))
-            modules.append(nn.ReLU())
+            modules.append(nn.LeakyReLU())
 
         modules.append(nn.Linear(hidden_dim, out_dim))
         nn.init.xavier_normal_(modules[-1].weight)
-        modules.append(nn.ReLU())
+        modules.append(nn.LeakyReLU())
 
         self.cost_layer = nn.Sequential(*modules)
 

@@ -87,4 +87,3 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
                 np.random.shuffle(indices)
             for idx in indices:
                 yield labels[idx], inputs[idx]
-            del df  # attempt to release dataframe memory

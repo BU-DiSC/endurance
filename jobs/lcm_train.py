@@ -1,14 +1,15 @@
 #!/usr/bin/env python
+from typing import Any, Optional
 import logging
 import os
 import toml
 import torch
-from typing import Any, Optional
 
 from torch.utils.data import DataLoader
 import torch.optim as TorchOpt
 
 from endure.lcm.data.iterable_dataset import LCMIterableDataSet
+from endure.lcm.data.classic_dataset import LCMDataSet
 from endure.lcm.model.builder import LearnedCostModelBuilder
 from endure.util.losses import LossBuilder
 from endure.util.lr_scheduler import LRSchedulerBuilder
@@ -31,6 +32,7 @@ class LCMTrainJob:
         if loss is None:
             self.log.warn("Invalid loss func. Defaulting to MSE")
             loss = LossBuilder.build("MSE")
+        assert loss is not None
 
         return loss
 
@@ -58,17 +60,25 @@ class LCMTrainJob:
             self._config["io"]["data_dir"],
             self._setting["train"]["dir"],
         )
+        self.log.info(f"Train data: {train_dir}")
+
         train_data = LCMIterableDataSet(
             config=self._config,
             folder=train_dir,
             shuffle=self._setting["train"]["shuffle"],
             format=self._setting["train"]["format"],
         )
+        # train_data = LCMDataSet(
+        #     config=self._config,
+        #     folder=train_dir,
+        #     format=self._setting["train"]["format"],
+        # )
         train = DataLoader(
             train_data,
             batch_size=self._setting["train"]["batch_size"],
             drop_last=self._setting["train"]["drop_last"],
             num_workers=self._setting["train"]["num_workers"],
+            pin_memory=True,
         )
 
         return train
@@ -78,17 +88,25 @@ class LCMTrainJob:
             self._config["io"]["data_dir"],
             self._setting["test"]["dir"],
         )
+        self.log.info(f"Test data: {test_dir}")
+
         test_data = LCMIterableDataSet(
             config=self._config,
             folder=test_dir,
             shuffle=self._setting["test"]["shuffle"],
             format=self._setting["test"]["format"],
         )
+        # test_data = LCMDataSet(
+        #     config=self._config,
+        #     folder=test_dir,
+        #     format=self._setting["test"]["format"],
+        # )
         test = DataLoader(
             test_data,
             batch_size=self._setting["test"]["batch_size"],
             drop_last=self._setting["test"]["drop_last"],
             num_workers=self._setting["test"]["num_workers"],
+            pin_memory=True,
         )
 
         return test
@@ -123,7 +141,6 @@ class LCMTrainJob:
         test_data = self._build_test()
         loss_fn = self._build_loss_fn()
         disable_tqdm = self.log.level == logging.DEBUG
-        self.log.info(f"{self.log.level=}")
 
         trainer = Trainer(
             log=self.log,

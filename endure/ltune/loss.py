@@ -1,9 +1,9 @@
+from typing import Any
 import os
 import torch
-from typing import Any
 
-import toml
 from torch.functional import Tensor
+import toml
 
 from endure.lcm.model.builder import LearnedCostModelBuilder
 
@@ -34,34 +34,41 @@ class LearnedCostModelLoss(torch.nn.Module):
         assert len(status.missing_keys) == 0
         assert len(status.unexpected_keys) == 0
 
-    def create_penalty_vector(self, bpe: Tensor, mem_budget: Tensor):
+    def create_penalty_vector(
+        self, bpe: Tensor, mem_budget: Tensor, size_ratio: Tensor
+    ):
         penalty = torch.ones(bpe.size()).to(bpe.device)
         # for BPE guesses that exceed the maximum memory budget
         idx = bpe >= mem_budget
         penalty[idx] = self.penalty_factor * (bpe[idx] - mem_budget[idx])
         # for BPE guesses underneath 0
         idx = bpe < 0
-        penalty[idx] = self.penalty_factor * bpe[idx] * -1
+        penalty[idx] = self.penalty_factor * (0 - bpe[idx])
+
+        penalty[size_ratio > 48] = self.penalty_factor * (
+            size_ratio[size_ratio > 48] - 48
+        )
+        penalty[size_ratio < 0] = self.penalty_factor * (0 - size_ratio[size_ratio < 0])
 
         return penalty
 
     def convert_tuner_output(self, tuner_out):
         bpe = tuner_out[:, 0]
         bpe = bpe.view(-1, 1)
-        size_ratio = torch.argmax(tuner_out[:, 1:], dim=-1).view(-1, 1)
+        # size_ratio = torch.argmax(tuner_out[:, 1:], dim=-1).view(-1, 1)
+        size_ratio = torch.ceil(tuner_out[:, 1:] - 2).view(-1, 1)
 
         return bpe, size_ratio
-
 
     def forward(self, pred, label):
         # For learned cost model loss, pred is the DB configuration, label is
         # the workload
-
         bpe, size_ratio = self.convert_tuner_output(pred)
         penalty = self.create_penalty_vector(
-            bpe,                                        # BPE
-            label[:, self.mem_budget_idx].view(-1, 1)   # maximum memory
+            bpe, label[:, self.mem_budget_idx].view(-1, 1), size_ratio
         )
+        size_ratio[size_ratio > 48] = 48
+        size_ratio[size_ratio < 0] = 0
         # if self.normalize_bpe:
         #     bpe = ((bpe - self._bpe_mean) / self._bpe_std)
 

@@ -56,8 +56,8 @@ overwrite_if_exists = true
 # -----------------------------------------------------------------------------
 [job.LCMTrain]
 # -----------------------------------------------------------------------------
-max_epochs = 50
-save_dir = "models/lcm/level-04-26-v2"
+max_epochs = 100
+save_dir = "models/lcm/level-05-02-v0"
 use_gpu_if_avail = true
 
 # Different loss functions to train via
@@ -66,7 +66,7 @@ use_gpu_if_avail = true
 #   MSLE - Mean squared log error
 #   RMSE - Root mean square error
 #   RMSLE - Root mean squared log error
-loss_fn = "RMSE"
+loss_fn = "MSLE"
 
 # Supported optimizers
 #   SGD - Stochastic gradient descent
@@ -76,7 +76,7 @@ optimizer = "Adam"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
-lr_scheduler = "Constant"
+lr_scheduler = "CosineAnnealing"
 
 # Stop checkpointing to improve training
 no_checkpoint = false
@@ -94,7 +94,7 @@ dir = "test-data/lcm/level"
 format = "parquet"
 batch_size = 65536
 shuffle = false
-num_workers = 2
+num_workers = 1
 drop_last = true
 
 # -----------------------------------------------------------------------------
@@ -113,25 +113,26 @@ overwrite_if_exists = true
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
 max_epochs = 100
-save_dir = "models/ltune/level-04-28-v0"
+save_dir = "models/ltune/level-05-03-v0"
+# save_dir = "models/tmp"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
-loss_fn_path = "models/lcm/level-04-26-v2"
+loss_fn_path = "models/lcm/level-05-02-v0"
 
 # Check train.optimizer for available options
-optimizer = "Adam"
+optimizer = "SGD"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
-lr_scheduler = "CosineAnnealing"
+lr_scheduler = "Constant"
 
 no_checkpoint = false
 
 [job.LTuneTrain.train]
 dir = "train-data/ltune/level"
 format = "parquet"
-batch_size = 8192
+batch_size = 64
 shuffle = true
 num_workers = 6
 drop_last = true
