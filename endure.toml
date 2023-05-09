@@ -17,7 +17,7 @@ name = "ENDURE"
 name = 'endure-logger'
 format = "[%(levelname)s][%(asctime)-15s][%(filename)s] %(message)s"
 datefmt = '%d-%m-%y:%H:%M:%S'
-level = "INFO"
+level = "DEBUG"
 disable_tqdm = false
 
 # =============================================================================
@@ -46,11 +46,11 @@ to_run = [
 # -----------------------------------------------------------------------------
 format = "parquet"
 generator = "LevelCost"
-dir = "test-data/lcm/level"
+dir = "test-data/lcm/level-write-bias"
 file_prefix = "levelcost"
 num_workers = 2  # -1 forces all cores to be used
 num_files = 2
-samples = 8192  # per file sample
+samples = 1048576  # per file sample
 overwrite_if_exists = true
 
 # -----------------------------------------------------------------------------
@@ -104,7 +104,7 @@ format = "parquet"
 generator = "default"
 dir = "train-data/ltune/level"
 file_prefix = "workload"
-num_workers = 2  # -1 forces all cores to be used
+num_workers = 4  # -1 forces all cores to be used
 num_files = 8
 samples = 8192  # per file sample
 overwrite_if_exists = true
@@ -113,36 +113,35 @@ overwrite_if_exists = true
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
 max_epochs = 100
-save_dir = "models/ltune/level-05-03-v1"
-# save_dir = "models/tmp"
+save_dir = "models/ltune/level-05-09-write-bias"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
 loss_fn_path = "models/lcm/level-05-02-v0"
 
 # Check train.optimizer for available options
-optimizer = "Adam"
+optimizer = "SGD"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
-lr_scheduler = "Constant"
+lr_scheduler = "CosineAnnealing"
 
 no_checkpoint = false
 
 [job.LTuneTrain.train]
-dir = "train-data/lcm/level"
+dir = "train-data/lcm/level-write-bias"
 format = "parquet"
-batch_size = 8192
+batch_size = 1024
 shuffle = true
 num_workers = 4
 drop_last = true
 
 [job.LTuneTrain.test]
-dir = "test-data/lcm/level"
+dir = "test-data/lcm/level-write-bias"
 format = "parquet"
 batch_size = 65536
 shuffle = false
-num_workers = 1
+num_workers = 2
 drop_last = true
 
 # =============================================================================
@@ -267,7 +266,7 @@ normalize_inputs = false
 # =============================================================================
 [ltune]
 desc = 'Learned Tuner'
-penalty_factor = 100
+penalty_factor = 1000
 input_features = ["z0", "z1", "q", "w", "B", "s", "E", "H", "N"]
 output_features = ["h", "T"]
 
@@ -277,19 +276,22 @@ output_features = ["h", "T"]
 # -----------------------------------------------------------------------------
 [ltune.model]
 dropout = 0.0  # percentage for dropout during training
+categorical = false
 
 # kwargs specific to LTune models during forward pass
 [ltune.model.train_kwargs]
-temp = 0.1
-hard = true
+temp = 0.5
+hard = false
 
 [ltune.model.test_kwargs]
+temp = 0.5
 hard = true
 
 [ltune.model.classic]
 normalize = 'Batch'
 layer_size = 128
-num_layers = 2
+num_layers = 3
+scale_size_ratio = false
 
 [ltune.model.klsm]
 hidden_layers = 16

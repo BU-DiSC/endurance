@@ -172,7 +172,7 @@ class EndureTierLevelSolver(EndureSolver):
         T_UPPER_LIM = self._config["lsm"]["size_ratio"]["max"]
         T_LOWER_LIM = self._config["lsm"]["size_ratio"]["min"]
         H_LOWER_LIM = self._config["lsm"]["bits_per_elem"]["min"]
-        H_UPPER_LIM = self._config["lsm"]["bits_per_elem"]["max"]
+        H_UPPER_LIM = self._config["lsm"]["system"]["H"] - 0.1
         # H_UPPER_LIM = (self._config['system']['H']
         #                - (one_mb_in_bits / self._config['system']['N']))
 
@@ -257,7 +257,7 @@ class EndureQSolver(EndureSolver):
         T_UPPER_LIM = self._config["lsm"]["size_ratio"]["max"]
         T_LOWER_LIM = self._config["lsm"]["size_ratio"]["min"]
         H_LOWER_LIM = self._config["lsm"]["bits_per_elem"]["min"]
-        H_UPPER_LIM = self._config["lsm"]["bits_per_elem"]["max"]
+        H_UPPER_LIM = self._config["lsm"]["system"]["H"] - 0.1
 
         return SciOpt.Bounds(
             [H_LOWER_LIM, T_LOWER_LIM, T_LOWER_LIM - 1],
@@ -335,7 +335,7 @@ class EndureKSolver(EndureSolver):
         T_UPPER_LIM = self._config["lsm"]["size_ratio"]["max"]
         T_LOWER_LIM = self._config["lsm"]["size_ratio"]["min"]
         H_LOWER_LIM = self._config["lsm"]["bits_per_elem"]["min"]
-        H_UPPER_LIM = self._config["lsm"]["bits_per_elem"]["max"]
+        H_UPPER_LIM = self._config["lsm"]["system"]["H"] - 0.1
         MAX_LEVELS = self._config["lsm"]["max_levels"]
 
         k_lower = [T_LOWER_LIM - 1] * MAX_LEVELS
@@ -416,7 +416,7 @@ class EndureYZSolver(EndureSolver):
         T_UPPER_LIM = self._config["lsm"]["size_ratio"]["max"]
         T_LOWER_LIM = self._config["lsm"]["size_ratio"]["min"]
         H_LOWER_LIM = self._config["lsm"]["bits_per_elem"]["min"]
-        H_UPPER_LIM = self._config["lsm"]["bits_per_elem"]["max"]
+        H_UPPER_LIM = self._config["lsm"]["system"]["H"] - 0.1
 
         return SciOpt.Bounds(
             [H_LOWER_LIM, T_LOWER_LIM, T_LOWER_LIM - 1, T_LOWER_LIM - 1],
@@ -491,7 +491,7 @@ class EndureYSolver(EndureSolver):
         T_UPPER_LIM = self._config["lsm"]["size_ratio"]["max"]
         T_LOWER_LIM = self._config["lsm"]["size_ratio"]["min"]
         H_LOWER_LIM = self._config["lsm"]["bits_per_elem"]["min"]
-        H_UPPER_LIM = self._config["lsm"]["bits_per_elem"]["max"]
+        H_UPPER_LIM = self._config["lsm"]["system"]["H"] - 0.1
 
         return SciOpt.Bounds(
             [H_LOWER_LIM, T_LOWER_LIM, T_LOWER_LIM - 1],
@@ -566,7 +566,7 @@ class EndureLazyLevelingSolver(EndureSolver):
         T_UPPER_LIM = self._config["lsm"]["size_ratio"]["max"]
         T_LOWER_LIM = self._config["lsm"]["size_ratio"]["min"]
         H_LOWER_LIM = self._config["lsm"]["bits_per_elem"]["min"]
-        H_UPPER_LIM = self._config["lsm"]["bits_per_elem"]["max"]
+        H_UPPER_LIM = self._config["lsm"]["system"]["H"] - 0.1
 
         return SciOpt.Bounds(
             [H_LOWER_LIM, T_LOWER_LIM], [H_UPPER_LIM, T_UPPER_LIM], keep_feasible=True
@@ -713,7 +713,7 @@ class EndureOneLevelingSolver(EndureSolver):
         T_UPPER_LIM = self._config["lsm"]["size_ratio"]["max"]
         T_LOWER_LIM = self._config["lsm"]["size_ratio"]["min"]
         H_LOWER_LIM = self._config["lsm"]["bits_per_elem"]["min"]
-        H_UPPER_LIM = self._config["lsm"]["bits_per_elem"]["max"]
+        H_UPPER_LIM = self._config["lsm"]["system"]["H"] - 0.1
 
         return SciOpt.Bounds(
             [H_LOWER_LIM, T_LOWER_LIM], [H_UPPER_LIM, T_UPPER_LIM], keep_feasible=True

@@ -20,6 +20,7 @@ class LearnedCostModelLoss(torch.nn.Module):
         self.normalize_bpe = config["ltune"]["data"]["normalize_inputs"]
         self.penalty_factor = config["ltune"]["penalty_factor"]
         self.mem_budget_idx = config["ltune"]["input_features"].index("H")
+        self.categorical = config["ltune"]["model"]["categorical"]
 
         self._lcm_config = toml.load(
             os.path.join(config["io"]["data_dir"], model_path, "endure.toml")
@@ -35,8 +36,8 @@ class LearnedCostModelLoss(torch.nn.Module):
         assert len(status.unexpected_keys) == 0
         self.model.eval()
 
-    def create_penalty_vector(self, bpe: Tensor, mem_budget: Tensor):
-        penalty = torch.ones(bpe.size()).to(bpe.device)
+    def create_penalty_vector(self, bpe: Tensor, mem_budget: Tensor, size_ratio):
+        penalty = torch.zeros(bpe.size()).to(bpe.device)
         # for BPE guesses that exceed the maximum memory budget
         idx = bpe >= mem_budget
         penalty[idx] = self.penalty_factor * (bpe[idx] - mem_budget[idx])
@@ -44,18 +45,23 @@ class LearnedCostModelLoss(torch.nn.Module):
         idx = bpe < 0
         penalty[idx] = self.penalty_factor * (0 - bpe[idx])
 
-        # penalty[size_ratio > 48] = self.penalty_factor * (
-        #     size_ratio[size_ratio > 48] - 48
-        # )
-        # penalty[size_ratio < 0] = self.penalty_factor * (0 - size_ratio[size_ratio < 0])
+        if not self.categorical:
+            penalty[size_ratio > 48] = self.penalty_factor * (
+                size_ratio[size_ratio > 48] - 48
+            )
+            penalty[size_ratio < 0] = self.penalty_factor * (
+                0 - size_ratio[size_ratio < 0]
+            )
 
         return penalty
 
     def convert_tuner_output(self, tuner_out):
         bpe = tuner_out[:, 0]
         bpe = bpe.view(-1, 1)
-        size_ratio = torch.argmax(tuner_out[:, 1:], dim=-1).view(-1, 1)
-        # size_ratio = torch.ceil(tuner_out[:, 1:] - 2).view(-1, 1)
+        if self.categorical:
+            size_ratio = torch.argmax(tuner_out[:, 1], dim=-1).view(-1, 1)
+        else:
+            size_ratio = torch.ceil(tuner_out[:, 1]).view(-1, 1)
 
         return bpe, size_ratio
 
@@ -64,19 +70,19 @@ class LearnedCostModelLoss(torch.nn.Module):
         # For learned cost model loss, pred is the DB configuration, label is
         # the workload
         bpe, size_ratio = self.convert_tuner_output(pred)
-        # bpe = self.convert_tuner_output(pred)
+        # print(size_ratio[0].item())
         penalty = self.create_penalty_vector(
-            bpe, label[:, self.mem_budget_idx].view(-1, 1)
+            bpe, label[:, self.mem_budget_idx].view(-1, 1), size_ratio
         )
-        # if self.normalize_bpe:
-        #     bpe = ((bpe - self._bpe_mean) / self._bpe_std)
+
+        if not self.categorical:
+            size_ratio[size_ratio > 48] = 48
+            size_ratio[size_ratio < 0] = 0
 
         inputs = torch.concat([label, bpe, size_ratio], dim=-1)
         out = self.model(inputs)
         out = out.sum(dim=-1)
-        # print(f"{out.max().item()=}, {out.min().item()=}")
-        out = out * penalty
-        out = out.max()
-        # print(f"{out.item()=}")
+        out = out + penalty
+        out = out.mean()
 
         return out

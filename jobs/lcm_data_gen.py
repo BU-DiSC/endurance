@@ -120,6 +120,9 @@ class LCMDataGenJob:
         threads = self.setting["num_workers"]
         if threads == -1:
             threads = mp.cpu_count()
+        if threads < self.setting["num_files"]:
+            self.log.info("Number of threads greater than number of files, scaling down")
+            threads = self.setting["num_files"]
         self.log.info(f"{threads=}")
 
         if threads == 1:

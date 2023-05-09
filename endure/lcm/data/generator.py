@@ -30,7 +30,8 @@ class LCMDataGenerator:
     def _sample_workload(self, dimensions: int) -> list:
         # See stackoverflow thread for why the simple solution is not uniform
         # https://stackoverflow.com/questions/8064629
-        workload = list(np.random.rand(dimensions - 1)) + [0, 1]
+        max_non_writes = np.random.rand() * 0.5
+        workload = list(np.random.rand(dimensions - 1) * max_non_writes) + [0, 1]
         workload.sort()
 
         return [b - a for a, b in zip(workload, workload[1:])]
