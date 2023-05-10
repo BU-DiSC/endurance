@@ -59,7 +59,7 @@ class LearnedCostModelLoss(torch.nn.Module):
         bpe = tuner_out[:, 0]
         bpe = bpe.view(-1, 1)
         if self.categorical:
-            size_ratio = torch.argmax(tuner_out[:, 1], dim=-1).view(-1, 1)
+            size_ratio = torch.argmax(tuner_out[:, 1:], dim=-1).view(-1, 1)
         else:
             size_ratio = torch.ceil(tuner_out[:, 1]).view(-1, 1)
 
@@ -70,6 +70,7 @@ class LearnedCostModelLoss(torch.nn.Module):
         # For learned cost model loss, pred is the DB configuration, label is
         # the workload
         bpe, size_ratio = self.convert_tuner_output(pred)
+        mem_budget = label[:, self.mem_budget_idx].view(-1, 1)
         # print(size_ratio[0].item())
         penalty = self.create_penalty_vector(
             bpe, label[:, self.mem_budget_idx].view(-1, 1), size_ratio
@@ -78,6 +79,8 @@ class LearnedCostModelLoss(torch.nn.Module):
         if not self.categorical:
             size_ratio[size_ratio > 48] = 48
             size_ratio[size_ratio < 0] = 0
+        # bpe[bpe > mem_budget] = mem_budget[bpe > mem_budget]
+        # bpe[bpe < 0] = 0
 
         inputs = torch.concat([label, bpe, size_ratio], dim=-1)
         out = self.model(inputs)

@@ -40,23 +40,19 @@ class Trainer:
         self.checkpoint_dir = os.path.join(self.base_dir, "checkpoints")
         self.no_checkpoint = no_checkpoint
         self.disable_tqdm = disable_tqdm
-        os.makedirs(self.checkpoint_dir, exist_ok=True)
 
         self._early_stop_ticks = 0
-        self._move_to_available_device()
+        self.device = self._check_device()
         self.model_train_kwargs = model_train_kwargs
         self.model_test_kwargs = model_test_kwargs
 
-    def _move_to_available_device(self) -> None:
-        self.device = torch.device("cpu")
+    def _check_device(self) -> torch.device:
         if self.use_gpu_if_avail and torch.cuda.is_available():
-            self.device = torch.device("cuda")
+            device = torch.device("cuda")
+        else:
+            device = torch.device("cpu")
 
-        self.log.info(f"Training on device: {self.device}")
-        self.model = self.model.to(self.device)
-        self.loss_fn = self.loss_fn.to(self.device)
-
-        return
+        return device
 
     def _train_step(
         self,
@@ -97,6 +93,11 @@ class Trainer:
             # if (self.log.level == logging.DEBUG) and (batch % (100) == 0):
             #     param = self.model.parameters()[1]
             #     self.log.debug(f'{param.grad.sum()=}')
+
+        if "temp" in self.model_train_kwargs:
+            self.model_train_kwargs["temp"] *= 0.5
+            if self.model_train_kwargs["temp"] < 0.001:
+                self.model_train_kwargs["temp"] = 0.001
 
         if self.train_len == 0:
             self.train_len = batch + 1
@@ -162,6 +163,8 @@ class Trainer:
         return
 
     def run(self) -> None:
+        os.makedirs(self.checkpoint_dir, exist_ok=True)
+
         with open(os.path.join(self.base_dir, "losses.csv"), "w") as fid:
             loss_csv_write = csv.writer(fid)
             loss_csv_write.writerow(["epoch", "train_loss", "test_loss"])

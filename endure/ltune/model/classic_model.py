@@ -55,7 +55,7 @@ class ClassicTuner(nn.Module):
         if isinstance(layer, nn.Linear):
             nn.init.xavier_normal_(layer.weight)
 
-    def forward(self, x, temp=0.1, hard=False) -> torch.Tensor:
+    def forward(self, x, temp=1e-3, hard=False) -> torch.Tensor:
         out = self.layers(x)
         h = self.bits(out)
 
@@ -64,5 +64,6 @@ class ClassicTuner(nn.Module):
             size_ratio = self.size_ratio_scale * self.sigmoid(size_ratio)
         if self.categorical_size_ratio:
             size_ratio = nn.functional.gumbel_softmax(size_ratio, tau=temp, hard=hard)
+            # size_ratio = size_ratio.softmax(dim=-1)
 
         return torch.concat([h, size_ratio], dim=-1)

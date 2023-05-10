@@ -34,12 +34,17 @@ class LCMTrainJob:
             loss = LossBuilder.build("MSE")
         assert loss is not None
 
+        if self._setting["use_gpu_if_avail"] and torch.cuda.is_available():
+            loss.to("cuda")
+
         return loss
 
     def _build_model(self) -> torch.nn.Module:
-        builder = LearnedCostModelBuilder(self._config)
+        model = LearnedCostModelBuilder(self._config).build_model()
+        if self._setting["use_gpu_if_avail"] and torch.cuda.is_available():
+            model.to("cuda")
 
-        return builder.build_model()
+        return model
 
     def _build_optimizer(self, model) -> TorchOpt.Optimizer:
         builder = OptimizerBuilder(self._config)

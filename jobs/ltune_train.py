@@ -24,12 +24,18 @@ class LTuneTrainJob:
         self.log.info("Running Training Job")
 
     def _build_loss_fn(self) -> torch.nn.Module:
-        return LearnedCostModelLoss(self._config, self._setting["loss_fn_path"])
+        model = LearnedCostModelLoss(self._config, self._setting["loss_fn_path"])
+        if self._setting["use_gpu_if_avail"] and torch.cuda.is_available():
+            model.to("cuda")
+
+        return model
 
     def _build_model(self) -> torch.nn.Module:
-        builder = LTuneModelBuilder(self._config)
+        model = LTuneModelBuilder(self._config).build_model()
+        if self._setting["use_gpu_if_avail"] and torch.cuda.is_available():
+            model.to("cuda")
 
-        return builder.build_model()
+        return model
 
     def _build_optimizer(self, model) -> Opt.Optimizer:
         builder = OptimizerBuilder(self._config)
