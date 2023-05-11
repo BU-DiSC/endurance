@@ -7,12 +7,8 @@ class ClassicTuner(nn.Module):
     def __init__(self, config: dict[str, Any]):
         super().__init__()
         self.params = config["ltune"]["model"]["classic"]
-        size_ratio_range = (
-            config["lsm"]["size_ratio"]["max"] - config["lsm"]["size_ratio"]["min"] + 1
-        )
-        self.size_ratio_scale = size_ratio_range - 1
-        self.scale_size_ratio = self.params["scale_size_ratio"]
-        self.categorical_size_ratio = config["ltune"]["model"]["categorical"]
+        size_ratio_config = config["lsm"]["size_ratio"]
+        size_ratio_range = size_ratio_config["max"] - size_ratio_config["min"] + 1
 
         in_dim = len(config["ltune"]["input_features"])
         hidden_dim = self.params["layer_size"]
@@ -33,21 +29,12 @@ class ClassicTuner(nn.Module):
             modules.append(nn.Dropout(p=config["ltune"]["model"]["dropout"]))
             modules.append(nn.LeakyReLU())
 
-        self.sigmoid = nn.Sigmoid()
-        self.bits = nn.Sequential(
-            nn.Linear(hidden_dim, 1),
-        )
-        self.bits.apply(self.init_weights)
+        self.bits = nn.Linear(hidden_dim, 1)
+        nn.init.xavier_normal_(self.bits.weight)
 
-        if self.categorical_size_ratio:
-            size_ratio_out = size_ratio_range
-        else:
-            size_ratio_out = 1
+        self.size_ratio = nn.Linear(hidden_dim, size_ratio_range)
+        nn.init.xavier_normal_(self.size_ratio.weight)
 
-        self.size_ratio = nn.Sequential(
-            nn.Linear(hidden_dim, size_ratio_out),
-        )
-        self.size_ratio.apply(self.init_weights)
         self.layers = nn.Sequential(*modules)
         self.layers.apply(self.init_weights)
 
@@ -60,10 +47,6 @@ class ClassicTuner(nn.Module):
         h = self.bits(out)
 
         size_ratio = self.size_ratio(out)
-        if self.scale_size_ratio:
-            size_ratio = self.size_ratio_scale * self.sigmoid(size_ratio)
-        if self.categorical_size_ratio:
-            size_ratio = nn.functional.gumbel_softmax(size_ratio, tau=temp, hard=hard)
-            # size_ratio = size_ratio.softmax(dim=-1)
+        size_ratio = nn.functional.gumbel_softmax(size_ratio, tau=temp, hard=hard)
 
         return torch.concat([h, size_ratio], dim=-1)

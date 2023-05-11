@@ -1,8 +1,7 @@
 from typing import Any
 import os
-import torch
 
-from torch.functional import Tensor
+import torch
 import toml
 
 from endure.lcm.model.builder import LearnedCostModelBuilder
@@ -36,7 +35,7 @@ class LearnedCostModelLoss(torch.nn.Module):
         assert len(status.unexpected_keys) == 0
         self.model.eval()
 
-    def create_penalty_vector(self, bpe: Tensor, mem_budget: Tensor, size_ratio):
+    def create_penalty_vector(self, bpe: torch.Tensor, mem_budget: torch.Tensor):
         penalty = torch.zeros(bpe.size()).to(bpe.device)
         # for BPE guesses that exceed the maximum memory budget
         idx = bpe >= mem_budget
@@ -45,23 +44,12 @@ class LearnedCostModelLoss(torch.nn.Module):
         idx = bpe < 0
         penalty[idx] = self.penalty_factor * (0 - bpe[idx])
 
-        if not self.categorical:
-            penalty[size_ratio > 48] = self.penalty_factor * (
-                size_ratio[size_ratio > 48] - 48
-            )
-            penalty[size_ratio < 0] = self.penalty_factor * (
-                0 - size_ratio[size_ratio < 0]
-            )
-
         return penalty
 
-    def convert_tuner_output(self, tuner_out):
+    def split_tuner_out(self, tuner_out):
         bpe = tuner_out[:, 0]
         bpe = bpe.view(-1, 1)
-        if self.categorical:
-            size_ratio = torch.argmax(tuner_out[:, 1:], dim=-1).view(-1, 1)
-        else:
-            size_ratio = torch.ceil(tuner_out[:, 1]).view(-1, 1)
+        size_ratio = tuner_out[:, 1:]
 
         return bpe, size_ratio
 
@@ -69,15 +57,9 @@ class LearnedCostModelLoss(torch.nn.Module):
         assert self.model.training is False
         # For learned cost model loss, pred is the DB configuration, label is
         # the workload
-        bpe, size_ratio = self.convert_tuner_output(pred)
+        bpe, size_ratio = self.split_tuner_out(pred)
         mem_budget = label[:, self.mem_budget_idx].view(-1, 1)
-        penalty = self.create_penalty_vector(
-            bpe, label[:, self.mem_budget_idx].view(-1, 1), size_ratio
-        )
-
-        if not self.categorical:
-            size_ratio[size_ratio > 48] = 48
-            size_ratio[size_ratio < 0] = 0
+        penalty = self.create_penalty_vector(bpe, mem_budget)
         bpe[bpe > mem_budget] = mem_budget[bpe > mem_budget]
         bpe[bpe < 0] = 0
 
