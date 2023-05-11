@@ -7,6 +7,7 @@ import torch
 
 from torch.utils.data import DataLoader
 import torch.optim as TorchOpt
+import torch.nn.functional as F
 
 from endure.lcm.data.iterable_dataset import LCMIterableDataSet
 from endure.lcm.data.classic_dataset import LCMDataSet
@@ -54,7 +55,7 @@ class LCMTrainJob:
 
     def _build_scheduler(
         self, optimizer: TorchOpt.Optimizer
-    ) -> TorchOpt.lr_scheduler._LRScheduler:
+    ) -> Optional[TorchOpt.lr_scheduler._LRScheduler]:
         builder = LRSchedulerBuilder(self._config)
         choice = self._setting["lr_scheduler"]
 
@@ -88,6 +89,27 @@ class LCMTrainJob:
 
         return train
 
+    def _test_collate_fn(self, data):
+        categories = (
+            self._config["lsm"]["size_ratio"]["max"]
+            - self._config["lsm"]["size_ratio"]["min"]
+            + 1
+        )
+        labels = [item[0] for item in data]
+        labels = torch.stack(labels)
+
+        inputs = []
+        for item in data:
+            features = item[1]
+            size_ratio = features[-1].to(torch.long)
+            size_ratio = F.one_hot(size_ratio, num_classes=categories)
+            x = [features[:-1], size_ratio]
+            x = torch.cat(x)
+            inputs.append(x)
+        inputs = torch.stack(inputs)
+
+        return labels, inputs
+
     def _build_test(self) -> DataLoader:
         test_dir = os.path.join(
             self._config["io"]["data_dir"],
@@ -111,6 +133,7 @@ class LCMTrainJob:
             batch_size=self._setting["test"]["batch_size"],
             drop_last=self._setting["test"]["drop_last"],
             num_workers=self._setting["test"]["num_workers"],
+            collate_fn=self._test_collate_fn,
             pin_memory=True,
         )
 
@@ -145,7 +168,7 @@ class LCMTrainJob:
         train_data = self._build_train()
         test_data = self._build_test()
         loss_fn = self._build_loss_fn()
-        disable_tqdm = self.log.level == logging.DEBUG
+        disable_tqdm = self._config["log"]["disable_tqdm"]
 
         trainer = Trainer(
             log=self.log,
