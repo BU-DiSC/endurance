@@ -112,8 +112,8 @@ overwrite_if_exists = true
 # -----------------------------------------------------------------------------
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
-max_epochs = 100
-save_dir = "models/ltune/level-05-09-write-bias"
+max_epochs = 50
+save_dir = "models/ltune/level-05-10-write-bias-scaled"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
@@ -124,7 +124,7 @@ optimizer = "SGD"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
-lr_scheduler = "CosineAnnealing"
+lr_scheduler = "Constant"
 
 no_checkpoint = false
 
@@ -280,18 +280,18 @@ categorical = false
 
 # kwargs specific to LTune models during forward pass
 [ltune.model.train_kwargs]
-temp = 0.5
+temp = 1
 hard = false
 
 [ltune.model.test_kwargs]
-temp = 0.5
+temp = 1e-3
 hard = true
 
 [ltune.model.classic]
 normalize = 'Batch'
 layer_size = 128
-num_layers = 3
-scale_size_ratio = false
+num_layers = 2
+scale_size_ratio = true
 
 [ltune.model.klsm]
 hidden_layers = 16
@@ -317,7 +317,7 @@ T_max = 10
 eta_min = 0.0001  # minimum learning rate
 
 [train.scheduler.Exponential]
-gamma = 0.5
+gamma = 0.9
 
 [train.optimizer.Adam]
 lr = 0.001

@@ -1,11 +1,12 @@
 import logging
+from typing import Any
 import torch.optim as Opt
 
 from torch.nn import Module
 
 
 class OptimizerBuilder:
-    def __init__(self, config: dict[str, ...]):
+    def __init__(self, config: dict[str, Any]):
         self.log = logging.getLogger(config["log"]["name"])
         self._config = config
 
@@ -41,7 +42,7 @@ class OptimizerBuilder:
         opt_builder = optimizers.get(optimizer_choice, None)
         if opt_builder is None:
             self.log.warn("Invalid optimizer choice, defaulting to SGD")
-            opt_builder = optimizers.get("SGD")
+            return self._build_sgd(model)
         optimizer = opt_builder(model)
 
         return optimizer
