@@ -2,12 +2,13 @@
 from typing import Any, Optional
 import logging
 import os
-import toml
-import torch
 
 from torch.utils.data import DataLoader
-import torch.optim as TorchOpt
+import numpy as np
+import toml
+import torch
 import torch.nn.functional as F
+import torch.optim as TorchOpt
 
 from endure.lcm.data.iterable_dataset import LCMIterableDataSet
 from endure.lcm.data.classic_dataset import LCMDataSet
@@ -95,8 +96,8 @@ class LCMTrainJob:
             - self._config["lsm"]["size_ratio"]["min"]
             + 1
         )
-        labels = [item[0] for item in data]
-        labels = torch.stack(labels)
+        labels = np.array([item[0].numpy() for item in data])
+        labels = torch.from_numpy(labels)
 
         inputs = []
         for item in data:

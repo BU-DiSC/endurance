@@ -34,9 +34,9 @@ data_dir = "/data"
 [job]
 to_run = [
     # "LCMDataGen",
-    # "LCMTrain",
+    "LCMTrain",
     # "LTuneDataGen",
-    "LTuneTrain",
+    # "LTuneTrain",
     # TODO: "CreateTunings",
     # TODO: "RunExperiments",
 ]
@@ -57,7 +57,7 @@ overwrite_if_exists = true
 [job.LCMTrain]
 # -----------------------------------------------------------------------------
 max_epochs = 100
-save_dir = "models/lcm/level-05-02-v0"
+save_dir = "models/lcm/level-05-10-v0"
 use_gpu_if_avail = true
 
 # Different loss functions to train via
@@ -94,7 +94,7 @@ dir = "test-data/lcm/level"
 format = "parquet"
 batch_size = 65536
 shuffle = false
-num_workers = 1
+num_workers = 2
 drop_last = true
 
 # -----------------------------------------------------------------------------
