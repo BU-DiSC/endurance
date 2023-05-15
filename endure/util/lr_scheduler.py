@@ -35,14 +35,14 @@ class LRSchedulerBuilder:
         schedules = {
             "CosineAnnealing": self._build_cosine_anneal,
             "Exponential": self._build_exponential,
-            "Constant": None,
-            "None": "None",
+            "Constant": "Constant",
+            "None": "Constant",
         }
         schedule_builder = schedules.get(scheduler_choice, None)
         if schedule_builder is None:
             self.log.warn("Invalid scheduler, defaulting to Constant")
             return None
-        if schedule_builder == "None":  # Constant/None case
+        if schedule_builder == "Constant":  # Constant/None case
             return None
         scheduler = schedule_builder(optimizer)
 

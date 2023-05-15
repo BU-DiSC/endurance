@@ -49,7 +49,7 @@ class EndureKHybridCost:
     def run_prob(self, level: int, T: float, mbuff: float, Nf: float) -> float:
         return (T - 1) * mbuff * (T ** (level - 1)) / (Nf * self.E)
 
-    def Z0(self, h: float, T: float, K: types.float64[:]) -> float:
+    def Z0(self, h: float, T: float, K: np.ndarray) -> float:
         L = int(self.L(h, T, ceil=True))
         z0 = 0
         for i in range(1, L + 1):
@@ -57,7 +57,7 @@ class EndureKHybridCost:
 
         return z0
 
-    def Z1(self, h: float, T: float, K: types.float64[:]) -> float:
+    def Z1(self, h: float, T: float, K: np.ndarray) -> float:
         L = int(self.L(h, T, ceil=True))
         mbuff = self.mbuff(h)
         nfull = self.Nfull(h, T, L)
@@ -74,7 +74,7 @@ class EndureKHybridCost:
 
         return z1
 
-    def Q(self, h: float, T: float, K: types.float64[:]) -> float:
+    def Q(self, h: float, T: float, K: np.ndarray) -> float:
         L = int(self.L(h, T, ceil=True))
         # q = np.sum(K[:L])
         residual = 1 - (L - self.L(h, T, ceil=False))
@@ -82,7 +82,7 @@ class EndureKHybridCost:
         q += K[L - 1] * residual
         return (self.s * self.N / self.B) + q
 
-    def W(self, h: float, T: float, K: types.float64[:]) -> float:
+    def W(self, h: float, T: float, K: np.ndarray) -> float:
         L = int(self.L(h, T, ceil=True))
         w = 0
         # for level in range(0, L):
@@ -98,7 +98,7 @@ class EndureKHybridCost:
         self,
         h: float,
         T: float,
-        K: types.float64[:],
+        K: np.ndarray,
         z0: float,
         z1: float,
         q: float,

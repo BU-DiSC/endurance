@@ -17,7 +17,7 @@ class System:
     s: float = 1e-7         # Range query selectivity
     B: int = 4              # entries per page
     N: int = 1_000_000_000  # Number of elements in tree
-    H: int = 10             # Bits per element budget
+    H: float = 10.0         # Bits per element budget
     phi: float = 1.0        # Read/Write asymmetry coefficient
 
 
@@ -25,7 +25,7 @@ class System:
 class LSMDesign:
     h: float = 5.0
     T: float = 5.0
-    policy: Policy = Policy.Tiering
+    policy: Policy = Policy.Leveling
     Q: float = 1.0
     K: Optional[list[float]] = None
     Y: float = 1.0

@@ -33,7 +33,7 @@ def calc_level_fp(
     max_bits: float,
     num_elem: int,
 ) -> float:
-    max_level = calc_level(bpe, size_ratio, entry_size, max_bits, num_elem)
+    max_level = calc_level(bpe, size_ratio, entry_size, max_bits, num_elem, True)
     alpha = np.exp(-bpe * (np.log(2) ** 2))
     top = size_ratio ** (size_ratio / (size_ratio - 1))
     bot = size_ratio ** (max_level + 1 - level)
@@ -62,12 +62,12 @@ def calc_full_tree(
 def calc_run_prob(
     level: int, size_ratio: float, entry_size: int, mbuff: float, nfull: float
 ) -> float:
-    return (size_ratio - 1) * mbuff * (size_ratio ** (level - 1)) / nfull * entry_size
+    return (size_ratio - 1) * mbuff * (size_ratio ** (level - 1)) / (nfull * entry_size)
 
 
 @jit
 def empty_op(
-    h: float, T: float, K: list[float], num_elem: int, entry_size: int, max_bits: float
+    h: float, T: float, K: np.ndarray, num_elem: int, entry_size: int, max_bits: float
 ) -> float:
     z0 = 0
     max_level = int(calc_level(h, T, entry_size, max_bits, num_elem, ceil=True))
@@ -79,13 +79,13 @@ def empty_op(
 
 @jit
 def non_empty_op(
-    h: float, T: float, K: list[float], entry_size: int, max_bits: float, num_elem: int
+    h: float, T: float, K: np.ndarray, entry_size: int, max_bits: float, num_elem: int
 ) -> float:
-    z1 = 0
     mbuff = calc_mbuff(h, max_bits, num_elem)
     max_level = int(calc_level(h, T, entry_size, max_bits, num_elem, ceil=True))
     nfull = calc_full_tree(max_level, h, T, entry_size, max_bits, num_elem)
 
+    z1 = 0
     for level in range(1, max_level + 1):
         upper_fp = 0
         run_prob = calc_run_prob(level, T, entry_size, mbuff, nfull)
@@ -104,7 +104,7 @@ def non_empty_op(
 def range_op(
     h: float,
     T: float,
-    K: list[float],
+    K: np.ndarray,
     entry_per_page: int,  # B
     selectivity: float,  # s
     entry_size: int,  # E
@@ -113,7 +113,7 @@ def range_op(
 ) -> float:
     max_level = int(calc_level(h, T, entry_size, max_bits, num_elem, ceil=True))
     fuzz_level = calc_level(h, T, entry_size, max_bits, num_elem, ceil=False)
-    residual = 1 - max_level - fuzz_level
+    residual = 1 - (max_level - fuzz_level)
     q = sum(K[: (max_level - 1)])
     q += K[max_level - 1] * residual
     q = q + (selectivity * num_elem / entry_per_page)
@@ -125,7 +125,7 @@ def range_op(
 def write_op(
     h: float,
     T: float,
-    K: list[float],
+    K: np.ndarray,
     entry_per_page: int,
     entry_size: int,
     max_bits: float,
@@ -135,7 +135,7 @@ def write_op(
     w = 0
     max_level = int(calc_level(h, T, entry_size, max_bits, num_elem, ceil=True))
     fuzz_level = calc_level(h, T, entry_size, max_bits, num_elem, ceil=False)
-    residual = 1 - max_level - fuzz_level
+    residual = 1 - (max_level - fuzz_level)
     for level in range(0, max_level - 1):
         w += (T - 1 + K[level]) / (2 * K[level])
     w += residual * (T - 1 + K[max_level - 1]) / (2 * K[max_level - 1])
@@ -148,7 +148,7 @@ def write_op(
 def calc_cost(
     h: float,
     T: float,
-    K: list[float],
+    K: np.ndarray,
     z0: float,
     z1: float,
     q: float,
@@ -178,7 +178,7 @@ def calc_cost(
 def calc_individual_cost(
     h: float,
     T: float,
-    K: list[float],
+    K: np.ndarray,
     z0: float,
     z1: float,
     q: float,

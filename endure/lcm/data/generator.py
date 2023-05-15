@@ -153,6 +153,50 @@ class LevelGenerator(LCMDataGenerator):
         return line
 
 
+class ClassicGenerator(LCMDataGenerator):
+    def __init__(self, config: dict):
+        super().__init__(config)
+        cost_header = self._gen_cost_header()
+        workload_header = self._gen_workload_header()
+        system_header = self._gen_system_header()
+        decision = ["h", "T", "policy"]
+        self.header = cost_header + workload_header + system_header + decision
+
+    def generate_header(self) -> list:
+        return self.header
+
+    def generate_row_csv(self) -> list:
+        z0, z1, q, w = self._sample_workload(4)
+        B, s, E, H, N, h, T = self._sample_config()
+
+        config = deepcopy(self._config)
+        config["lsm"]["system"]["B"] = B
+        config["lsm"]["system"]["s"] = s
+        config["lsm"]["system"]["E"] = E
+        config["lsm"]["system"]["H"] = H
+        config["lsm"]["system"]["N"] = N
+        # TODO: Change cost function to dynamically take in system var
+        cf = CostFunc.EndureLevelCost(config)
+
+        line = [
+            z0 * cf.Z0(h, T),
+            z1 * cf.Z1(h, T),
+            q * cf.Q(h, T),
+            w * cf.W(h, T),
+            z0,
+            z1,
+            q,
+            w,
+            B,
+            s,
+            E,
+            H,
+            N,
+            h,
+            T,
+        ]
+        return line
+
 class TierGenerator(LCMDataGenerator):
     def __init__(self, config: dict):
         super().__init__(config)
