@@ -34,9 +34,9 @@ data_dir = "/data"
 [job]
 to_run = [
     # "LCMDataGen",
-    "LCMTrain",
+    # "LCMTrain",
     # "LTuneDataGen",
-    # "LTuneTrain",
+    "LTuneTrain",
     # TODO: "CreateTunings",
     # TODO: "RunExperiments",
 ]
@@ -112,32 +112,32 @@ overwrite_if_exists = true
 # -----------------------------------------------------------------------------
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
-max_epochs = 50
-save_dir = "models/ltune/level-05-10-write-bias-scaled"
+max_epochs = 100
+save_dir = "models/ltune/level-05-12-v1"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
-loss_fn_path = "models/lcm/level-05-02-v0"
+loss_fn_path = "models/lcm/level-05-10-v0"
 
 # Check train.optimizer for available options
-optimizer = "SGD"
+optimizer = "Adam"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
-lr_scheduler = "Constant"
+lr_scheduler = "CosineAnnealing"
 
 no_checkpoint = false
 
 [job.LTuneTrain.train]
-dir = "train-data/lcm/level-write-bias"
+dir = "train-data/lcm/level"
 format = "parquet"
-batch_size = 1024
+batch_size = 8192
 shuffle = true
 num_workers = 4
 drop_last = true
 
 [job.LTuneTrain.test]
-dir = "test-data/lcm/level-write-bias"
+dir = "test-data/lcm/level"
 format = "parquet"
 batch_size = 65536
 shuffle = false
@@ -275,8 +275,7 @@ output_features = ["h", "T"]
 #   Model configurations
 # -----------------------------------------------------------------------------
 [ltune.model]
-dropout = 0.0  # percentage for dropout during training
-categorical = false
+dropout = 0.2  # percentage for dropout during training
 
 # kwargs specific to LTune models during forward pass
 [ltune.model.train_kwargs]
@@ -284,14 +283,13 @@ temp = 1
 hard = false
 
 [ltune.model.test_kwargs]
-temp = 1e-3
+temp = 0.1
 hard = true
 
 [ltune.model.classic]
 normalize = 'Batch'
 layer_size = 128
-num_layers = 2
-scale_size_ratio = true
+num_layers = 4
 
 [ltune.model.klsm]
 hidden_layers = 16
@@ -313,14 +311,14 @@ normalize_inputs = false
 #   Generic settings for training options like optiimzers and schedulers
 # =============================================================================
 [train.scheduler.CosineAnnealingLR]
-T_max = 10
-eta_min = 0.0001  # minimum learning rate
+T_max = 5
+eta_min = 0.001  # minimum learning rate
 
 [train.scheduler.Exponential]
 gamma = 0.9
 
 [train.optimizer.Adam]
-lr = 0.001
+lr = 0.01
 
 [train.optimizer.SGD]
 lr = 0.001
