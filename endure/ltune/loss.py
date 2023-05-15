@@ -16,10 +16,8 @@ class LearnedCostModelLoss(torch.nn.Module):
         # self._bpe_std = Parameter(
         #     torch.sqrt(torch.Tensor([(bpe_max - bpe_min) ** 2 / 12]))
         # )
-        self.normalize_bpe = config["ltune"]["data"]["normalize_inputs"]
         self.penalty_factor = config["ltune"]["penalty_factor"]
         self.mem_budget_idx = config["ltune"]["input_features"].index("H")
-        self.categorical = config["ltune"]["model"]["categorical"]
 
         self._lcm_config = toml.load(
             os.path.join(config["io"]["data_dir"], model_path, "endure.toml")
