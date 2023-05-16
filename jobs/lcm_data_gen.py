@@ -29,6 +29,7 @@ class LCMDataGenJob:
             "LevelCost": Generators.LevelGenerator,
             "QCost": Generators.QCostGenerator,
             "KHybridCost": Generators.KHybridGenerator,
+            "ClassicCost": Generators.ClassicGenerator,
         }
         generator = generators.get(choice, None)
         if generator is None:
@@ -120,7 +121,7 @@ class LCMDataGenJob:
         threads = self.setting["num_workers"]
         if threads == -1:
             threads = mp.cpu_count()
-        if threads < self.setting["num_files"]:
+        if threads > self.setting["num_files"]:
             self.log.info("Number of threads greater than number of files, scaling down")
             threads = self.setting["num_files"]
         self.log.info(f"{threads=}")

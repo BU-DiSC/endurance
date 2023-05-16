@@ -175,8 +175,14 @@ class ClassicGenerator(LCMDataGenerator):
         config["lsm"]["system"]["E"] = E
         config["lsm"]["system"]["H"] = H
         config["lsm"]["system"]["N"] = N
-        # TODO: Change cost function to dynamically take in system var
-        cf = CostFunc.EndureLevelCost(config)
+
+        policy = random.choice(["Tiering", "Leveling"])
+        if policy == "Tiering":
+            config["lsm"]["design"] = "Tier"
+            cf = CostFunc.EndureTierCost(config)
+        else:
+            config["lsm"]["design"] = "Level"
+            cf = CostFunc.EndureLevelCost(config)
 
         line = [
             z0 * cf.Z0(h, T),
@@ -194,6 +200,7 @@ class ClassicGenerator(LCMDataGenerator):
             N,
             h,
             T,
+            0 if policy == "Tiering" else 1,
         ]
         return line
 
