@@ -67,7 +67,8 @@ class LCMTrainJob:
             self._config["io"]["data_dir"],
             self._setting["train"]["dir"],
         )
-        self.log.info(f"Train data: {train_dir}")
+        self.log.debug(f"Train data: {train_dir}")
+        self.log.debug(f"Training features: {self._config['lcm']['input_features']}")
 
         train_data = LCMIterableDataSet(
             config=self._config,

@@ -41,7 +41,7 @@ class LCMDataGenJob:
 
     def generate_csv_file(self, generator, idx: int, pos: int) -> int:
         fname_prefix = self.setting["file_prefix"]
-        fname = f"{fname_prefix}-{idx:04}.csv"
+        fname = f"{fname_prefix}_{idx:04}.csv"
         fpath = os.path.join(self.output_dir, fname)
         if os.path.exists(fpath) and (not self.setting["overwrite_if_exists"]):
             self.log.info(f"{fpath} exists, exiting.")
@@ -68,7 +68,7 @@ class LCMDataGenJob:
         self, generator: Generators.LCMDataGenerator, idx: int, pos: int
     ) -> int:
         fname_prefix = self.setting["file_prefix"]
-        fname = f"{fname_prefix}-{idx:04}.parquet"
+        fname = f"{fname_prefix}_{idx:04}.parquet"
         fpath = os.path.join(self.output_dir, fname)
         if os.path.exists(fpath) and (not self.setting["overwrite_if_exists"]):
             self.log.info(f"{fpath} exists, exiting.")

@@ -41,7 +41,6 @@ class ClassicModel(nn.Module):
 
         out_dim = len(config["lcm"]["output_features"])
         modules.append(nn.Linear(hidden_dim, out_dim))
-        modules.append(nn.LeakyReLU())
 
         self.cost_layer = nn.Sequential(*modules)
         self.cost_layer.apply(self.init_weights)
