@@ -9,10 +9,11 @@ import endure.lsm.cost_model as CostFunc
 
 
 class LCMDataGenerator:
-    def __init__(self, config):
+    def __init__(self, config, precision=3):
         self.log = logging.getLogger(config["log"]["name"])
         self._config = config
         self._header = None
+        self.precision = precision
 
     def _sample_size_ratio(self) -> int:
         return np.random.randint(
@@ -30,8 +31,9 @@ class LCMDataGenerator:
     def _sample_workload(self, dimensions: int) -> list:
         # See stackoverflow thread for why the simple solution is not uniform
         # https://stackoverflow.com/questions/8064629
-        workload = list(np.random.rand(dimensions - 1)) + [0, 1]
-        workload.sort()
+        workload = np.around(np.random.rand(dimensions - 1), self.precision)
+        workload = np.concatenate([workload, [0, 1]])
+        workload = np.sort(workload)
 
         return [b - a for a, b in zip(workload, workload[1:])]
 
@@ -108,8 +110,8 @@ class LCMDataGenerator:
 
 
 class LevelGenerator(LCMDataGenerator):
-    def __init__(self, config: dict):
-        super().__init__(config)
+    def __init__(self, config, precision=3):
+        super().__init__(config, precision)
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
         system_header = self._gen_system_header()
@@ -153,27 +155,23 @@ class LevelGenerator(LCMDataGenerator):
 
 
 class ClassicGenerator(LCMDataGenerator):
-    def __init__(self, config: dict):
-        super().__init__(config)
+    def __init__(self, config, precision=3):
+        super().__init__(config, precision)
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
         system_header = self._gen_system_header()
-        decision = ["h", "policy", "T"]
+        decision = ["policy", "h", "T"]
         self.header = cost_header + workload_header + system_header + decision
-
-    def _sample_config(self) -> tuple:
-        (B, s, E, H, N, h, T) = super()._sample_config()
-        policy = random.choice(["Tiering", "Leveling"])
-        policy = 1 if policy == "Leveling" else 0
-
-        return (B, s, E, H, N, h, policy, T)
 
     def generate_header(self) -> list:
         return self.header
 
     def generate_row_csv(self) -> list:
         z0, z1, q, w = self._sample_workload(4)
-        B, s, E, H, N, h, policy, T = self._sample_config()
+        B, s, E, H, N, h, T = self._sample_config()
+
+        policy = random.choice(["Tiering", "Leveling"])
+        policy = 1 if policy == "Leveling" else 0
 
         config = deepcopy(self._config)
         config["lsm"]["system"]["B"] = B
@@ -203,15 +201,15 @@ class ClassicGenerator(LCMDataGenerator):
             E,
             H,
             N,
-            h,
             0 if policy == "Tiering" else 1,
+            h,
             T,
         ]
         return line
 
 class TierGenerator(LCMDataGenerator):
-    def __init__(self, config: dict):
-        super().__init__(config)
+    def __init__(self, config, precision=3):
+        super().__init__(config, precision)
         self.cf = CostFunc.EndureTierCost(config)
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
@@ -253,8 +251,8 @@ class TierGenerator(LCMDataGenerator):
 
 
 class KHybridGenerator(LCMDataGenerator):
-    def __init__(self, config: dict):
-        super(KHybridGenerator, self).__init__(config)
+    def __init__(self, config, precision=3):
+        super().__init__(config, precision)
         self.cf = CostFunc.EndureKCost(self._config)
         max_levels = self._config["lsm"]["max_levels"]
         cost_header = self._gen_cost_header()
@@ -308,8 +306,8 @@ class KHybridGenerator(LCMDataGenerator):
 
 
 class QCostGenerator(LCMDataGenerator):
-    def __init__(self, config: dict):
-        super(QCostGenerator, self).__init__(config)
+    def __init__(self, config, precision=3):
+        super().__init__(config, precision)
         self.cf = CostFunc.EndureQCost(self._config)
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()

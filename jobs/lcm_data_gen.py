@@ -117,6 +117,7 @@ class LCMDataGenJob:
         os.makedirs(self.output_dir, exist_ok=True)
         self.log.info(f"Writing all files to {self.output_dir}")
 
+        self.log.info(f"Using {self.setting['generator']}")
         inputs = list(range(0, self.setting["num_files"]))
         threads = self.setting["num_workers"]
         if threads == -1:
