@@ -1,19 +1,22 @@
 import logging
-import numpy as np
 import random
-from copy import deepcopy
-from typing import Union, Optional
+from typing import Any, List, Union, Optional
 from itertools import combinations_with_replacement
 
+import numpy as np
+
+from endure.lsm.types import LSMDesign, System, Policy
+from endure.lsm.cost import EndureCost
 import endure.lsm.cost_model as CostFunc
 
 
 class LCMDataGenerator:
-    def __init__(self, config, precision=3):
+    def __init__(self, config: dict[str, Any], precision=3):
         self.log = logging.getLogger(config["log"]["name"])
         self._config = config
         self._header = None
         self.precision = precision
+        self.cf = EndureCost(config)
 
     def _sample_size_ratio(self) -> int:
         return np.random.randint(
@@ -59,22 +62,37 @@ class LCMDataGenerator:
     def _sample_total_elements(self) -> int:
         return np.random.randint(low=100000000, high=1000000000)
 
-    def _sample_system(self) -> tuple:
+    def _sample_system(self) -> System:
         E = self._sample_entry_size()
         B = self._sample_entry_per_page(entry_size=E)
         s = self._sample_selectivity()
         H = self._sample_memory_budget()
         N = self._sample_total_elements()
+        system = System(E, s, B, N, H)
 
-        return (B, s, E, H, N)
+        return system
+
+    def _sample_design(
+        self,
+        system: System,
+        policies: List[Policy] = [Policy.Tiering, Policy.Leveling],
+    ) -> LSMDesign:
+        EPSILON = 0.1
+        h = self._sample_bloom_filter_bits(max=(system.H - EPSILON))
+        T = self._sample_size_ratio()
+        policy = policies[0]
+        if len(policies) > 1:
+            policy = random.choice(policies)
+        lsm = LSMDesign(h, T, policy)
+
+        return lsm
 
     def _sample_config(self) -> tuple:
         EPSILON = 0.1
-        (B, s, E, H, N) = self._sample_system()
-        h = self._sample_bloom_filter_bits(max=(H - EPSILON))
-        T = self._sample_size_ratio()
+        system = self._sample_system()
+        design = self._sample_design(system)
 
-        return (B, s, E, H, N, h, T)
+        return (system.B, system.s, system.E, system.H, system.N, design.h, design.T)
 
     def _gen_system_header(self) -> list:
         return ["B", "s", "E", "H", "N"]
@@ -109,54 +127,15 @@ class LCMDataGenerator:
         return row
 
 
-class LevelGenerator(LCMDataGenerator):
-    def __init__(self, config, precision=3):
-        super().__init__(config, precision)
-        cost_header = self._gen_cost_header()
-        workload_header = self._gen_workload_header()
-        system_header = self._gen_system_header()
-        decision = ["h", "T"]
-        self.header = cost_header + workload_header + system_header + decision
-
-    def generate_header(self) -> list:
-        return self.header
-
-    def generate_row_csv(self) -> list:
-        z0, z1, q, w = self._sample_workload(4)
-        B, s, E, H, N, h, T = self._sample_config()
-
-        config = deepcopy(self._config)
-        config["lsm"]["system"]["B"] = B
-        config["lsm"]["system"]["s"] = s
-        config["lsm"]["system"]["E"] = E
-        config["lsm"]["system"]["H"] = H
-        config["lsm"]["system"]["N"] = N
-        # TODO: Change cost function to dynamically take in system var
-        cf = CostFunc.EndureLevelCost(config)
-
-        line = [
-            z0 * cf.Z0(h, T),
-            z1 * cf.Z1(h, T),
-            q * cf.Q(h, T),
-            w * cf.W(h, T),
-            z0,
-            z1,
-            q,
-            w,
-            B,
-            s,
-            E,
-            H,
-            N,
-            h,
-            T,
-        ]
-        return line
-
-
 class ClassicGenerator(LCMDataGenerator):
-    def __init__(self, config, precision=3):
+    def __init__(
+        self,
+        config,
+        precision: int = 3,
+        policies: List[Policy] = [Policy.Tiering, Policy.Leveling],
+    ):
         super().__init__(config, precision)
+        self.policies = policies
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
         system_header = self._gen_system_header()
@@ -168,85 +147,28 @@ class ClassicGenerator(LCMDataGenerator):
 
     def generate_row_csv(self) -> list:
         z0, z1, q, w = self._sample_workload(4)
-        B, s, E, H, N, h, T = self._sample_config()
-
-        policy = random.choice(["Tiering", "Leveling"])
-        policy = 1 if policy == "Leveling" else 0
-
-        config = deepcopy(self._config)
-        config["lsm"]["system"]["B"] = B
-        config["lsm"]["system"]["s"] = s
-        config["lsm"]["system"]["E"] = E
-        config["lsm"]["system"]["H"] = H
-        config["lsm"]["system"]["N"] = N
-
-        if policy == 0:
-            config["lsm"]["design"] = "Tier"
-            cf = CostFunc.EndureTierCost(config)
-        else:
-            config["lsm"]["design"] = "Level"
-            cf = CostFunc.EndureLevelCost(config)
+        system: System = self._sample_system()
+        design: LSMDesign = self._sample_design(system, policies=self.policies)
 
         line = [
-            z0 * cf.Z0(h, T),
-            z1 * cf.Z1(h, T),
-            q * cf.Q(h, T),
-            w * cf.W(h, T),
+            z0 * self.cf.Z0(design, system),
+            z1 * self.cf.Z1(design, system),
+            q * self.cf.Q(design, system),
+            w * self.cf.W(design, system),
             z0,
             z1,
             q,
             w,
-            B,
-            s,
-            E,
-            H,
-            N,
-            0 if policy == "Tiering" else 1,
-            h,
-            T,
+            system.B,
+            system.s,
+            system.E,
+            system.H,
+            system.N,
+            0 if design.policy == Policy.Tiering else 1,
+            design.h,
+            design.T,
         ]
-        return line
 
-class TierGenerator(LCMDataGenerator):
-    def __init__(self, config, precision=3):
-        super().__init__(config, precision)
-        self.cf = CostFunc.EndureTierCost(config)
-        cost_header = self._gen_cost_header()
-        workload_header = self._gen_workload_header()
-        system_header = self._gen_system_header()
-        decision = ["h", "T"]
-        self.header = cost_header + workload_header + system_header + decision
-
-    def generate_header(self) -> list:
-        return self.header
-
-    def generate_row_csv(self) -> list:
-        z0, z1, q, w = self._sample_workload(4)
-        T = self._sample_size_ratio()
-        h = self._sample_bloom_filter_bits()
-        B = self._sample_entry_per_page()
-        s = self._sample_selectivity()
-        E = self._sample_entry_size()
-        H = self._sample_memory_budget()
-        N = self._sample_total_elements()
-
-        line = [
-            z0 * self.cf.Z0(h, T),
-            z1 * self.cf.Z1(h, T),
-            q * self.cf.Q(h, T),
-            w * self.cf.W(h, T),
-            z0,
-            z1,
-            q,
-            w,
-            B,
-            s,
-            E,
-            H,
-            N,
-            h,
-            T,
-        ]
         return line
 
 

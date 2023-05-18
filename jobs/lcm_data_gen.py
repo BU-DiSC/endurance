@@ -9,6 +9,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from endure.data.io import Reader
+from endure.lsm.types import Policy
 import endure.lcm.data.generator as Generators
 
 
@@ -25,18 +26,21 @@ class LCMDataGenJob:
     def _choose_generator(self) -> Generators.LCMDataGenerator:
         choice = self.setting["generator"]
         generators = {
-            "TierCost": Generators.TierGenerator,
-            "LevelCost": Generators.LevelGenerator,
-            "QCost": Generators.QCostGenerator,
-            "KHybridCost": Generators.KHybridGenerator,
-            "ClassicCost": Generators.ClassicGenerator,
+            "TierCost": Generators.ClassicGenerator(
+                self.config, policies=[Policy.Tiering]
+            ),
+            "LevelCost": Generators.ClassicGenerator(
+                self.config, policies=[Policy.Leveling]
+            ),
+            "QCost": Generators.QCostGenerator(self.config),
+            "KHybridCost": Generators.KHybridGenerator(self.config),
+            "ClassicCost": Generators.ClassicGenerator(self.config),
         }
         generator = generators.get(choice, None)
         if generator is None:
-            self.log.error("Invalid generator choice. " "Defaulting to KHybridCost")
+            self.log.warning("Invalid generator choice. " "Defaulting to KHybridCost")
             return Generators.KHybridGenerator(self.config)
 
-        generator = generator(self.config)
         return generator
 
     def generate_csv_file(self, generator, idx: int, pos: int) -> int:
@@ -117,15 +121,15 @@ class LCMDataGenJob:
         os.makedirs(self.output_dir, exist_ok=True)
         self.log.info(f"Writing all files to {self.output_dir}")
 
-        self.log.info(f"Using {self.setting['generator']}")
+        self.log.debug(f"Using {self.setting['generator']}")
         inputs = list(range(0, self.setting["num_files"]))
         threads = self.setting["num_workers"]
         if threads == -1:
             threads = mp.cpu_count()
         if threads > self.setting["num_files"]:
-            self.log.info("Number of threads greater than number of files, scaling down")
+            self.log.info("Num threads > num files, scaling down")
             threads = self.setting["num_files"]
-        self.log.info(f"{threads=}")
+        self.log.debug(f"Using {threads=}")
 
         if threads == 1:
             self.generate_file_single_thread()

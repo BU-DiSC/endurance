@@ -1,9 +1,11 @@
+from numba import Float
 import numpy as np
 import scipy.optimize as SciOpt
-from typing import Optional, Callable
+from typing import Any, List, Optional, Callable, Tuple
 
+from endure.lsm.cost import EndureCost
+from endure.lsm.types import LSMDesign, Policy, System
 import endure.lsm.cost_model as CostFunc
-from endure.lsm.types import Policy
 
 H_DEFAULT = 5
 T_DEFAULT = 10
@@ -13,6 +15,77 @@ Q_DEFAULT = 3
 K_DEFAULT = 3
 LAMBDA_DEFAULT = 1
 ETA_DEFAULT = 1
+
+
+class Solver:
+    def __init__(self, config: dict[str, Any], policy=Policy.Leveling):
+        self.config = config
+        self.cf = EndureCost(config)
+        self.policy = policy
+
+    def kl_div_con(self, input):
+        # if input > 709:  # Unfortuantely we overflow above this
+        #     return np.finfo(np.float64).max
+        return np.exp(input) - 1
+
+    def robust_objective(
+        self,
+        x: np.ndarray,
+        system: System,
+        rho: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+    ) -> float:
+        h, T, lamb, eta = x
+        design = LSMDesign(h=h, T=T, policy=self.policy)
+        query_cost = 0
+        query_cost += z0 * self.kl_div_con((self.cf.Z0(design, system) - eta) / lamb)
+        query_cost += z1 * self.kl_div_con((self.cf.Z1(design, system) - eta) / lamb)
+        query_cost += q * self.kl_div_con((self.cf.Q(design, system) - eta) / lamb)
+        query_cost += w * self.kl_div_con((self.cf.W(design, system) - eta) / lamb)
+        cost = eta + (rho * lamb) + (lamb * query_cost)
+        return cost
+
+    def nominal_objective(
+        self, x: np.ndarray, system: System, z0: float, z1: float, q: float, w: float
+    ):
+        h, T = x
+        design = LSMDesign(h=h, T=T, policy=self.policy)
+        cost = self.cf.calc_cost(design, system, z0, z1, q, w)
+
+        return cost
+
+    def get_bounds(self) -> SciOpt.Bounds:
+        T_UPPER_LIM = self.config["lsm"]["size_ratio"]["max"]
+        T_LOWER_LIM = self.config["lsm"]["size_ratio"]["min"]
+        H_LOWER_LIM = self.config["lsm"]["bits_per_elem"]["min"]
+        H_UPPER_LIM = self.config["lsm"]["system"]["H"] - 0.1
+
+        return SciOpt.Bounds(
+            (H_LOWER_LIM, T_LOWER_LIM), (H_UPPER_LIM, T_UPPER_LIM), keep_feasible=True
+        )
+
+    def get_nominal_design(
+        self,
+        system: System,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+        minimizer_kwargs: dict,
+        init_args: np.ndarray,
+        callback_fn: Optional[Callable] = None
+    ) -> Tuple[LSMDesign, SciOpt.OptimizeResult]:
+        solution = SciOpt.minimize(
+            fun=lambda x: self.nominal_objective(x, system, z0, z1, q, w),
+            x0=init_args,
+            callback=callback_fn,
+            **minimizer_kwargs
+        )
+        design = LSMDesign(solution.x[0], solution.x[1])
+        return design, solution
 
 
 class EndureSolver:
@@ -302,7 +375,7 @@ class EndureKSolver(EndureSolver):
 
     def robust_objective(
         self,
-        x: list,
+        x: np.ndarray,
         rho: float,
         z0: float,
         z1: float,
@@ -321,7 +394,7 @@ class EndureKSolver(EndureSolver):
 
     def nominal_objective(
         self,
-        x: list,
+        x: np.ndarray,
         z0: float,
         z1: float,
         q: float,

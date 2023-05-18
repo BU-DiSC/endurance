@@ -67,7 +67,7 @@ class LCMTrainJob:
             self._config["io"]["data_dir"],
             self._setting["train"]["dir"],
         )
-        self.log.debug(f"Train data: {train_dir}")
+        self.log.debug(f"Train data dir: {train_dir}")
         self.log.debug(f"Training features: {self._config['lcm']['input_features']}")
 
         train_data = LCMIterableDataSet(
@@ -142,7 +142,7 @@ class LCMTrainJob:
         return test
 
     def _make_save_dir(self) -> Optional[str]:
-        self.log.info(f'Saving tuner in {self._setting["save_dir"]}')
+        self.log.info(f"Saving tuner in {self._setting['save_dir']}")
         save_dir = os.path.join(
             self._config["io"]["data_dir"],
             self._setting["save_dir"],

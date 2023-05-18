@@ -75,7 +75,15 @@ class EndureCost:
 
         return cost
 
-    def calc_cost(self, design, system, z0, z1, q, w):
+    def calc_cost(
+        self,
+        design: LSMDesign,
+        system: System,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+    ):
         k = self.create_k_list(design, system)
         cost = Cost.calc_cost(
             design.h,
