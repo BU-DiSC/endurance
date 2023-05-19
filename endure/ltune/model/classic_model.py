@@ -29,6 +29,9 @@ class ClassicTuner(nn.Module):
             modules.append(nn.Dropout(p=config["ltune"]["model"]["dropout"]))
             modules.append(nn.LeakyReLU())
 
+        self.policy = nn.Linear(hidden_dim, 1)
+        nn.init.xavier_normal_(self.policy.weight)
+
         self.bits = nn.Linear(hidden_dim, 1)
         nn.init.xavier_normal_(self.bits.weight)
 
@@ -45,9 +48,10 @@ class ClassicTuner(nn.Module):
     def forward(self, x, temp=1e-3, hard=False) -> torch.Tensor:
         out = self.layers(x)
         h = self.bits(out)
+        policy = self.policy(out)
         size_ratio = self.size_ratio(out)
         size_ratio = nn.functional.gumbel_softmax(size_ratio, tau=temp, hard=hard)
 
-        out = torch.concat([h, size_ratio], dim=-1)
+        out = torch.concat([policy, h, size_ratio], dim=-1)
 
         return out

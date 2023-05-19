@@ -2,12 +2,12 @@ import numpy as np
 from numba import jit
 
 
-@jit
+@jit(nopython=True)
 def calc_mbuff(bpe: float, max_bits: float, num_elem: int) -> float:
     return (max_bits - bpe) * num_elem
 
 
-@jit
+@jit(nopython=True)
 def calc_level(
     bpe: float,
     size_ratio: float,
@@ -24,7 +24,7 @@ def calc_level(
     return level
 
 
-@jit
+@jit(nopython=True)
 def calc_level_fp(
     level: int,
     bpe: float,
@@ -41,7 +41,7 @@ def calc_level_fp(
     return alpha * (top / bot)
 
 
-@jit
+@jit(nopython=True)
 def calc_full_tree(
     tot_levels: int,
     bpe: float,
@@ -58,14 +58,14 @@ def calc_full_tree(
     return nfull
 
 
-@jit
+@jit(nopython=True)
 def calc_run_prob(
     level: int, size_ratio: float, entry_size: int, mbuff: float, nfull: float
 ) -> float:
     return (size_ratio - 1) * mbuff * (size_ratio ** (level - 1)) / (nfull * entry_size)
 
 
-@jit
+@jit(nopython=True)
 def empty_op(
     h: float, T: float, K: np.ndarray, num_elem: int, entry_size: int, max_bits: float
 ) -> float:
@@ -77,7 +77,7 @@ def empty_op(
     return z0
 
 
-@jit
+@jit(nopython=True)
 def non_empty_op(
     h: float, T: float, K: np.ndarray, entry_size: int, max_bits: float, num_elem: int
 ) -> float:
@@ -100,7 +100,7 @@ def non_empty_op(
     return z1
 
 
-@jit
+@jit(nopython=True)
 def range_op(
     h: float,
     T: float,
@@ -121,7 +121,7 @@ def range_op(
     return q
 
 
-@jit
+@jit(nopython=True)
 def write_op(
     h: float,
     T: float,
@@ -144,7 +144,7 @@ def write_op(
     return w
 
 
-@jit
+@jit(nopython=True)
 def calc_cost(
     h: float,
     T: float,
@@ -174,7 +174,7 @@ def calc_cost(
     return cost
 
 
-@jit
+@jit(nopython=True)
 def calc_individual_cost(
     h: float,
     T: float,

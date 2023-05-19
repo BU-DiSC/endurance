@@ -1,5 +1,4 @@
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
 import enum
 
 
@@ -27,9 +26,9 @@ class LSMDesign:
     T: float = 5.0
     policy: Policy = Policy.Leveling
     Q: float = 1.0
-    K: Optional[list[float]] = None
     Y: float = 1.0
     Z: float = 1.0
+    K: list[float] = field(default_factory=list)
 
 
 @dataclass

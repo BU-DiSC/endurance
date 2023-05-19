@@ -45,23 +45,26 @@ class LearnedCostModelLoss(torch.nn.Module):
         return penalty
 
     def split_tuner_out(self, tuner_out):
-        bpe = tuner_out[:, 0]
-        bpe = bpe.view(-1, 1)
-        size_ratio = tuner_out[:, 1:]
+        policy = tuner_out[:, 0]
+        policy = policy.view(-1, 1)
 
-        return bpe, size_ratio
+        bpe = tuner_out[:, 1]
+        bpe = bpe.view(-1, 1)
+
+        size_ratio = tuner_out[:, 2:]
+
+        return policy, bpe, size_ratio
 
     def forward(self, pred, label):
         assert self.model.training is False
-        # For learned cost model loss, pred is the DB configuration, label is
-        # the workload
-        bpe, size_ratio = self.split_tuner_out(pred)
+        # For learned cost model loss, pred is the DB configuration, label is the workload
+        policy, bpe, size_ratio = self.split_tuner_out(pred)
         mem_budget = label[:, self.mem_budget_idx].view(-1, 1)
         penalty = self.create_penalty_vector(bpe, mem_budget)
         bpe[bpe > mem_budget] = mem_budget[bpe > mem_budget]
         bpe[bpe < 0] = 0
 
-        inputs = torch.concat([label, bpe, size_ratio], dim=-1)
+        inputs = torch.concat([label, policy, bpe, size_ratio], dim=-1)
         out = self.model(inputs)
         out = out.sum(dim=-1)
         out = out + penalty
