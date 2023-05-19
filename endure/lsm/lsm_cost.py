@@ -161,8 +161,8 @@ def calc_cost(
     phi: float,
 ) -> float:
     cost = 0
-    if np.isnan(h) or np.isnan(T) or any(np.isnan(K)):
-        return np.finfo(np.float64).max
+    if np.isnan(h) or np.isnan(T) or np.isnan(K).any():
+        return np.finfo(np.float64).max.item()
 
     cost += z0 * empty_op(h, T, K, num_elem, entry_size, max_bits)
     cost += z1 * non_empty_op(h, T, K, entry_size, max_bits, num_elem)
@@ -190,12 +190,12 @@ def calc_individual_cost(
     num_elem: int,  # N
     phi: float,
 ) -> tuple[float, float, float, float]:
-    if np.isnan(h) or np.isnan(T) or any(np.isnan(K)):
+    if np.isnan(h) or np.isnan(T) or np.isnan(K).any():
         return (
-            np.finfo(np.float64).max,
-            np.finfo(np.float64).max,
-            np.finfo(np.float64).max,
-            np.finfo(np.float64).max,
+            np.finfo(np.float64).max.item(),
+            np.finfo(np.float64).max.item(),
+            np.finfo(np.float64).max.item(),
+            np.finfo(np.float64).max.item(),
         )
 
     c_z0 = z0 * empty_op(h, T, K, num_elem, entry_size, max_bits)

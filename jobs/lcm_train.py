@@ -76,11 +76,7 @@ class LCMTrainJob:
             shuffle=self._setting["train"]["shuffle"],
             format=self._setting["train"]["format"],
         )
-        # train_data = LCMDataSet(
-        #     config=self._config,
-        #     folder=train_dir,
-        #     format=self._setting["train"]["format"],
-        # )
+
         train = DataLoader(
             train_data,
             batch_size=self._setting["train"]["batch_size"],
@@ -125,11 +121,7 @@ class LCMTrainJob:
             shuffle=self._setting["test"]["shuffle"],
             format=self._setting["test"]["format"],
         )
-        # test_data = LCMDataSet(
-        #     config=self._config,
-        #     folder=test_dir,
-        #     format=self._setting["test"]["format"],
-        # )
+
         test = DataLoader(
             test_data,
             batch_size=self._setting["test"]["batch_size"],
@@ -186,6 +178,7 @@ class LCMTrainJob:
             disable_tqdm=disable_tqdm,
             no_checkpoint=self._setting["no_checkpoint"],
         )
+
         trainer.run()
 
         return trainer

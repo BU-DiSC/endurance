@@ -30,3 +30,11 @@ class LSMDesign:
     K: Optional[list[float]] = None
     Y: float = 1.0
     Z: float = 1.0
+
+
+@dataclass
+class Workload:
+    z0: float = 0.25
+    z1: float = 0.25
+    q: float = 0.25
+    w: float = 0.25
