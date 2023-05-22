@@ -16,11 +16,13 @@ LAMBDA_DEFAULT = 1
 ETA_DEFAULT = 1
 
 
-class Solver:
-    def __init__(self, config: dict[str, Any], policy=Policy.Leveling):
+class ClassicSolver:
+    def __init__(self, config: dict[str, Any], policies=None):
         self.config = config
         self.cf = EndureCost(config)
-        self.policy = policy
+        if policies is None:
+            policies = [Policy.Tiering, Policy.Leveling]
+        self.policies = policies
 
     def kl_div_con(self, input):
         # if input > 709:  # Unfortuantely we overflow above this
@@ -30,6 +32,7 @@ class Solver:
     def robust_objective(
         self,
         x: np.ndarray,
+        policy: Policy,
         system: System,
         rho: float,
         z0: float,
@@ -38,7 +41,7 @@ class Solver:
         w: float,
     ) -> float:
         h, T, lamb, eta = x
-        design = LSMDesign(h=h, T=T, policy=self.policy)
+        design = LSMDesign(h=h, T=T, policy=policy)
         query_cost = 0
         query_cost += z0 * self.kl_div_con((self.cf.Z0(design, system) - eta) / lamb)
         query_cost += z1 * self.kl_div_con((self.cf.Z1(design, system) - eta) / lamb)
@@ -48,23 +51,33 @@ class Solver:
         return cost
 
     def nominal_objective(
-        self, x: np.ndarray, system: System, z0: float, z1: float, q: float, w: float
+        self,
+        x: np.ndarray,
+        policy: Policy,
+        system: System,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
     ):
         h, T = x
-        design = LSMDesign(h=h, T=T, policy=self.policy)
+        design = LSMDesign(h=h, T=T, policy=policy)
         cost = self.cf.calc_cost(design, system, z0, z1, q, w)
 
         return cost
 
     def get_bounds(self) -> SciOpt.Bounds:
-        T_UPPER_LIM = self.config["lsm"]["size_ratio"]["max"]
-        T_LOWER_LIM = self.config["lsm"]["size_ratio"]["min"]
-        H_LOWER_LIM = self.config["lsm"]["bits_per_elem"]["min"]
-        H_UPPER_LIM = self.config["lsm"]["system"]["H"] - 0.1
+        t_ub = self.config["lsm"]["size_ratio"]["max"]
+        t_lb = self.config["lsm"]["size_ratio"]["min"]
+        h_lb = self.config["lsm"]["bits_per_elem"]["min"]
+        h_ub = self.config["lsm"]["system"]["H"] - 0.1
 
-        return SciOpt.Bounds(
-            (H_LOWER_LIM, T_LOWER_LIM), (H_UPPER_LIM, T_UPPER_LIM), keep_feasible=True
-        )
+        lb = (h_lb, t_lb)
+        ub = (h_ub, t_ub)
+        keep_feasible = True
+
+        # SciPy's typing with Bounds is not correct
+        return SciOpt.Bounds(lb=lb, ub=ub, keep_feasible=keep_feasible)  # type: ignore
 
     def get_nominal_design(
         self,
@@ -73,17 +86,36 @@ class Solver:
         z1: float,
         q: float,
         w: float,
-        minimizer_kwargs: dict,
-        init_args: np.ndarray,
-        callback_fn: Optional[Callable] = None
+        init_args: np.ndarray = np.array([H_DEFAULT, T_DEFAULT]),
+        minimizer_kwargs: dict = {},
+        callback_fn: Optional[Callable] = None,
     ) -> Tuple[LSMDesign, SciOpt.OptimizeResult]:
-        solution = SciOpt.minimize(
-            fun=lambda x: self.nominal_objective(x, system, z0, z1, q, w),
-            x0=init_args,
-            callback=callback_fn,
-            **minimizer_kwargs
-        )
-        design = LSMDesign(solution.x[0], solution.x[1])
+        design = None
+        solution = None
+
+        default_kwargs = {
+            "method": "SLSQP",
+            "bounds": self.get_bounds(),
+            "options": {"ftol": 1e-12, "disp": False, "maxiter": 1000},
+        }
+        default_kwargs.update(minimizer_kwargs)
+
+        min_sol = np.inf
+        for policy in self.policies:
+            sol = SciOpt.minimize(
+                fun=lambda x: self.nominal_objective(x, policy, system, z0, z1, q, w),
+                x0=init_args,
+                callback=callback_fn,
+                **default_kwargs
+            )
+            if sol.fun < min_sol or (design is None and solution is None):
+                min_sol = sol.fun
+                design = LSMDesign(sol.x[0], sol.x[1], policy=policy)
+                solution = sol
+
+        assert design is not None
+        assert solution is not None
+
         return design, solution
 
 
