@@ -29,8 +29,11 @@ class ClassicTuner(nn.Module):
             modules.append(nn.Dropout(p=config["ltune"]["model"]["dropout"]))
             modules.append(nn.LeakyReLU())
 
-        self.policy = nn.Linear(hidden_dim, 1)
-        nn.init.xavier_normal_(self.policy.weight)
+        self.policy = nn.Sequential(
+            nn.Linear(hidden_dim, 1),
+            nn.Sigmoid(),
+        )
+        self.policy.apply(self.init_weights)
 
         self.bits = nn.Linear(hidden_dim, 1)
         nn.init.xavier_normal_(self.bits.weight)

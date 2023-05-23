@@ -35,10 +35,8 @@ class LearnedCostModelLoss(torch.nn.Module):
 
     def create_penalty_vector(self, bpe: torch.Tensor, mem_budget: torch.Tensor):
         penalty = torch.zeros(bpe.size()).to(bpe.device)
-        # for BPE guesses that exceed the maximum memory budget
         idx = bpe >= mem_budget
         penalty[idx] = self.penalty_factor * (bpe[idx] - mem_budget[idx])
-        # for BPE guesses underneath 0
         idx = bpe < 0
         penalty[idx] = self.penalty_factor * (0 - bpe[idx])
 
