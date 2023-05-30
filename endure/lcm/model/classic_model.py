@@ -22,7 +22,17 @@ class ClassicModel(nn.Module):
         )
         self.embedding.apply(self.init_weights)
 
-        in_dim = self.num_features - 1 + self.params["embedding_size"]
+        self.policy_embedding = nn.Sequential(
+            nn.Linear(2, self.params["policy_embedding_size"])
+        )
+        self.policy_embedding.apply(self.init_weights)
+
+        in_dim = (
+            self.num_features
+            - 2
+            + self.params["policy_embedding_size"]
+            + self.params["embedding_size"]
+        )
         if self.params["normalize"] == "Layer":
             modules.append(nn.LayerNorm(in_dim))
         elif self.params["normalize"] == "Batch":
@@ -51,20 +61,33 @@ class ClassicModel(nn.Module):
             nn.init.xavier_normal_(layer.weight)
 
     def split_inputs(self, x):
-        feats = x[:, : self.num_features - 1]
-        size_ratio = x[:, self.num_features - 1 :]
+        categorical_bound = self.num_features - 2
+        feats = x[:, :categorical_bound]
+
         if self.training:
+            size_ratio = x[:, categorical_bound + 1 :]
             size_ratio = size_ratio.to(torch.long)
             size_ratio = F.one_hot(size_ratio, num_classes=self.size_ratio_range)
             size_ratio = torch.flatten(size_ratio, start_dim=1)
+            policy = x[:, categorical_bound : categorical_bound + 1]
+            policy = policy.to(torch.long)
+            policy = F.one_hot(policy, num_classes=2)
+            policy = torch.flatten(policy, start_dim=1)
+        else:
+            policy = x[:, categorical_bound : categorical_bound + 2]
+            size_ratio = x[:, categorical_bound + 2 :]
 
-        return feats, size_ratio
+        return feats, policy, size_ratio
 
     def forward(self, x):
-        feats, size_ratio = self.split_inputs(x)
+        feats, policy, size_ratio = self.split_inputs(x)
         size_ratio = size_ratio.to(torch.float)
         size_ratio = self.embedding(size_ratio)
-        inputs = torch.cat([feats, size_ratio], dim=-1)
+
+        policy = policy.to(torch.float)
+        policy = self.policy_embedding(policy)
+
+        inputs = torch.cat([feats, policy, size_ratio], dim=-1)
         out = self.cost_layer(inputs)
 
         return out

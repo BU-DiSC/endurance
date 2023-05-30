@@ -228,6 +228,7 @@ num_cont_vars = 10
 #   num_cont_vars + (num_cate_vars * embedding_size)
 # As each categorical variable will be embedded down to size `embedding_size`
 embedding_size = 64
+policy_embedding_size = 32
 
 [lcm.model.flexible]
 out_dims = 4  # should match cost function output (z0, z1, q, h)

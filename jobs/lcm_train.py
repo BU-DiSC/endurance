@@ -99,9 +99,11 @@ class LCMTrainJob:
         inputs = []
         for item in data:
             features = item[1]
+            policy = features[-2].to(torch.long)
+            policy = F.one_hot(policy, num_classes=2)
             size_ratio = features[-1].to(torch.long)
             size_ratio = F.one_hot(size_ratio, num_classes=categories)
-            x = [features[:-1], size_ratio]
+            x = [features[:-2], policy, size_ratio]
             x = torch.cat(x)
             inputs.append(x)
         inputs = torch.stack(inputs)

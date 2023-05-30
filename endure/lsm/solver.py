@@ -79,6 +79,58 @@ class ClassicSolver:
         # SciPy's typing with Bounds is not correct
         return SciOpt.Bounds(lb=lb, ub=ub, keep_feasible=keep_feasible)  # type: ignore
 
+    def get_robust_bounds(self) -> SciOpt.Bounds:
+        bounds = self.get_bounds()
+        lb = np.concatenate((bounds.lb, np.array((0.001, -np.inf))))
+        ub = (np.concatenate((bounds.ub, np.array((np.inf, np.inf)))),)
+        keep_feasible = bounds.keep_feasible
+
+        return SciOpt.Bounds(lb=lb, ub=ub, keep_feasible=keep_feasible)  # type: ignore
+
+    def get_robust_design(
+        self,
+        system: System,
+        rho: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+        init_args: np.ndarray = np.array(
+            [H_DEFAULT, T_DEFAULT, LAMBDA_DEFAULT, ETA_DEFAULT]
+        ),
+        minimizer_kwargs: dict = {},
+        callback_fn: Optional[Callable] = None,
+    ) -> Tuple[LSMDesign, SciOpt.OptimizeResult]:
+        design = None
+        solution = None
+
+        default_kwargs = {
+            "method": "SLSQP",
+            "bounds": self.get_robust_bounds(),
+            "options": {"ftol": 1e-6, "disp": False, "maxiter": 1000},
+        }
+        default_kwargs.update(minimizer_kwargs)
+
+        min_sol = np.inf
+        for policy in self.policies:
+            sol = SciOpt.minimize(
+                fun=lambda x: self.robust_objective(
+                    x, policy, system, rho, z0, z1, q, w
+                ),
+                x0=init_args,
+                callback=callback_fn,
+                **default_kwargs
+            )
+            if sol.fun < min_sol or (design is None and solution is None):
+                min_sol = sol.fun
+                design = LSMDesign(sol.x[0], sol.x[1], policy=policy)
+                solution = sol
+
+        assert design is not None
+        assert solution is not None
+
+        return design, solution
+
     def get_nominal_design(
         self,
         system: System,
@@ -96,7 +148,7 @@ class ClassicSolver:
         default_kwargs = {
             "method": "SLSQP",
             "bounds": self.get_bounds(),
-            "options": {"ftol": 1e-12, "disp": False, "maxiter": 1000},
+            "options": {"ftol": 1e-6, "disp": False, "maxiter": 1000},
         }
         default_kwargs.update(minimizer_kwargs)
 
