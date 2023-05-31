@@ -30,8 +30,7 @@ class ClassicTuner(nn.Module):
             modules.append(nn.LeakyReLU())
 
         self.policy = nn.Sequential(
-            nn.Linear(hidden_dim, 1),
-            nn.Sigmoid(),
+            nn.Linear(hidden_dim, 2),
         )
         self.policy.apply(self.init_weights)
 
@@ -52,9 +51,10 @@ class ClassicTuner(nn.Module):
         out = self.layers(x)
         h = self.bits(out)
         policy = self.policy(out)
+        policy = nn.functional.gumbel_softmax(policy, tau=temp, hard=hard)
         size_ratio = self.size_ratio(out)
         size_ratio = nn.functional.gumbel_softmax(size_ratio, tau=temp, hard=hard)
 
-        out = torch.concat([policy, h, size_ratio], dim=-1)
+        out = torch.concat([h, policy, size_ratio], dim=-1)
 
         return out
