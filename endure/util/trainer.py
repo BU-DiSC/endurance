@@ -116,19 +116,22 @@ class Trainer:
         test_loss = 0
         if self.test_len == 0:
             pbar = tqdm(
-                self.test_data, desc="testing", ncols=80, disable=self.disable_tqdm
+                self.test_data, desc="test", ncols=80, disable=self.disable_tqdm
             )
         else:
             pbar = tqdm(
                 self.test_data,
-                desc="testing",
+                desc="test",
                 ncols=80,
                 total=self.test_len,
                 disable=self.disable_tqdm,
             )
         batch = 0
         for batch, (labels, features) in enumerate(pbar):
-            test_loss += self._test_step(labels, features)
+            loss = self._test_step(labels, features)
+            # if batch % (100) == 0:
+            pbar.set_description(f"test {loss:e}")
+            test_loss += loss
 
         if self.test_len == 0:
             self.test_len = batch + 1  # Last batch will correspond to total
@@ -166,7 +169,13 @@ class Trainer:
             loss_csv_write = csv.writer(fid)
             loss_csv_write.writerow(["epoch", "train_loss", "test_loss"])
 
-        loss_min = float("inf")
+        self.log.info("Initial test with random network")
+        loss_min = self._test_loop()
+        with open(os.path.join(self.base_dir, "losses.csv"), "a") as fid:
+            write = csv.writer(fid)
+            write.writerow([0, loss_min, loss_min])
+        self.log.info(f"Initial Loss: {loss_min}")
+
         for epoch in range(self.max_epochs):
             self.log.info(f"Epoch: [{epoch+1}/{self.max_epochs}]")
             train_loss = self._train_loop()
@@ -181,7 +190,7 @@ class Trainer:
                 self._save_model("best.model")
             with open(os.path.join(self.base_dir, "losses.csv"), "a") as fid:
                 write = csv.writer(fid)
-                write.writerow([epoch, train_loss, curr_loss])
+                write.writerow([epoch + 1, train_loss, curr_loss])
 
         self.log.info("Training finished")
 
