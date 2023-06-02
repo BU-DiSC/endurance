@@ -66,11 +66,14 @@ class ClassicSolver:
 
         return cost
 
-    def get_bounds(self) -> SciOpt.Bounds:
+    def get_bounds(self, system: Optional[System] = None) -> SciOpt.Bounds:
         t_ub = self.config["lsm"]["size_ratio"]["max"]
         t_lb = self.config["lsm"]["size_ratio"]["min"]
         h_lb = self.config["lsm"]["bits_per_elem"]["min"]
-        h_ub = self.config["lsm"]["system"]["H"] - 0.1
+        if system is None:
+            h_ub = self.config["lsm"]["system"]["H"] - 0.1
+        else:
+            h_ub = system.H - 0.1
 
         lb = (h_lb, t_lb)
         ub = (h_ub, t_ub)
@@ -147,7 +150,7 @@ class ClassicSolver:
 
         default_kwargs = {
             "method": "SLSQP",
-            "bounds": self.get_bounds(),
+            "bounds": self.get_bounds(system=system),
             "options": {"ftol": 1e-6, "disp": False, "maxiter": 1000},
         }
         default_kwargs.update(minimizer_kwargs)
