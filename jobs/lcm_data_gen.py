@@ -38,7 +38,7 @@ class LCMDataGenJob:
         }
         generator = generators.get(choice, None)
         if generator is None:
-            self.log.warning("Invalid generator choice. " "Defaulting to KHybridCost")
+            self.log.warning("Invalid generator choice. Defaulting to KHybridCost")
             return Generators.KHybridGenerator(self.config)
 
         return generator

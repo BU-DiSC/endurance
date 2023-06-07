@@ -87,26 +87,45 @@ class LCMTrainJob:
 
         return train
 
-    def _test_collate_fn(self, data):
+    def _gather_inputs(self, data):
         categories = (
             self._config["lsm"]["size_ratio"]["max"]
             - self._config["lsm"]["size_ratio"]["min"]
             + 1
         )
+        inputs = []
+        num_features = len(self._config["lcm"]["input_features"])
+
+        if self._config["lsm"]["design"] == "Classic":
+            for item in data:
+                features = item[1]
+                policy = features[-2].to(torch.long)
+                policy = F.one_hot(policy, num_classes=2)
+                size_ratio = features[-1].to(torch.long)
+                size_ratio = F.one_hot(size_ratio, num_classes=categories)
+                x = [features[:-2], policy, size_ratio]
+                x = torch.cat(x)
+                inputs.append(x)
+        elif self._config["lsm"]["design"] == "KLSM":
+            for item in data:
+                features = item[1]
+                capacities = features[num_features - 2 :]
+                capacities = capacities.to(torch.long)
+                capacities = F.one_hot(capacities, num_classes=categories)
+                capacities = torch.flatten(capacities)
+                x = [features[:num_features - 2], capacities]
+                x = torch.cat(x)
+                inputs.append(x)
+
+        inputs = torch.stack(inputs)
+
+        return inputs
+
+    def _test_collate_fn(self, data):
         labels = np.array([item[0].numpy() for item in data])
         labels = torch.from_numpy(labels)
 
-        inputs = []
-        for item in data:
-            features = item[1]
-            policy = features[-2].to(torch.long)
-            policy = F.one_hot(policy, num_classes=2)
-            size_ratio = features[-1].to(torch.long)
-            size_ratio = F.one_hot(size_ratio, num_classes=categories)
-            x = [features[:-2], policy, size_ratio]
-            x = torch.cat(x)
-            inputs.append(x)
-        inputs = torch.stack(inputs)
+        inputs = self._gather_inputs(data)
 
         return labels, inputs
 

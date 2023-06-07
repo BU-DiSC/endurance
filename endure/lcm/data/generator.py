@@ -88,7 +88,6 @@ class LCMDataGenerator:
         return lsm
 
     def _sample_config(self) -> tuple:
-        EPSILON = 0.1
         system = self._sample_system()
         design = self._sample_design(system)
 
@@ -130,7 +129,7 @@ class LCMDataGenerator:
 class ClassicGenerator(LCMDataGenerator):
     def __init__(
         self,
-        config,
+        config: dict[str, Any],
         precision: int = 3,
         policies: List[Policy] = [Policy.Tiering, Policy.Leveling],
     ):
@@ -173,16 +172,27 @@ class ClassicGenerator(LCMDataGenerator):
 
 
 class KHybridGenerator(LCMDataGenerator):
-    def __init__(self, config, precision=3):
+    def __init__(self, config: dict[str, Any], precision: int = 3):
         super().__init__(config, precision)
-        self.cf = CostFunc.EndureKCost(self._config)
-        max_levels = self._config["lsm"]["max_levels"]
+        self.max_levels = self._config["lsm"]["max_levels"]
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
         system_header = self._gen_system_header()
         decision = ["h", "T"]
         self.header = cost_header + workload_header + system_header + decision
-        self.header += [f"K_{i}" for i in range(max_levels)]
+        self.header += [f"K_{i}" for i in range(self.max_levels)]
+
+    def _sample_design(self, system: System) -> LSMDesign:
+        design = super()._sample_design(system)
+        h = design.h
+        T = design.T
+        levels = int(self.cf.L(design, system, ceil=True))
+        K = random.sample(self._gen_k_levels(levels, int(T) - 1), 1)[0]
+        K = np.pad(K, (0, self.max_levels - len(K)))
+        K = K.tolist()
+        design = LSMDesign(h=h, T=T, policy=Policy.KHybrid, K=K)
+
+        return design
 
     def _gen_k_levels(self, levels: int, max_size_ratio: int) -> list:
         arr = combinations_with_replacement(range(max_size_ratio, 0, -1), levels)
@@ -194,36 +204,29 @@ class KHybridGenerator(LCMDataGenerator):
 
     def generate_row_csv(self) -> list:
         z0, z1, q, w = self._sample_workload(4)
-        T = self._sample_size_ratio()
-        h = self._sample_bloom_filter_bits()
-        B = self._sample_entry_per_page()
-        s = self._sample_selectivity()
-        E = self._sample_entry_size()
-        H = self._sample_memory_budget()
-        N = self._sample_total_elements()
-        levels = int(self.cf.cf.L(h, T, True))
-        K = random.sample(self._gen_k_levels(levels, T - 1), 1)[0]
-        K = np.pad(K, (0, self._config["lsm"]["max_levels"] - len(K)))
+        system: System = self._sample_system()
+        design: LSMDesign = self._sample_design(system)
 
         line = [
-            z0 * self.cf.Z0(h, T, K),
-            z1 * self.cf.Z1(h, T, K),
-            q * self.cf.Q(h, T, K),
-            w * self.cf.W(h, T, K),
+            z0 * self.cf.Z0(design, system),
+            z1 * self.cf.Z1(design, system),
+            q * self.cf.Q(design, system),
+            w * self.cf.W(design, system),
             z0,
             z1,
             q,
             w,
-            B,
-            s,
-            E,
-            H,
-            N,
-            h,
-            T,
+            system.B,
+            system.s,
+            system.E,
+            system.H,
+            system.N,
+            design.h,
+            design.T,
         ]
-        for level_idx in range(self._config["lsm"]["max_levels"]):
-            line.append(K[level_idx])
+        for level_idx in range(self.max_levels):
+            line.append(design.K[level_idx])
+
         return line
 
 
