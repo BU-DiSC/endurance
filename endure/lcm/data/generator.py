@@ -233,7 +233,6 @@ class KHybridGenerator(LCMDataGenerator):
 class QCostGenerator(LCMDataGenerator):
     def __init__(self, config, precision=3):
         super().__init__(config, precision)
-        self.cf = CostFunc.EndureQCost(self._config)
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
         system_header = self._gen_system_header()
@@ -246,36 +245,39 @@ class QCostGenerator(LCMDataGenerator):
             high=self._config["lsm"]["size_ratio"]["max"] - 1,
         )
 
+    def _sample_design(self, system: System) -> LSMDesign:
+        design = super()._sample_design(system)
+        h = design.h
+        T = design.T
+        Q = self._sample_q()
+        design = LSMDesign(h=h, T=T, policy=Policy.QFixed, Q=Q)
+
+        return design
+
     def generate_header(self) -> list:
         return self.header
 
     def generate_row_csv(self) -> list:
         z0, z1, q, w = self._sample_workload(4)
-        B = self._sample_entry_per_page()
-        s = self._sample_selectivity()
-        E = self._sample_entry_size()
-        H = self._sample_memory_budget()
-        N = self._sample_total_elements()
-        T = self._sample_size_ratio()
-        h = self._sample_bloom_filter_bits()
-        Q = self._sample_q()
+        system: System = self._sample_system()
+        design: LSMDesign = self._sample_design(system)
 
         line = [
-            z0 * self.cf.Z0(h, T, Q),
-            z1 * self.cf.Z1(h, T, Q),
-            q * self.cf.Q(h, T, Q),
-            w * self.cf.W(h, T, Q),
+            z0 * self.cf.Z0(design, system),
+            z1 * self.cf.Z1(design, system),
+            q * self.cf.Q(design, system),
+            w * self.cf.W(design, system),
             z0,
             z1,
             q,
             w,
-            B,
-            s,
-            E,
-            H,
-            N,
-            h,
-            T,
-            Q,
+            system.B,
+            system.s,
+            system.E,
+            system.H,
+            system.N,
+            design.h,
+            design.T,
+            design.Q
         ]
         return line

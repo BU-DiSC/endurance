@@ -25,7 +25,12 @@ class FlexibleModel(nn.Module):
 
         # Embedding size incorporates T and Ks
         in_dim = self.num_features - 2
-        in_dim += (self.max_levels + 1) * self.params["embedding_size"]
+        if config["lsm"]["design"] == "QLSM":
+            in_dim += 2 * self.params["embedding_size"]
+        elif config["lsm"]["design"] == "KLSM":
+            in_dim += (self.max_levels + 1) * self.params["embedding_size"]
+        else:
+            in_dim += self.params["embedding_size"]
 
         if self.params["normalize"] == "Layer":
             modules.append(nn.LayerNorm(in_dim))
