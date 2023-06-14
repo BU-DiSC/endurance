@@ -53,6 +53,9 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
         df["T"] = df["T"] - self._config["lsm"]["size_ratio"]["min"]
         if self._config["lsm"]["design"] == "QLSM":
             df["Q"] -= (self._config["lsm"]["size_ratio"]["min"] - 1)
+        elif self._config["lsm"]["design"] == "YZLSM":
+            df["Y"] -= (self._config["lsm"]["size_ratio"]["min"] - 1)
+            df["Z"] -= (self._config["lsm"]["size_ratio"]["min"] - 1)
         elif self._config["lsm"]["design"] == "KLSM":
             for i in range(self._config["lsm"]["max_levels"]):
                 df[f"K_{i}"] -= (self._config["lsm"]["size_ratio"]["min"] - 1)
@@ -60,10 +63,7 @@ class LCMIterableDataSet(torch.utils.data.IterableDataset):
         elif self._config["lsm"]["design"] in ["Tier", "Level"]:
             pass
         else:
-            self.log.warn("Invalid model defaulting to KCost behavior")
-            for i in range(self._config["lsm"]["max_levels"]):
-                df[f"K_{i}"] -= (self._config["lsm"]["size_ratio"]["min"] - 1)
-                df[f"K_{i}"] = df[f"K_{i}"].clip(lower=0)
+            self.log.warn("Invalid model defaulting to Tier/Level behavior")
 
         return df
 

@@ -231,7 +231,7 @@ class KHybridGenerator(LCMDataGenerator):
 
 
 class QCostGenerator(LCMDataGenerator):
-    def __init__(self, config, precision=3):
+    def __init__(self, config: dict[str, Any], precision: int = 3):
         super().__init__(config, precision)
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
@@ -278,6 +278,67 @@ class QCostGenerator(LCMDataGenerator):
             system.N,
             design.h,
             design.T,
-            design.Q
+            design.Q,
+        ]
+        return line
+
+
+class YZCostGenerator(LCMDataGenerator):
+    def __init__(self, config: dict[str, Any], precision: int = 3):
+        super().__init__(config, precision)
+        cost_header = self._gen_cost_header()
+        workload_header = self._gen_workload_header()
+        system_header = self._gen_system_header()
+        decision = ["h", "T", "Y", "Z"]
+        self.header = cost_header + workload_header + system_header + decision
+
+    def _sample_y(self) -> int:
+        return np.random.randint(
+            low=self._config["lsm"]["size_ratio"]["min"] - 1,
+            high=self._config["lsm"]["size_ratio"]["max"] - 1,
+        )
+
+    def _sample_z(self) -> int:
+        return np.random.randint(
+            low=self._config["lsm"]["size_ratio"]["min"] - 1,
+            high=self._config["lsm"]["size_ratio"]["max"] - 1,
+        )
+
+    def _sample_design(self, system: System) -> LSMDesign:
+        design = super()._sample_design(system)
+        h = design.h
+        T = design.T
+        Y = self._sample_y()
+        Z = self._sample_z()
+        design = LSMDesign(h=h, T=T, policy=Policy.YZHybrid, Y=Y, Z=Z)
+
+        return design
+
+    def generate_header(self) -> list:
+        return self.header
+
+    def generate_row_csv(self) -> list:
+        z0, z1, q, w = self._sample_workload(4)
+        system: System = self._sample_system()
+        design: LSMDesign = self._sample_design(system)
+
+        line = [
+            z0 * self.cf.Z0(design, system),
+            z1 * self.cf.Z1(design, system),
+            q * self.cf.Q(design, system),
+            w * self.cf.W(design, system),
+            z0,
+            z1,
+            q,
+            w,
+            system.B,
+            system.s,
+            system.E,
+            system.H,
+            system.N,
+            design.h,
+            design.T,
+            design.Y,
+            design.Z,
         ]
         return line

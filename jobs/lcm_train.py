@@ -106,7 +106,7 @@ class LCMTrainJob:
                 x = [features[:-2], policy, size_ratio]
                 x = torch.cat(x)
                 inputs.append(x)
-        elif self._config["lsm"]["design"] == "KLSM":
+        elif self._config["lsm"]["design"] in ["KLSM", "QLSM"]:
             for item in data:
                 features = item[1]
                 capacities = features[num_features - 2 :]
