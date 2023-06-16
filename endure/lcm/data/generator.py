@@ -239,17 +239,17 @@ class QCostGenerator(LCMDataGenerator):
         decision = ["h", "T", "Q"]
         self.header = cost_header + workload_header + system_header + decision
 
-    def _sample_q(self) -> int:
+    def _sample_q(self, max_size_ratio: int) -> int:
         return np.random.randint(
             low=self._config["lsm"]["size_ratio"]["min"] - 1,
-            high=self._config["lsm"]["size_ratio"]["max"] - 1,
+            high=max_size_ratio,
         )
 
     def _sample_design(self, system: System) -> LSMDesign:
         design = super()._sample_design(system)
         h = design.h
         T = design.T
-        Q = self._sample_q()
+        Q = self._sample_q(int(T))
         design = LSMDesign(h=h, T=T, policy=Policy.QFixed, Q=Q)
 
         return design
@@ -292,24 +292,18 @@ class YZCostGenerator(LCMDataGenerator):
         decision = ["h", "T", "Y", "Z"]
         self.header = cost_header + workload_header + system_header + decision
 
-    def _sample_y(self) -> int:
+    def _sample_capacity(self, max_size_ratio: int) -> int:
         return np.random.randint(
             low=self._config["lsm"]["size_ratio"]["min"] - 1,
-            high=self._config["lsm"]["size_ratio"]["max"] - 1,
-        )
-
-    def _sample_z(self) -> int:
-        return np.random.randint(
-            low=self._config["lsm"]["size_ratio"]["min"] - 1,
-            high=self._config["lsm"]["size_ratio"]["max"] - 1,
+            high=max_size_ratio,
         )
 
     def _sample_design(self, system: System) -> LSMDesign:
         design = super()._sample_design(system)
         h = design.h
         T = design.T
-        Y = self._sample_y()
-        Z = self._sample_z()
+        Y = self._sample_capacity(int(T))
+        Z = self._sample_capacity(int(T))
         design = LSMDesign(h=h, T=T, policy=Policy.YZHybrid, Y=Y, Z=Z)
 
         return design

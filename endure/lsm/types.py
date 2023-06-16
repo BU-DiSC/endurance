@@ -13,7 +13,7 @@ class Policy(enum.Enum):
 @dataclass
 class System:
     E: int = 8192           # Number of physical entries per page
-    s: float = 1e-7         # Range query selectivity
+    s: float = 4e-7         # Range query selectivity
     B: int = 4              # entries per page
     N: int = 1_000_000_000  # Number of elements in tree
     H: float = 10.0         # Bits per element budget

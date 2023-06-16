@@ -113,8 +113,8 @@ def range_op(
 ) -> float:
     max_level = int(calc_level(h, T, entry_size, max_bits, num_elem, ceil=True))
     fuzz_level = calc_level(h, T, entry_size, max_bits, num_elem, ceil=False)
-    residual = 1 - (max_level - fuzz_level)
     q = sum(K[: (max_level - 1)])
+    residual = 1 - (max_level - fuzz_level)
     q += K[max_level - 1] * residual
     q = q + (selectivity * num_elem / entry_per_page)
 
@@ -135,9 +135,9 @@ def write_op(
     w = 0
     max_level = int(calc_level(h, T, entry_size, max_bits, num_elem, ceil=True))
     fuzz_level = calc_level(h, T, entry_size, max_bits, num_elem, ceil=False)
-    residual = 1 - (max_level - fuzz_level)
     for level in range(0, max_level - 1):
         w += (T - 1 + K[level]) / (2 * K[level])
+    residual = 1 - (max_level - fuzz_level)
     w += residual * (T - 1 + K[max_level - 1]) / (2 * K[max_level - 1])
     w *= (1 + phi) / entry_per_page
 

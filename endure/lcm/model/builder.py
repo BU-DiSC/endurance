@@ -1,36 +1,35 @@
+from typing import Any, Optional
 import torch
 import logging
 
 from endure.lcm.model.flexible_model import FlexibleModel
 from endure.lcm.model.classic_model import ClassicModel
+from endure.lcm.model.qlsm_model import QModel
 
 
 class LearnedCostModelBuilder:
-    def __init__(self, config: dict[str, ...]):
+    def __init__(self, config: dict[str, Any]):
         self._config = config
         self.log = logging.getLogger(self._config["log"]["name"])
         self._models = {
             "KLSM": FlexibleModel,
-            "QLSM": FlexibleModel,
+            "QLSM": QModel,
             "Level": ClassicModel,
             "Tier": ClassicModel,
         }
 
-    @staticmethod
-    def _get_default_arch():
-        return "Level"
-
     def get_choices(self):
         return self._models.keys()
 
-    def build_model(self, choice: str = None) -> torch.nn.Module:
+    def build_model(self, choice: Optional[str] = None) -> torch.nn.Module:
+        lsm_design: str = self._config["lsm"]["design"]
         if choice is None:
-            choice = self._config["lsm"]["design"]
+            choice = lsm_design
 
         model = self._models.get(choice, None)
         if model is None:
-            self.log.warn("Invalid model architecture. Defaulting to KLSM")
-            model = self._models.get(self._get_default_arch())
+            self.log.warn("Invalid model architecture. Defaulting to classic")
+            return ClassicModel(self._config)
         model = model(self._config)
 
         return model
