@@ -7,7 +7,6 @@ import numpy as np
 
 from endure.lsm.types import LSMDesign, System, Policy
 from endure.lsm.cost import EndureCost
-import endure.lsm.cost_model as CostFunc
 
 
 class LCMDataGenerator:
