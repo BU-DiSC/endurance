@@ -1,11 +1,11 @@
 from typing import Any
 
 from torch import nn
-import torch
-import torch.nn.functional as F
+# import torch
+# import torch.nn.functional as F
 
 
-class QModel(nn.Module):
+class QIntModel(nn.Module):
     def __init__(self, config: dict[str, Any]):
         super().__init__()
         self.max_levels = config["lsm"]["max_levels"]
@@ -18,19 +18,8 @@ class QModel(nn.Module):
             config["lsm"]["size_ratio"]["max"] - config["lsm"]["size_ratio"]["min"] + 1
         )
 
-        self.embedding = nn.Sequential(
-            nn.Linear(self.size_ratio_range, self.params["embedding_size"])
-        )
-        self.embedding.apply(self.init_weights)
-
-        self.q_embedding = nn.Sequential(
-            nn.Linear(self.size_ratio_range, self.params["embedding_size"])
-        )
-        self.q_embedding.apply(self.init_weights)
-
-        # Embedding size incorporates T and Ks
-        in_dim = self.num_features - 2
-        in_dim += 2 * self.params["embedding_size"]
+        # Q and T are dummy vars
+        in_dim = self.num_features
 
         if self.params["normalize"] == "Layer":
             modules.append(nn.LayerNorm(in_dim))
@@ -58,32 +47,7 @@ class QModel(nn.Module):
         if isinstance(layer, nn.Linear):
             nn.init.xavier_normal_(layer.weight)
 
-    def split_inputs(self, x):
-        categorical_bound = self.num_features - 2
-        feats = x[:, :categorical_bound]
-        capacities = x[:, categorical_bound:]
-
-        if self.training:
-            capacities = capacities.to(torch.long)
-            capacities = F.one_hot(capacities, num_classes=self.size_ratio_range)
-        else:
-            capacities = torch.unflatten(capacities, 1, (-1, self.size_ratio_range))
-
-        size_ratio = capacities[:, 0, :]
-        q_cap = capacities[:, 1, :]
-
-        return feats, size_ratio, q_cap
-
     def forward(self, x):
-        feats, size_ratio, q_cap = self.split_inputs(x)
-
-        size_ratio = size_ratio.to(torch.float)
-        size_ratio = self.embedding(size_ratio)
-
-        q_cap = q_cap.to(torch.float)
-        q_cap = self.q_embedding(q_cap)
-
-        inputs = torch.cat([feats, size_ratio, q_cap], dim=-1)
-        out = self.cost_layer(inputs)
+        out = self.cost_layer(x)
 
         return out

@@ -56,7 +56,7 @@ class ParquetBatchDataSet:
         df[["h", "z0", "z1", "q", "w"]] -= self._mean
         df[["h", "z0", "z1", "q", "w"]] /= self._std
         df["T"] = df["T"] - self._config["lsm"]["size_ratio"]["min"]
-        if self._config["lsm"]["design"] == "QCost":
+        if self._config["lsm"]["design"] in ["QLSM", "QLSMIntegerVars"]:
             df["Q"] -= self._config["lsm"]["size_ratio"]["min"] - 1
         elif self._config["lsm"]["design"] == "TierLevelCost":
             pass

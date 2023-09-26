@@ -33,6 +33,7 @@ class LCMDataGenJob:
                 self.config, policies=[Policy.Leveling]
             ),
             "QCost": Generators.QCostGenerator(self.config),
+            "QCostBinary": Generators.QCostBinaryGenerator(self.config),
             "KHybridCost": Generators.KHybridGenerator(self.config),
             "ClassicCost": Generators.ClassicGenerator(self.config),
         }

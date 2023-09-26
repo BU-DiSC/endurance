@@ -12,6 +12,7 @@ class LTuneModelBuilder:
         self._models = {
             "Tier": ClassicTuner,
             "Level": ClassicTuner,
+            "Classic": ClassicTuner,
         }
 
     @staticmethod

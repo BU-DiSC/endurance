@@ -25,7 +25,7 @@ disable_tqdm = false
 #   Generic IO settings for experiments, saving data, etc
 # =============================================================================
 [io]
-data_dir = "/data"
+data_dir = "/scratchNVMe/ndhuynh/data"
 
 # =============================================================================
 # HEADER JOB
@@ -45,11 +45,11 @@ to_run = [
 [job.LCMDataGen]
 # -----------------------------------------------------------------------------
 format = "parquet"
-generator = "QCost"
-dir = "test-data/qcost"
-file_prefix = "q_cost"
+generator = "QCostBinary"
+dir = "train-data/qmonkey3"
+file_prefix = "qmonkey_cost"
 num_workers = -1  # -1 forces all cores to be used
-num_files = 8
+num_files = 64
 samples = 1048576  # per file sample
 overwrite_if_exists = true
 
@@ -57,7 +57,7 @@ overwrite_if_exists = true
 [job.LCMTrain]
 # -----------------------------------------------------------------------------
 max_epochs = 100
-save_dir = "models/lcm/qcost-06-15-v0"
+save_dir = "models/lcm/qmonkey-09-25-v1"
 use_gpu_if_avail = true
 
 # Different loss functions to train via
@@ -82,42 +82,42 @@ lr_scheduler = "CosineAnnealing"
 no_checkpoint = false
 
 [job.LCMTrain.train]
-dir = "train-data/qcost"
+dir = "train-data/qmonkey3"
 format = "parquet"
 batch_size = 8192
 shuffle = true
-num_workers = 6
+num_workers = 12
 drop_last = true
 
 [job.LCMTrain.test]
-dir = "test-data/qcost"
+dir = "test-data/qmonkey3"
 format = "parquet"
 batch_size = 65536
 shuffle = false
-num_workers = 2
+num_workers = 4
 drop_last = true
 
 # -----------------------------------------------------------------------------
 [job.LTuneDataGen]
 # -----------------------------------------------------------------------------
 format = "parquet"
-generator = "default"
-dir = "train-data/ltune/level"
+generator = "Classic"
+dir = "test-data/ltune/classic"
 file_prefix = "workload"
-num_workers = 4  # -1 forces all cores to be used
+num_workers = -1  # -1 forces all cores to be used
 num_files = 8
-samples = 8192  # per file sample
+samples = 1048576  # per file sample
 overwrite_if_exists = true
 
 # -----------------------------------------------------------------------------
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
 max_epochs = 100
-save_dir = "models/ltune/classic-06-01-v0"
+save_dir = "models/ltune/classic-09-11-v0"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
-loss_fn_path = "models/lcm/classic-05-30-v0"
+loss_fn_path = "models/lcm/classic-09-08-v0"
 
 # Check train.optimizer for available options
 optimizer = "Adam"
@@ -133,7 +133,7 @@ dir = "train-data/classic"
 format = "parquet"
 batch_size = 8192
 shuffle = true
-num_workers = 4
+num_workers = 8
 drop_last = true
 
 [job.LTuneTrain.test]
@@ -141,7 +141,7 @@ dir = "test-data/classic"
 format = "parquet"
 batch_size = 65536
 shuffle = false
-num_workers = 2
+num_workers = 4
 drop_last = true
 
 # =============================================================================
@@ -157,11 +157,12 @@ drop_last = true
 #   KLSM
 #   QLSM
 #   YZLSM
+# design = 'QLSMIntegerVars'
 design = 'QLSM'
 max_levels = 20
 
 [lsm.size_ratio]
-max = 20
+max = 5
 min = 2
 
 [lsm.bits_per_elem]
@@ -203,6 +204,10 @@ N = 1000000000
 # =============================================================================
 [lcm]
 desc = 'Learned Cost Model'
+# Input features for different dates is as follows:
+#   Classic: ["z0", "z1", "q", "w", "B", "s", "E", "H", "N", "h", "policy", "T"]
+#   QLSM: ["z0", "z1", "q", "w", "B", "s", "E", "H", "N", "h", "T", "Q"]
+#   KLSM: ["z0", "z1", "q", "w", "B", "s", "E", "H", "N", "h", "T", "K"]
 input_features = ["z0", "z1", "q", "w", "B", "s", "E", "H", "N", "h", "T", "Q"]
 output_features = ["z0_cost", "z1_cost", "q_cost", "w_cost"]
 
@@ -211,7 +216,7 @@ output_features = ["z0_cost", "z1_cost", "q_cost", "w_cost"]
 #   Configuration for specific models
 # -----------------------------------------------------------------------------
 [lcm.model]
-dropout = 0
+dropout = 0.1
 
 [lcm.model.classic]
 num_layers = 4
@@ -228,10 +233,10 @@ policy_embedding_size = 32
 embedding_size = 64
 
 [lcm.model.flexible]
-num_layers = 3
-layer_size = 256
+num_layers = 4
+layer_size = 128
 normalize = "Batch"
-embedding_size = 32
+embedding_size = 4
 
 # -----------------------------------------------------------------------------
 # HEADER LCM.DATA
@@ -297,7 +302,7 @@ normalize_inputs = false
 # =============================================================================
 [train.scheduler.CosineAnnealingLR]
 T_max = 10
-eta_min = 0.00001  # minimum learning rate
+eta_min = 0.0001  # minimum learning rate
 
 [train.scheduler.Exponential]
 gamma = 0.9
@@ -330,6 +335,17 @@ cost_model = "LevelCost"
 start = 0
 stop = 4
 step = 0.25
+
+# =============================================================================
+# HEADER GENERATOR
+#     Generator settings
+# =============================================================================
+[generator]
+page_sizes = [4, 8, 16]                     # KB pages
+selectivity_range = [1e-6, 1e-7]            # low, high
+entry_sizes = [1024, 2048, 4096, 8192]      # bits
+memory_budget = [5, 20]                     # low, high, bits per element
+elements_range = [100000000, 1000000000]    # element range
 
 # =============================================================================
 # HEADER WORKLOADS

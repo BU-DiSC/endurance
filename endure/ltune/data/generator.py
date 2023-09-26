@@ -10,7 +10,6 @@ class LTuneGenerator:
         self, config: dict[str, Any], format: str = "parquet", precision: int = 3
     ):
         self.log = logging.getLogger(config["log"]["name"])
-        self.log.debug("Init LTuneGenerator")
         self._config = config
         self._header = self._gen_workload_header() + self._gen_system_header()
         self.format = format
@@ -28,24 +27,26 @@ class LTuneGenerator:
     # TODO: Will want to configure environment to simulate larger ranges over
     # potential system values
     def _sample_entry_per_page(self, entry_size: int = 8192) -> int:
-        # Potential page sizes are 4KB, 8KB, 16KB
         KB_TO_BITS = 8 * 1024
-        entries_per_page = (np.array([4, 8, 16]) * KB_TO_BITS) / entry_size
+        page_sizes = self._config["generator"]["page_sizes"]
+        entries_per_page = (page_sizes * KB_TO_BITS) / entry_size
         return np.random.choice(entries_per_page)
 
     def _sample_selectivity(self) -> float:
-        low, high = (1e-6, 1e-7)
+        low, high = self._config["generator"]["selectivity_range"]
         return (high - low) * np.random.rand() + low
 
     def _sample_entry_size(self) -> int:
-        return np.random.choice([1024, 2048, 4096, 8192])
+        choices = self._config["generator"]["entry_sizes"]
+        return np.random.choice(choices)
 
     def _sample_memory_budget(self) -> float:
-        low, high = (5, 20)
+        low, high = self._config["generator"]["memory_budget"]
         return (high - low) * np.random.rand() + low
 
     def _sample_total_elements(self) -> int:
-        return np.random.randint(low=100000000, high=1000000000)
+        low, high = self._config["generator"]["elements_range"]
+        return np.random.randint(low=low, high=high)
 
     def _sample_system(self) -> tuple:
         E = self._sample_entry_size()

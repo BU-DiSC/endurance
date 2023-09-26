@@ -2,6 +2,7 @@ import logging
 import random
 from typing import Any, List, Union, Optional
 from itertools import combinations_with_replacement
+from typing_extensions import override
 
 import numpy as np
 
@@ -44,22 +45,25 @@ class LCMDataGenerator:
     def _sample_entry_per_page(self, entry_size: int = 8192) -> int:
         # Potential page sizes are 4KB, 8KB, 16KB
         KB_TO_BITS = 8 * 1024
-        entries_per_page = (np.array([4, 8, 16]) * KB_TO_BITS) / entry_size
+        page_sizes = np.array(self._config["generator"]["page_sizes"])
+        entries_per_page = (page_sizes * KB_TO_BITS) / entry_size
         return np.random.choice(entries_per_page)
 
     def _sample_selectivity(self) -> float:
-        low, high = (1e-6, 1e-7)
+        low, high = self._config["generator"]["selectivity_range"]
         return (high - low) * np.random.rand() + low
 
     def _sample_entry_size(self) -> int:
-        return np.random.choice([1024, 2048, 4096, 8192])
+        choices = self._config["generator"]["entry_sizes"]
+        return np.random.choice(choices)
 
     def _sample_memory_budget(self) -> float:
-        low, high = (5, 20)
+        low, high = self._config["generator"]["memory_budget"]
         return (high - low) * np.random.rand() + low
 
     def _sample_total_elements(self) -> int:
-        return np.random.randint(low=100000000, high=1000000000)
+        low, high = self._config["generator"]["elements_range"]
+        return np.random.randint(low=low, high=high)
 
     def _sample_system(self) -> System:
         E = self._sample_entry_size()
@@ -281,6 +285,14 @@ class QCostGenerator(LCMDataGenerator):
         ]
         return line
 
+class QCostBinaryGenerator(QCostGenerator):
+    def __init__(self, config: dict[str, Any], precision: int = 3):
+        super().__init__(config, precision)
+
+    def _sample_q(self, max_size_ratio: int) -> int:
+        choices = (self._config["lsm"]["size_ratio"]["min"] - 1,
+                   max_size_ratio - 1)
+        return np.random.choice(choices)
 
 class YZCostGenerator(LCMDataGenerator):
     def __init__(self, config: dict[str, Any], precision: int = 3):

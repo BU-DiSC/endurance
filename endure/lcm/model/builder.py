@@ -2,9 +2,7 @@ from typing import Any, Optional
 import torch
 import logging
 
-from endure.lcm.model.flexible_model import FlexibleModel
-from endure.lcm.model.classic_model import ClassicModel
-from endure.lcm.model.qlsm_model import QModel
+from endure.lcm.model import FlexibleModel, QModel, QIntModel, ClassicModel
 
 
 class LearnedCostModelBuilder:
@@ -14,8 +12,10 @@ class LearnedCostModelBuilder:
         self._models = {
             "KLSM": FlexibleModel,
             "QLSM": QModel,
+            "QLSMIntegerVars": QIntModel,
             "Level": ClassicModel,
             "Tier": ClassicModel,
+            "Classic": ClassicModel,
         }
 
     def get_choices(self):

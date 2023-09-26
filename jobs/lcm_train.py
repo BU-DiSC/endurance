@@ -116,6 +116,25 @@ class LCMTrainJob:
                 x = [features[:num_features - 2], capacities]
                 x = torch.cat(x)
                 inputs.append(x)
+        elif self._config["lsm"]["design"] in ["QLSMIntegerVars"]:
+            for item in data:
+                features = item[1]
+                capacities = features[num_features - 2 :]
+                capacities = capacities.to(torch.long)
+                x = [features[:num_features - 2], capacities]
+                x = torch.cat(x)
+                inputs.append(x)
+        else:
+            self.log.warn("Illegal design option, defaulting to Classic")
+            for item in data:
+                features = item[1]
+                policy = features[-2].to(torch.long)
+                policy = F.one_hot(policy, num_classes=2)
+                size_ratio = features[-1].to(torch.long)
+                size_ratio = F.one_hot(size_ratio, num_classes=categories)
+                x = [features[:-2], policy, size_ratio]
+                x = torch.cat(x)
+                inputs.append(x)
 
         inputs = torch.stack(inputs)
 
