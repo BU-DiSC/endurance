@@ -45,11 +45,11 @@ to_run = [
 [job.LCMDataGen]
 # -----------------------------------------------------------------------------
 format = "parquet"
-generator = "QCostBinary"
-dir = "train-data/qmonkey3"
-file_prefix = "qmonkey_cost"
-num_workers = -1  # -1 forces all cores to be used
-num_files = 64
+generator = "QCost"
+dir = "test-data/qcost-t30"
+file_prefix = "cost"
+num_workers = -1 # -1 forces all cores to be used
+num_files = 8
 samples = 1048576  # per file sample
 overwrite_if_exists = true
 
@@ -57,7 +57,7 @@ overwrite_if_exists = true
 [job.LCMTrain]
 # -----------------------------------------------------------------------------
 max_epochs = 100
-save_dir = "models/lcm/qmonkey-09-25-v1"
+save_dir = "models/lcm/qcost-10-03-v1"
 use_gpu_if_avail = true
 
 # Different loss functions to train via
@@ -66,6 +66,7 @@ use_gpu_if_avail = true
 #   MSLE - Mean squared log error
 #   RMSE - Root mean square error
 #   RMSLE - Root mean squared log error
+#   Huber - Huber loss
 loss_fn = "MSE"
 
 # Supported optimizers
@@ -82,7 +83,7 @@ lr_scheduler = "CosineAnnealing"
 no_checkpoint = false
 
 [job.LCMTrain.train]
-dir = "train-data/qmonkey3"
+dir = "train-data/qcost-t30"
 format = "parquet"
 batch_size = 8192
 shuffle = true
@@ -90,7 +91,7 @@ num_workers = 12
 drop_last = true
 
 [job.LCMTrain.test]
-dir = "test-data/qmonkey3"
+dir = "test-data/qcost-t30"
 format = "parquet"
 batch_size = 65536
 shuffle = false
@@ -101,7 +102,7 @@ drop_last = true
 [job.LTuneDataGen]
 # -----------------------------------------------------------------------------
 format = "parquet"
-generator = "Classic"
+generator = "ClassicCost"
 dir = "test-data/ltune/classic"
 file_prefix = "workload"
 num_workers = -1  # -1 forces all cores to be used
@@ -162,7 +163,7 @@ design = 'QLSM'
 max_levels = 20
 
 [lsm.size_ratio]
-max = 5
+max = 31
 min = 2
 
 [lsm.bits_per_elem]
@@ -219,7 +220,7 @@ output_features = ["z0_cost", "z1_cost", "q_cost", "w_cost"]
 dropout = 0.1
 
 [lcm.model.classic]
-num_layers = 4
+num_layers = 8
 layer_size = 512
 
 # None, Layer, Batch
@@ -229,14 +230,14 @@ normalize = "Batch"
 # input will be
 #   num_continuous_vars + (num_categorical_vars * embedding_size)
 # As each categorical variable will be embedded down to size `embedding_size`
-policy_embedding_size = 32
-embedding_size = 64
+policy_embedding_size = 8
+embedding_size = 16
 
 [lcm.model.flexible]
-num_layers = 4
-layer_size = 128
+num_layers = 8
+layer_size = 256
 normalize = "Batch"
-embedding_size = 4
+embedding_size = 16
 
 # -----------------------------------------------------------------------------
 # HEADER LCM.DATA
@@ -342,7 +343,8 @@ step = 0.25
 # =============================================================================
 [generator]
 page_sizes = [4, 8, 16]                     # KB pages
-selectivity_range = [1e-6, 1e-7]            # low, high
+# selectivity_range = [1e-9, 1e-10]           # low, high
+selectivity_range = [1e-7, 1e-9]            # low, high
 entry_sizes = [1024, 2048, 4096, 8192]      # bits
 memory_budget = [5, 20]                     # low, high, bits per element
 elements_range = [100000000, 1000000000]    # element range

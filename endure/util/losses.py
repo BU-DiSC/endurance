@@ -12,6 +12,7 @@ class LossBuilder:
             "RMSLE": RMSLELoss,
             "RMSE": RMSELoss,
             "MSE": torch.nn.MSELoss,
+            "Huber": torch.nn.HuberLoss,
         }
         loss = losses.get(choice, None)
         if loss is None:
