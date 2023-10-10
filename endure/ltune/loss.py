@@ -4,18 +4,12 @@ import os
 import torch
 import toml
 
-from endure.lcm.model.builder import LearnedCostModelBuilder
+from endure.lcm.model import LearnedCostModelBuilder
 
 
 class LearnedCostModelLoss(torch.nn.Module):
     def __init__(self, config: dict[str, Any], model_path: str):
         super().__init__()
-        # bpe_max = config["lsm"]["bits_per_elem"]["max"]
-        # bpe_min = config["lsm"]["bits_per_elem"]["min"]
-        # self._bpe_mean = Parameter(torch.Tensor([(bpe_max + bpe_min) / 2]))
-        # self._bpe_std = Parameter(
-        #     torch.sqrt(torch.Tensor([(bpe_max - bpe_min) ** 2 / 12]))
-        # )
         self.penalty_factor = config["ltune"]["penalty_factor"]
         self.mem_budget_idx = config["ltune"]["input_features"].index("H")
 
@@ -33,36 +27,33 @@ class LearnedCostModelLoss(torch.nn.Module):
         assert len(status.unexpected_keys) == 0
         self.model.eval()
 
-    def create_penalty_vector(self, bpe: torch.Tensor, mem_budget: torch.Tensor):
+    def calc_mem_penalty(self, label, bpe):
+        mem_budget = label[:, self.mem_budget_idx].view(-1, 1)
         penalty = torch.zeros(bpe.size()).to(bpe.device)
         idx = bpe >= mem_budget
         penalty[idx] = self.penalty_factor * (bpe[idx] - mem_budget[idx])
         idx = bpe < 0
         penalty[idx] = self.penalty_factor * (0 - bpe[idx])
 
-        return penalty
+        bpe[bpe > mem_budget] = mem_budget[bpe > mem_budget]
+        bpe[bpe < 0] = 0
+
+        return bpe, penalty
 
     def split_tuner_out(self, tuner_out):
-        policy = tuner_out[:, 0]
-        policy = policy.view(-1, 1)
-
-        bpe = tuner_out[:, 1]
+        bpe = tuner_out[:, 0]
         bpe = bpe.view(-1, 1)
+        categorical_feats = tuner_out[:, 1:]
 
-        size_ratio = tuner_out[:, 2:]
-
-        return policy, bpe, size_ratio
+        return bpe, categorical_feats
 
     def forward(self, pred, label):
         assert self.model.training is False
         # For learned cost model loss, pred is the DB configuration, label is the workload
-        policy, bpe, size_ratio = self.split_tuner_out(pred)
-        mem_budget = label[:, self.mem_budget_idx].view(-1, 1)
-        penalty = self.create_penalty_vector(bpe, mem_budget)
-        bpe[bpe > mem_budget] = mem_budget[bpe > mem_budget]
-        bpe[bpe < 0] = 0
+        bpe, categorical_feats = self.split_tuner_out(pred)
+        bpe, penalty = self.calc_mem_penalty(label, bpe)
 
-        inputs = torch.concat([label, policy, bpe, size_ratio], dim=-1)
+        inputs = torch.concat([label, bpe, categorical_feats], dim=-1)
         out = self.model(inputs)
         out = out.sum(dim=-1)
         out = out + penalty
