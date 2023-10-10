@@ -2,7 +2,7 @@ import torch
 import logging
 from typing import Any, Optional
 
-from endure.ltune.model.classic_model import ClassicTuner
+from endure.ltune.model import ClassicTuner, QLSMTuner
 
 
 class LTuneModelBuilder:
@@ -13,6 +13,7 @@ class LTuneModelBuilder:
             "Tier": ClassicTuner,
             "Level": ClassicTuner,
             "Classic": ClassicTuner,
+            "QLSM": QLSMTuner,
         }
 
     @staticmethod
