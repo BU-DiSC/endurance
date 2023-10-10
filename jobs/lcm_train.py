@@ -11,7 +11,6 @@ import torch.nn.functional as F
 import torch.optim as TorchOpt
 
 from endure.lcm.data.iterable_dataset import LCMIterableDataSet
-from endure.lcm.data.classic_dataset import LCMDataSet
 from endure.lcm.model.builder import LearnedCostModelBuilder
 from endure.util.losses import LossBuilder
 from endure.util.lr_scheduler import LRSchedulerBuilder

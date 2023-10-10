@@ -45,7 +45,7 @@ class LTuneTrainJob:
 
     def _build_scheduler(
         self, optimizer: Opt.Optimizer
-    ) -> Opt.lr_scheduler._LRScheduler:
+    ) -> Optional[Opt.lr_scheduler._LRScheduler]:
         builder = LRSchedulerBuilder(self._config)
         choice = self._setting["lr_scheduler"]
 
