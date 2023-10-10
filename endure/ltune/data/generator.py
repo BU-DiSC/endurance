@@ -28,7 +28,7 @@ class LTuneGenerator:
     # potential system values
     def _sample_entry_per_page(self, entry_size: int = 8192) -> int:
         KB_TO_BITS = 8 * 1024
-        page_sizes = self._config["generator"]["page_sizes"]
+        page_sizes = np.array(self._config["generator"]["page_sizes"])
         entries_per_page = (page_sizes * KB_TO_BITS) / entry_size
         return np.random.choice(entries_per_page)
 
