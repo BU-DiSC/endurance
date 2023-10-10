@@ -41,16 +41,15 @@ class QModel(nn.Module):
         hidden_dim = self.params["layer_size"]
         modules.append(nn.Linear(in_dim, hidden_dim))
         modules.append(nn.Dropout(p=config["lcm"]["model"]["dropout"]))
-        modules.append(nn.LeakyReLU())
+        modules.append(nn.ReLU())
 
         for _ in range(self.params["num_layers"]):
             modules.append(nn.Linear(hidden_dim, hidden_dim))
             modules.append(nn.Dropout(p=config["lcm"]["model"]["dropout"]))
-            modules.append(nn.LeakyReLU())
+            modules.append(nn.ReLU())
 
         out_dim = len(config["lcm"]["output_features"])
         modules.append(nn.Linear(hidden_dim, out_dim))
-        # modules.append(nn.ReLU())
 
         self.cost_layer = nn.Sequential(*modules)
         self.cost_layer.apply(self.init_weights)

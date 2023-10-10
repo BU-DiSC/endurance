@@ -57,7 +57,7 @@ overwrite_if_exists = true
 [job.LCMTrain]
 # -----------------------------------------------------------------------------
 max_epochs = 100
-save_dir = "models/lcm/qcost-10-03-v1"
+save_dir = "models/lcm/qcost-10-06-v3"
 use_gpu_if_avail = true
 
 # Different loss functions to train via
@@ -67,7 +67,7 @@ use_gpu_if_avail = true
 #   RMSE - Root mean square error
 #   RMSLE - Root mean squared log error
 #   Huber - Huber loss
-loss_fn = "MSE"
+loss_fn = "Huber"
 
 # Supported optimizers
 #   SGD - Stochastic gradient descent
@@ -102,43 +102,42 @@ drop_last = true
 [job.LTuneDataGen]
 # -----------------------------------------------------------------------------
 format = "parquet"
-generator = "ClassicCost"
-dir = "test-data/ltune/classic"
-file_prefix = "workload"
+dir = "train-data/ltune/std"
+file_prefix = "wl"
 num_workers = -1  # -1 forces all cores to be used
-num_files = 8
+num_files = 128
 samples = 1048576  # per file sample
 overwrite_if_exists = true
 
 # -----------------------------------------------------------------------------
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
-max_epochs = 100
-save_dir = "models/ltune/classic-09-11-v0"
+max_epochs = 50
+save_dir = "models/ltune/qlsm-10-05-v1"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
-loss_fn_path = "models/lcm/classic-09-08-v0"
+loss_fn_path = "models/lcm/qcost-10-04-v1"
 
 # Check train.optimizer for available options
-optimizer = "Adam"
+optimizer = "SGD"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
-lr_scheduler = "CosineAnnealing"
+lr_scheduler = "Constant"
 
 no_checkpoint = false
 
 [job.LTuneTrain.train]
-dir = "train-data/classic"
+dir = "train-data/ltune/std"
 format = "parquet"
-batch_size = 8192
+batch_size = 1024
 shuffle = true
-num_workers = 8
+num_workers = 10
 drop_last = true
 
 [job.LTuneTrain.test]
-dir = "test-data/classic"
+dir = "test-data/ltune/std"
 format = "parquet"
 batch_size = 65536
 shuffle = false
@@ -217,7 +216,7 @@ output_features = ["z0_cost", "z1_cost", "q_cost", "w_cost"]
 #   Configuration for specific models
 # -----------------------------------------------------------------------------
 [lcm.model]
-dropout = 0.1
+dropout = 0.0
 
 [lcm.model.classic]
 num_layers = 8
@@ -234,10 +233,10 @@ policy_embedding_size = 8
 embedding_size = 16
 
 [lcm.model.flexible]
-num_layers = 8
-layer_size = 256
+num_layers = 2
+layer_size = 64
 normalize = "Batch"
-embedding_size = 16
+embedding_size = 8
 
 # -----------------------------------------------------------------------------
 # HEADER LCM.DATA
@@ -259,7 +258,7 @@ normalize_inputs = false
 desc = 'Learned Tuner'
 penalty_factor = 1000
 input_features = ["z0", "z1", "q", "w", "B", "s", "E", "H", "N"]
-output_features = ["h", "policy", "T"]
+output_features = ["h", "T", "Q"]
 
 # -----------------------------------------------------------------------------
 # HEADER LTUNE.MODEL
@@ -279,7 +278,7 @@ hard = true
 
 [ltune.model.classic]
 normalize = 'Batch'
-layer_size = 512
+layer_size = 128
 num_layers = 4
 
 [ltune.model.klsm]
@@ -309,7 +308,7 @@ eta_min = 0.0001  # minimum learning rate
 gamma = 0.9
 
 [train.optimizer.Adam]
-lr = 0.001
+lr = 0.01
 
 [train.optimizer.SGD]
 lr = 0.001
