@@ -15,7 +15,8 @@ class QModel(nn.Module):
 
         modules = []
         self.size_ratio_range = (
-            config["lsm"]["size_ratio"]["max"] - config["lsm"]["size_ratio"]["min"] + 1
+            config["lsm"]["size_ratio"]["max"] -
+            config["lsm"]["size_ratio"]["min"] + 1
         )
 
         self.embedding = nn.Sequential(
