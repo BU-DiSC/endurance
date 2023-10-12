@@ -216,7 +216,18 @@ output_features = ["z0_cost", "z1_cost", "q_cost", "w_cost"]
 #   Configuration for specific models
 # -----------------------------------------------------------------------------
 [lcm.model]
+embedding_size = 8
+hidden_length = 2
+hidden_width = 32
+
+# Dropout percentage
 dropout = 0.0
+
+# Batch or Layer norm
+norm_layer = "Batch"
+
+# Used only for classic models, generally smaller than embedding size
+policy_embedding_size = 4
 
 [lcm.model.classic]
 num_layers = 8
