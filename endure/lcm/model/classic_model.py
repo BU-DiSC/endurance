@@ -1,92 +1,85 @@
-from typing import Any
+from typing import Any, Callable, Optional, Tuple
 
+from torch import Tensor
 from torch import nn
 import torch
 import torch.nn.functional as F
 
-
 class ClassicModel(nn.Module):
-    def __init__(self, config: dict[str, Any]):
+    def __init__(
+        self,
+        num_feats: int,
+        capacity_range: int,
+        embedding_size: int = 8,
+        hidden_length: int = 0,
+        hidden_width: int = 32,
+        dropout_percentage: float = 0,
+        out_width: int = 4,
+        policy_embedding_size: int = 1,
+        norm_layer: Optional[Callable[..., nn.Module]] = None
+    ) -> None:
         super().__init__()
-        self.params = config["lcm"]["model"]["classic"]
-        self.features = config["lcm"]["input_features"]
-        self.num_features = len(self.features)
+        width = (num_feats - 2) + embedding_size + policy_embedding_size
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm1d
+        self.t_embedding = nn.Linear(capacity_range, embedding_size)
+        self.policy_embedding = nn.Linear(2, policy_embedding_size)
+        self.in_norm = norm_layer(width)
+        self.in_layer = nn.Linear(width, hidden_width)
+        self.relu = nn.ReLU(inplace=True)
+        self.dropout = nn.Dropout(p=dropout_percentage)
+        hidden = []
+        hidden.append(nn.Identity())
+        for _ in range(hidden_length):
+            hidden.append(nn.Linear(hidden_width, hidden_width))
+        self.hidden = nn.Sequential(*hidden)
+        self.out_layer = nn.Linear(hidden_width, out_width)
+        self.capacity_range = capacity_range
+        self.num_feats = num_feats
 
-        modules = []
-        self.size_ratio_range = (
-            config["lsm"]["size_ratio"]["max"] - config["lsm"]["size_ratio"]["min"] + 1
-        )
+        for module in self.modules():
+            if isinstance(module, nn.Linear):
+                nn.init.xavier_normal_(module.weight)
 
-        self.embedding = nn.Sequential(
-            nn.Linear(self.size_ratio_range, self.params["embedding_size"])
-        )
-        self.embedding.apply(self.init_weights)
-
-        self.policy_embedding = nn.Sequential(
-            nn.Linear(2, self.params["policy_embedding_size"])
-        )
-        self.policy_embedding.apply(self.init_weights)
-
-        in_dim = (
-            self.num_features
-            - 2
-            + self.params["policy_embedding_size"]
-            + self.params["embedding_size"]
-        )
-        if self.params["normalize"] == "Layer":
-            modules.append(nn.LayerNorm(in_dim))
-        elif self.params["normalize"] == "Batch":
-            modules.append(nn.BatchNorm1d(in_dim))
-        # else: No normalization layer
-
-        hidden_dim = self.params["layer_size"]
-        modules.append(nn.Linear(in_dim, hidden_dim))
-        modules.append(nn.Dropout(p=config["lcm"]["model"]["dropout"]))
-        modules.append(nn.ReLU())
-
-        for _ in range(self.params["num_layers"]):
-            modules.append(nn.Linear(hidden_dim, hidden_dim))
-            modules.append(nn.Dropout(p=config["lcm"]["model"]["dropout"]))
-            modules.append(nn.ReLU())
-
-        out_dim = len(config["lcm"]["output_features"])
-        modules.append(nn.Linear(hidden_dim, out_dim))
-
-        self.cost_layer = nn.Sequential(*modules)
-        self.cost_layer.apply(self.init_weights)
-
-    def init_weights(self, layer):
-        if isinstance(layer, nn.Linear):
-            nn.init.xavier_normal_(layer.weight)
-
-    def split_inputs(self, x):
-        categorical_bound = self.num_features - 2
-        feats = x[:, :categorical_bound]
+    def _split_input(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
+        t_boundary = self.num_feats - 2
+        policy_boundary = t_boundary + self.capacity_range
+        feats = x[:, :t_boundary]
 
         if self.training:
-            size_ratio = x[:, categorical_bound + 1 :]
+            size_ratio = x[:, t_boundary : policy_boundary]
             size_ratio = size_ratio.to(torch.long)
-            size_ratio = F.one_hot(size_ratio, num_classes=self.size_ratio_range)
+            size_ratio = F.one_hot(size_ratio, num_classes=self.capacity_range)
             size_ratio = torch.flatten(size_ratio, start_dim=1)
-            policy = x[:, categorical_bound : categorical_bound + 1]
+            policy = x[:, policy_boundary : policy_boundary + 1]
             policy = policy.to(torch.long)
             policy = F.one_hot(policy, num_classes=2)
             policy = torch.flatten(policy, start_dim=1)
         else:
-            policy = x[:, categorical_bound : categorical_bound + 2]
-            size_ratio = x[:, categorical_bound + 2 :]
+            policy = x[:, policy_boundary : policy_boundary + 2]
+            size_ratio = x[:, t_boundary : policy_boundary]
 
-        return feats, policy, size_ratio
+        return (feats, size_ratio, policy)
 
-    def forward(self, x):
-        feats, policy, size_ratio = self.split_inputs(x)
+    def _forward_impl(self, x: Tensor) -> Tensor:
+        feats, size_ratio, policy = self._split_input(x)
         size_ratio = size_ratio.to(torch.float)
-        size_ratio = self.embedding(size_ratio)
+        size_ratio = self.t_embedding(size_ratio)
 
         policy = policy.to(torch.float)
         policy = self.policy_embedding(policy)
 
-        inputs = torch.cat([feats, policy, size_ratio], dim=-1)
-        out = self.cost_layer(inputs)
+        inputs = torch.cat([feats, size_ratio, policy], dim=-1)
+
+        out = self.in_layer(inputs)
+        out = self.relu(out)
+        out = self.dropout(out)
+        out = self.hidden(out)
+        out = self.out_layer(out)
+
+        return out
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        out = self._forward_impl(x)
 
         return out

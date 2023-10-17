@@ -229,26 +229,6 @@ norm_layer = "Batch"
 # Used only for classic models, generally smaller than embedding size
 policy_embedding_size = 4
 
-[lcm.model.classic]
-num_layers = 8
-layer_size = 512
-
-# None, Layer, Batch
-normalize = "Batch"
-
-# Size of our cateogrical variable embedding, our overall cost-model network
-# input will be
-#   num_continuous_vars + (num_categorical_vars * embedding_size)
-# As each categorical variable will be embedded down to size `embedding_size`
-policy_embedding_size = 8
-embedding_size = 16
-
-[lcm.model.flexible]
-num_layers = 2
-layer_size = 64
-normalize = "Batch"
-embedding_size = 8
-
 # -----------------------------------------------------------------------------
 # HEADER LCM.DATA
 #   misc settings on data such as bias, precision, etc
