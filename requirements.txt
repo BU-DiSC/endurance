@@ -5,6 +5,7 @@ numpy
 pandas
 pandas-stubs
 pyarrow
+pytest
 scipy
 toml
 torch
