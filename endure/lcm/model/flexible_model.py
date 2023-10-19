@@ -23,7 +23,7 @@ class FlexModel(nn.Module):
         if norm_layer is None:
             norm_layer = nn.BatchNorm1d
         self.t_embedding = nn.Linear(capacity_range, embedding_size)
-        self.q_embedding = nn.Linear(capacity_range, embedding_size)
+        self.k_embedding = nn.Linear(capacity_range, embedding_size)
         self.in_norm = norm_layer(width)
         self.in_layer = nn.Linear(width, hidden_width)
         self.relu = nn.ReLU(inplace=True)
@@ -59,17 +59,18 @@ class FlexModel(nn.Module):
         return (feats, size_ratio, q_cap)
 
     def _forward_impl(self, x: Tensor) -> Tensor:
-        feats, size_ratio, q_cap = self._split_input(x)
+        feats, size_ratio, k_cap = self._split_input(x)
 
         size_ratio = size_ratio.to(torch.float)
         size_ratio = self.t_embedding(size_ratio)
 
-        q_cap = q_cap.to(torch.float)
-        q_cap = self.q_embedding(q_cap)
+        k_cap = k_cap.to(torch.float)
+        k_cap = self.k_embedding(k_cap)
 
-        inputs = torch.cat([feats, size_ratio, q_cap], dim=-1)
+        inputs = torch.cat([feats, size_ratio, k_cap], dim=-1)
 
-        out = self.in_layer(inputs)
+        out = self.in_norm(inputs)
+        out = self.in_layer(out)
         out = self.relu(out)
         out = self.dropout(out)
         out = self.hidden(out)

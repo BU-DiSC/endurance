@@ -73,7 +73,8 @@ class ClassicModel(nn.Module):
 
         inputs = torch.cat([feats, size_ratio, policy], dim=-1)
 
-        out = self.in_layer(inputs)
+        out = self.in_norm(inputs)
+        out = self.in_layer(out)
         out = self.relu(out)
         out = self.dropout(out)
         out = self.hidden(out)
