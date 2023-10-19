@@ -1,7 +1,7 @@
 from typing import Callable, Optional, Tuple
 
-from torch import nn
 from torch import Tensor
+from torch import nn
 import torch
 import torch.nn.functional as F
 

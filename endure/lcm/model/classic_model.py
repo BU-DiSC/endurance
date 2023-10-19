@@ -5,6 +5,7 @@ from torch import nn
 import torch
 import torch.nn.functional as F
 
+
 class ClassicModel(nn.Module):
     def __init__(
         self,
