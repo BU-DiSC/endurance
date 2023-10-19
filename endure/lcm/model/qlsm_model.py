@@ -27,12 +27,11 @@ class QModel(nn.Module):
 
         self.in_norm = norm_layer(width)
         self.in_layer = nn.Linear(width, hidden_width)
-        self.relu = nn.ReLU()
-        # self.dropout = nn.Dropout(p=dropout_percentage)
+        self.relu = nn.ReLU(inplace=True)
+        self.dropout = nn.Dropout(p=dropout_percentage)
         hidden = []
         for _ in range(hidden_length):
             hidden.append(nn.Linear(hidden_width, hidden_width))
-            hidden.append(nn.ReLU())
         self.hidden = nn.Sequential(*hidden)
         self.out_layer = nn.Linear(hidden_width, out_width)
 
@@ -70,10 +69,12 @@ class QModel(nn.Module):
 
         inputs = torch.cat([feats, size_ratio, q_cap], dim=-1)
 
-        out = self.in_layer(inputs)
+        out = self.in_norm(inputs)
+        out = self.in_layer(out)
         out = self.relu(out)
-        # out = self.dropout(out)
+        out = self.dropout(out)
         out = self.hidden(out)
+        out = self.relu(out)
         out = self.out_layer(out)
 
         return out
