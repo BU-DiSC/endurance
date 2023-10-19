@@ -1,17 +1,18 @@
 #!/usr/bin/env python
-from typing import Any, Optional
+from typing import Any, Callable, Optional, Union
 import logging
 import os
+import sys
 
 from torch.utils.data import DataLoader
 import numpy as np
 import toml
 import torch
-import torch.nn.functional as F
 import torch.optim as TorchOpt
 
 from endure.lcm.data.iterable_dataset import LCMIterableDataSet
 from endure.lcm.model.builder import LearnedCostModelBuilder
+from endure.lcm.util import one_hot_lcm, one_hot_lcm_classic
 from endure.util.losses import LossBuilder
 from endure.util.lr_scheduler import LRSchedulerBuilder
 from endure.util.optimizer import OptimizerBuilder
@@ -31,7 +32,7 @@ class LCMTrainJob:
 
         loss = LossBuilder.build(choice)
         if loss is None:
-            self.log.warn("Invalid loss func. Defaulting to MSE")
+            self.log.warn("Invalid loss function. Defaulting to MSE")
             loss = LossBuilder.build("MSE")
         assert loss is not None
 
@@ -40,12 +41,13 @@ class LCMTrainJob:
 
         return loss
 
-    def _build_model(self) -> torch.nn.Module:
+    def _build_model(self) -> Union[Callable, torch.nn.Module]:
         model = LearnedCostModelBuilder(self._config).build_model()
         if self._setting["use_gpu_if_avail"] and torch.cuda.is_available():
             model.to("cuda")
+        opt_model = torch.compile(model)
 
-        return model
+        return opt_model
 
     def _build_optimizer(self, model) -> TorchOpt.Optimizer:
         builder = OptimizerBuilder(self._config)
@@ -68,14 +70,12 @@ class LCMTrainJob:
         )
         self.log.debug(f"Train data dir: {train_dir}")
         self.log.debug(f"Training features: {self._config['lcm']['input_features']}")
-
         train_data = LCMIterableDataSet(
             config=self._config,
             folder=train_dir,
             shuffle=self._setting["train"]["shuffle"],
             format=self._setting["train"]["format"],
         )
-
         train = DataLoader(
             train_data,
             batch_size=self._setting["train"]["batch_size"],
@@ -97,42 +97,21 @@ class LCMTrainJob:
 
         if self._config["lsm"]["design"] == "Classic":
             for item in data:
-                features = item[1]
-                policy = features[-2].to(torch.long)
-                policy = F.one_hot(policy, num_classes=2)
-                size_ratio = features[-1].to(torch.long)
-                size_ratio = F.one_hot(size_ratio, num_classes=categories)
-                x = [features[:-2], policy, size_ratio]
-                x = torch.cat(x)
+                x = one_hot_lcm_classic(item[1], categories)
                 inputs.append(x)
-        elif self._config["lsm"]["design"] in ["KLSM", "QLSM"]:
+        elif self._config["lsm"]["design"] == "QLSM":
             for item in data:
-                features = item[1]
-                capacities = features[num_features - 2 :]
-                capacities = capacities.to(torch.long)
-                capacities = F.one_hot(capacities, num_classes=categories)
-                capacities = torch.flatten(capacities)
-                x = [features[:num_features - 2], capacities]
-                x = torch.cat(x)
+                x = one_hot_lcm(item[1], num_features, 2, categories)
                 inputs.append(x)
+        elif self._config["lsm"]["design"] == "KLSM":
+            self.log.critical("Not implemented")
+            sys.exit(1)
         elif self._config["lsm"]["design"] in ["QLSMIntegerVars"]:
-            for item in data:
-                features = item[1]
-                capacities = features[num_features - 2 :]
-                capacities = capacities.to(torch.long)
-                x = [features[:num_features - 2], capacities]
-                x = torch.cat(x)
-                inputs.append(x)
+            inputs = data
         else:
             self.log.warn("Illegal design option, defaulting to Classic")
             for item in data:
-                features = item[1]
-                policy = features[-2].to(torch.long)
-                policy = F.one_hot(policy, num_classes=2)
-                size_ratio = features[-1].to(torch.long)
-                size_ratio = F.one_hot(size_ratio, num_classes=categories)
-                x = [features[:-2], policy, size_ratio]
-                x = torch.cat(x)
+                x = one_hot_lcm_classic(item[1], categories)
                 inputs.append(x)
 
         inputs = torch.stack(inputs)
@@ -153,14 +132,12 @@ class LCMTrainJob:
             self._setting["test"]["dir"],
         )
         self.log.info(f"Test data: {test_dir}")
-
         test_data = LCMIterableDataSet(
             config=self._config,
             folder=test_dir,
             shuffle=self._setting["test"]["shuffle"],
             format=self._setting["test"]["format"],
         )
-
         test = DataLoader(
             test_data,
             batch_size=self._setting["test"]["batch_size"],
