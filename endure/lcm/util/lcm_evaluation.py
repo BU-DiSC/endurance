@@ -47,16 +47,18 @@ class LCMEvalUtil:
         q: float,
         w: float,
     ) -> Tensor:
-        categories = (self.config['lsm']['size_ratio']['max'] -
-                      self.config['lsm']['size_ratio']['min'] + 1)
+        max_cap = self.config['lsm']['size_ratio']['max']
+        min_cap = self.config['lsm']['size_ratio']['min']
+        categories = max_cap - min_cap + 1
         wl = [z0, z1, q, w]
         sys = [system.B, system.s, system.E, system.H, system.N]
+        size_ratio = design.T - min_cap
         if design.policy in (Policy.Tiering, Policy.Leveling):
-            inputs = wl + sys + [design.h, design.T, design.policy.value]
+            inputs = wl + sys + [design.h, size_ratio, design.policy.value]
             data = torch.Tensor(inputs)
-            out = one_hot_lcm_classic(torch.Tensor(inputs), categories)
+            out = one_hot_lcm_classic(data, categories)
         else: # design.policy == Policy.QFixed
-            inputs = wl + sys + [design.h, design.T, design.Q]
+            inputs = wl + sys + [design.h, size_ratio, design.Q - 1]
             data = torch.Tensor(inputs)
             out = one_hot_lcm(data, len(inputs), 2, categories)
 
@@ -92,6 +94,6 @@ class LCMEvalUtil:
         row['cost_lcm'] = cost_lcm
         row['cost_acm'] = cost_acm
 
-        return row
+        return row, design, system
 
 

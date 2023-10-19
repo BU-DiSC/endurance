@@ -12,7 +12,7 @@ class QModel(nn.Module):
         num_feats: int,
         capacity_range: int,
         embedding_size: int = 8,
-        hidden_length: int = 0,
+        hidden_length: int = 1,
         hidden_width: int = 32,
         dropout_percentage: float = 0,
         out_width: int = 4,
@@ -24,17 +24,18 @@ class QModel(nn.Module):
             norm_layer = nn.BatchNorm1d
         self.t_embedding = nn.Linear(capacity_range, embedding_size)
         self.q_embedding = nn.Linear(capacity_range, embedding_size)
+
         self.in_norm = norm_layer(width)
         self.in_layer = nn.Linear(width, hidden_width)
-        self.relu = nn.ReLU(inplace=True)
-        self.dropout = nn.Dropout(p=dropout_percentage)
+        self.relu = nn.ReLU()
+        # self.dropout = nn.Dropout(p=dropout_percentage)
         hidden = []
-        hidden.append(nn.Identity())
         for _ in range(hidden_length):
             hidden.append(nn.Linear(hidden_width, hidden_width))
-            hidden.append(nn.ReLU(inplace=True))
+            hidden.append(nn.ReLU())
         self.hidden = nn.Sequential(*hidden)
         self.out_layer = nn.Linear(hidden_width, out_width)
+
         self.capacity_range = capacity_range
         self.num_feats = num_feats
 
@@ -71,7 +72,7 @@ class QModel(nn.Module):
 
         out = self.in_layer(inputs)
         out = self.relu(out)
-        out = self.dropout(out)
+        # out = self.dropout(out)
         out = self.hidden(out)
         out = self.out_layer(out)
 
