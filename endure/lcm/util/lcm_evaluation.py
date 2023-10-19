@@ -1,4 +1,4 @@
-from typing import Any, Self
+from typing import Any
 
 from torch import Tensor
 import torch
@@ -10,7 +10,7 @@ from endure.lsm.types import LSMDesign, Policy, System
 
 class LCMEvalUtil:
     def __init__(
-        self: Self,
+        self,
         config: dict[str, Any],
         model: torch.nn.Module,
         generator: LCMDataGenerator,
@@ -21,7 +21,7 @@ class LCMEvalUtil:
         self.cf = EndureCost(config)
 
     def eval_lcm(
-        self: Self,
+        self,
         design: LSMDesign,
         system: System,
         z0: float,
@@ -39,7 +39,7 @@ class LCMEvalUtil:
         return pred
 
     def create_input_from_types(
-        self: Self,
+        self,
         design: LSMDesign,
         system: System,
         z0: float,
