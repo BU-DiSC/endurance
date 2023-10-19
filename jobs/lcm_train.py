@@ -45,9 +45,8 @@ class LCMTrainJob:
         model = LearnedCostModelBuilder(self._config).build_model()
         if self._setting["use_gpu_if_avail"] and torch.cuda.is_available():
             model.to("cuda")
-        opt_model = torch.compile(model)
 
-        return opt_model
+        return model
 
     def _build_optimizer(self, model) -> TorchOpt.Optimizer:
         builder = OptimizerBuilder(self._config)
