@@ -1,4 +1,4 @@
-from typing import Any, Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 from torch import Tensor
 from torch import nn
@@ -32,6 +32,7 @@ class ClassicModel(nn.Module):
         hidden.append(nn.Identity())
         for _ in range(hidden_length):
             hidden.append(nn.Linear(hidden_width, hidden_width))
+            hidden.append(nn.ReLU(inplace=True))
         self.hidden = nn.Sequential(*hidden)
         self.out_layer = nn.Linear(hidden_width, out_width)
         self.capacity_range = capacity_range

@@ -31,6 +31,7 @@ class FlexModel(nn.Module):
         hidden.append(nn.Identity())
         for _ in range(hidden_length):
             hidden.append(nn.Linear(hidden_width, hidden_width))
+            hidden.append(nn.ReLU(inplace=True))
         self.hidden = nn.Sequential(*hidden)
         self.out_layer = nn.Linear(hidden_width, out_width)
         self.capacity_range = capacity_range

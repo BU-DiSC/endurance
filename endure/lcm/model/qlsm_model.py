@@ -1,6 +1,7 @@
 from typing import Callable, Optional, Tuple
 
 from torch import nn
+from torch import Tensor
 import torch
 import torch.nn.functional as F
 
@@ -31,6 +32,7 @@ class QModel(nn.Module):
         hidden.append(nn.Identity())
         for _ in range(hidden_length):
             hidden.append(nn.Linear(hidden_width, hidden_width))
+            hidden.append(nn.ReLU(inplace=True))
         self.hidden = nn.Sequential(*hidden)
         self.out_layer = nn.Linear(hidden_width, out_width)
         self.capacity_range = capacity_range
@@ -40,7 +42,7 @@ class QModel(nn.Module):
             if isinstance(module, nn.Linear):
                 nn.init.xavier_normal_(module.weight)
 
-    def _split_input(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _split_input(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         categorical_bound = self.num_feats - 2
         feats = x[:, :categorical_bound]
         capacities = x[:, categorical_bound:]
@@ -56,7 +58,7 @@ class QModel(nn.Module):
 
         return (feats, size_ratio, q_cap)
 
-    def _forward_impl(self, x: torch.Tensor) -> torch.Tensor:
+    def _forward_impl(self, x: Tensor) -> Tensor:
         feats, size_ratio, q_cap = self._split_input(x)
 
         size_ratio = size_ratio.to(torch.float)
@@ -75,7 +77,7 @@ class QModel(nn.Module):
 
         return out
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         out = self._forward_impl(x)
 
         return out
