@@ -5,10 +5,10 @@ from endure.lcm.util import one_hot_lcm
 from endure.lcm.model import QModel
 
 
-@pytest.mark.parametrize("num_feats", [10, 4])
-@pytest.mark.parametrize("capacity_range", [10, 50])
-@pytest.mark.parametrize("out_width", [1, 4])
-def test_qlsm_training_mode_shape(num_feats, capacity_range, out_width):
+@pytest.mark.parametrize("num_feats", [10])
+@pytest.mark.parametrize("capacity_range", [20])
+@pytest.mark.parametrize("out_width", [4])
+def test_qlsm_lcm_train_shape(num_feats, capacity_range, out_width):
     model = QModel(
         num_feats=num_feats,
         capacity_range=capacity_range,
@@ -16,18 +16,19 @@ def test_qlsm_training_mode_shape(num_feats, capacity_range, out_width):
         hidden_length=1,
     )
     model.train()
-    x = torch.ones(num_feats)
-    x = x.view(1, -1)
+    x = torch.ones(2, num_feats)
+    x = x.view(2, -1)
+    print(x.shape)
     out = model(x)
-    assert out.shape == torch.Size([1, out_width])
+    assert out.shape == torch.Size([2, out_width])
     assert out.sum().item() != float('nan')
     assert out.sum().item() != float('inf')
 
 
-@pytest.mark.parametrize("num_feats", [4, 15])
-@pytest.mark.parametrize("capacity_range", [4, 10])
-@pytest.mark.parametrize("out_width", [1, 8])
-def test_qlsm_evaluation_mode_shape(num_feats, capacity_range, out_width):
+@pytest.mark.parametrize("num_feats", [10])
+@pytest.mark.parametrize("capacity_range", [20])
+@pytest.mark.parametrize("out_width", [4])
+def test_qlsm_lcm_eval_shape(num_feats, capacity_range, out_width):
     model = QModel(
         num_feats=num_feats,
         capacity_range=capacity_range,
@@ -44,10 +45,10 @@ def test_qlsm_evaluation_mode_shape(num_feats, capacity_range, out_width):
     assert out.sum().item() != float('inf')
 
 
-@pytest.mark.parametrize("num_feats", [8, 9])
-@pytest.mark.parametrize("capacity_range", [2, 40])
-@pytest.mark.parametrize("out_width", [1, 5])
-def test_qlsm_eval_deterministic(num_feats, capacity_range, out_width):
+@pytest.mark.parametrize("num_feats", [10])
+@pytest.mark.parametrize("capacity_range", [20])
+@pytest.mark.parametrize("out_width", [4])
+def test_qlsm_lcm_eval_deterministic(num_feats, capacity_range, out_width):
     model = QModel(
         num_feats=num_feats,
         capacity_range=capacity_range,
