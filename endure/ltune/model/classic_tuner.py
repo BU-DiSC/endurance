@@ -3,13 +3,12 @@ from typing import Callable, Optional
 from torch import Tensor, nn
 import torch
 
-# NOT IMPLEMENTED YET
-class KLSMTuner(nn.Module):
+
+class ClassicTuner(nn.Module):
     def __init__(
         self,
         num_feats: int,
         capacity_range: int,
-        max_levels: int,
         hidden_length: int = 1,
         hidden_width: int = 32,
         dropout_percentage: float = 0,
@@ -28,11 +27,9 @@ class KLSMTuner(nn.Module):
             hidden.append(nn.Linear(hidden_width, hidden_width))
         self.hidden = nn.Sequential(*hidden)
 
-        self.k_decisions = []
-        for _ in range(max_levels):
-            self.k_decisions.append(nn.Linear(hidden_width, capacity_range))
         self.t_decision = nn.Linear(hidden_width, capacity_range)
         self.bits_decision = nn.Linear(hidden_width, 1)
+        self.policy_decision = nn.Linear(hidden_width, 2)
 
         self.capacity_range = capacity_range
         self.num_feats = num_feats
@@ -42,7 +39,20 @@ class KLSMTuner(nn.Module):
                 nn.init.xavier_normal_(module.weight)
 
     def _forward_impl(self, x: Tensor, temp=1e-3, hard=False) -> Tensor:
-        out = x
+        out = self.in_norm(x)
+        out = self.in_layer(out)
+        out = self.relu(out)
+        out = self.dropout(out)
+        out = self.hidden(out)
+        out = self.relu(out)
+
+        bits = self.bits_decision(out)
+        policy = self.policy_decision(out)
+        policy = nn.functional.gumbel_softmax(policy, tau=temp, hard=hard)
+        t = self.t_decision(out)
+        t = nn.functional.gumbel_softmax(t, tau=temp, hard=hard)
+
+        out = torch.concat([bits, t, policy], dim=-1)
 
         return out
 

@@ -256,7 +256,18 @@ output_features = ["h", "T", "Q"]
 #   Model configurations
 # -----------------------------------------------------------------------------
 [ltune.model]
-dropout = 0.1  # percentage for dropout during training
+embedding_size = 8
+hidden_length = 2
+hidden_width = 32
+
+# Dropout percentage
+dropout = 0.0
+
+# Batch or Layer norm
+norm_layer = "Batch"
+
+# Used only for classic models, generally smaller than embedding size
+policy_embedding_size = 4
 
 # kwargs specific to LTune models during forward pass
 [ltune.model.train_kwargs]
