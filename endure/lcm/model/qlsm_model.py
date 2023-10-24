@@ -32,6 +32,7 @@ class QModel(nn.Module):
         hidden = []
         for _ in range(hidden_length):
             hidden.append(nn.Linear(hidden_width, hidden_width))
+            hidden.append(nn.ReLU(inplace=True))
         self.hidden = nn.Sequential(*hidden)
         self.out_layer = nn.Linear(hidden_width, out_width)
 
@@ -74,7 +75,6 @@ class QModel(nn.Module):
         out = self.relu(out)
         out = self.dropout(out)
         out = self.hidden(out)
-        out = self.relu(out)
         out = self.out_layer(out)
 
         return out
