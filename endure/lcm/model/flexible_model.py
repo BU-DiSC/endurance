@@ -1,5 +1,6 @@
 from typing import Callable, Optional, Tuple
 
+from torch import Tensor
 from torch import nn
 import torch
 import torch.nn.functional as F
@@ -22,7 +23,7 @@ class FlexModel(nn.Module):
         if norm_layer is None:
             norm_layer = nn.BatchNorm1d
         self.t_embedding = nn.Linear(capacity_range, embedding_size)
-        self.q_embedding = nn.Linear(capacity_range, embedding_size)
+        self.k_embedding = nn.Linear(capacity_range, embedding_size)
         self.in_norm = norm_layer(width)
         self.in_layer = nn.Linear(width, hidden_width)
         self.relu = nn.ReLU(inplace=True)
@@ -31,6 +32,7 @@ class FlexModel(nn.Module):
         hidden.append(nn.Identity())
         for _ in range(hidden_length):
             hidden.append(nn.Linear(hidden_width, hidden_width))
+            hidden.append(nn.ReLU(inplace=True))
         self.hidden = nn.Sequential(*hidden)
         self.out_layer = nn.Linear(hidden_width, out_width)
         self.capacity_range = capacity_range
@@ -40,7 +42,7 @@ class FlexModel(nn.Module):
             if isinstance(module, nn.Linear):
                 nn.init.xavier_normal_(module.weight)
 
-    def _split_input(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _split_input(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         categorical_bound = self.num_feats - 2
         feats = x[:, :categorical_bound]
         capacities = x[:, categorical_bound:]
@@ -56,18 +58,19 @@ class FlexModel(nn.Module):
 
         return (feats, size_ratio, q_cap)
 
-    def _forward_impl(self, x: torch.Tensor) -> torch.Tensor:
-        feats, size_ratio, q_cap = self._split_input(x)
+    def _forward_impl(self, x: Tensor) -> Tensor:
+        feats, size_ratio, k_cap = self._split_input(x)
 
         size_ratio = size_ratio.to(torch.float)
         size_ratio = self.t_embedding(size_ratio)
 
-        q_cap = q_cap.to(torch.float)
-        q_cap = self.q_embedding(q_cap)
+        k_cap = k_cap.to(torch.float)
+        k_cap = self.k_embedding(k_cap)
 
-        inputs = torch.cat([feats, size_ratio, q_cap], dim=-1)
+        inputs = torch.cat([feats, size_ratio, k_cap], dim=-1)
 
-        out = self.in_layer(inputs)
+        out = self.in_norm(inputs)
+        out = self.in_layer(out)
         out = self.relu(out)
         out = self.dropout(out)
         out = self.hidden(out)
@@ -75,7 +78,7 @@ class FlexModel(nn.Module):
 
         return out
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         out = self._forward_impl(x)
 
         return out

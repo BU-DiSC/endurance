@@ -1,5 +1,6 @@
 from typing import Callable, Optional, Tuple
 
+from torch import Tensor
 from torch import nn
 import torch
 import torch.nn.functional as F
@@ -11,7 +12,7 @@ class QModel(nn.Module):
         num_feats: int,
         capacity_range: int,
         embedding_size: int = 8,
-        hidden_length: int = 0,
+        hidden_length: int = 1,
         hidden_width: int = 32,
         dropout_percentage: float = 0,
         out_width: int = 4,
@@ -23,16 +24,18 @@ class QModel(nn.Module):
             norm_layer = nn.BatchNorm1d
         self.t_embedding = nn.Linear(capacity_range, embedding_size)
         self.q_embedding = nn.Linear(capacity_range, embedding_size)
+
         self.in_norm = norm_layer(width)
         self.in_layer = nn.Linear(width, hidden_width)
         self.relu = nn.ReLU(inplace=True)
         self.dropout = nn.Dropout(p=dropout_percentage)
         hidden = []
-        hidden.append(nn.Identity())
         for _ in range(hidden_length):
             hidden.append(nn.Linear(hidden_width, hidden_width))
+            hidden.append(nn.ReLU(inplace=True))
         self.hidden = nn.Sequential(*hidden)
         self.out_layer = nn.Linear(hidden_width, out_width)
+
         self.capacity_range = capacity_range
         self.num_feats = num_feats
 
@@ -40,7 +43,7 @@ class QModel(nn.Module):
             if isinstance(module, nn.Linear):
                 nn.init.xavier_normal_(module.weight)
 
-    def _split_input(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _split_input(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
         categorical_bound = self.num_feats - 2
         feats = x[:, :categorical_bound]
         capacities = x[:, categorical_bound:]
@@ -56,7 +59,7 @@ class QModel(nn.Module):
 
         return (feats, size_ratio, q_cap)
 
-    def _forward_impl(self, x: torch.Tensor) -> torch.Tensor:
+    def _forward_impl(self, x: Tensor) -> Tensor:
         feats, size_ratio, q_cap = self._split_input(x)
 
         size_ratio = size_ratio.to(torch.float)
@@ -67,7 +70,8 @@ class QModel(nn.Module):
 
         inputs = torch.cat([feats, size_ratio, q_cap], dim=-1)
 
-        out = self.in_layer(inputs)
+        out = self.in_norm(inputs)
+        out = self.in_layer(out)
         out = self.relu(out)
         out = self.dropout(out)
         out = self.hidden(out)
@@ -75,7 +79,7 @@ class QModel(nn.Module):
 
         return out
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         out = self._forward_impl(x)
 
         return out

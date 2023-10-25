@@ -4,7 +4,7 @@ from torch import Tensor, nn
 import torch
 
 
-class QLSMTuner(nn.Module):
+class ClassicTuner(nn.Module):
     def __init__(
         self,
         num_feats: int,
@@ -25,12 +25,11 @@ class QLSMTuner(nn.Module):
         hidden = []
         for _ in range(hidden_length):
             hidden.append(nn.Linear(hidden_width, hidden_width))
-            hidden.append(nn.ReLU(inplace=True))
         self.hidden = nn.Sequential(*hidden)
 
-        self.q_decision = nn.Linear(hidden_width, capacity_range)
         self.t_decision = nn.Linear(hidden_width, capacity_range)
         self.bits_decision = nn.Linear(hidden_width, 1)
+        self.policy_decision = nn.Linear(hidden_width, 2)
 
         self.capacity_range = capacity_range
         self.num_feats = num_feats
@@ -45,14 +44,15 @@ class QLSMTuner(nn.Module):
         out = self.relu(out)
         out = self.dropout(out)
         out = self.hidden(out)
+        out = self.relu(out)
 
         bits = self.bits_decision(out)
-        q = self.q_decision(out)
-        q = nn.functional.gumbel_softmax(q, tau=temp, hard=hard)
+        policy = self.policy_decision(out)
+        policy = nn.functional.gumbel_softmax(policy, tau=temp, hard=hard)
         t = self.t_decision(out)
         t = nn.functional.gumbel_softmax(t, tau=temp, hard=hard)
 
-        out = torch.concat([bits, t, q], dim=-1)
+        out = torch.concat([bits, t, policy], dim=-1)
 
         return out
 

@@ -5,16 +5,16 @@ import torch
 
 from torch.utils.data import DataLoader, Dataset
 from tqdm import tqdm
-from typing import Optional, Any, Iterable, Union
+from typing import Any, Callable, Iterable, Optional, Union
 
 
 class Trainer:
     def __init__(
         self,
         log: logging.Logger,
-        model: torch.nn.Module,
+        model: Union[torch.nn.Module, Callable],
         optimizer: torch.optim.Optimizer,
-        loss_fn: torch.nn.Module,
+        loss_fn: Union[torch.nn.Module, Callable],
         train_data: Iterable[Union[DataLoader, Dataset]],
         test_data: Iterable[Union[DataLoader, Dataset]],
         scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
