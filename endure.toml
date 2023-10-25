@@ -256,7 +256,6 @@ output_features = ["h", "T", "Q"]
 #   Model configurations
 # -----------------------------------------------------------------------------
 [ltune.model]
-embedding_size = 8
 hidden_length = 2
 hidden_width = 32
 
@@ -266,9 +265,6 @@ dropout = 0.0
 # Batch or Layer norm
 norm_layer = "Batch"
 
-# Used only for classic models, generally smaller than embedding size
-policy_embedding_size = 4
-
 # kwargs specific to LTune models during forward pass
 [ltune.model.train_kwargs]
 temp = 1
@@ -277,14 +273,6 @@ hard = false
 [ltune.model.test_kwargs]
 temp = 0.01
 hard = true
-
-[ltune.model.classic]
-normalize = 'Batch'
-layer_size = 128
-num_layers = 4
-
-[ltune.model.klsm]
-hidden_layers = 16
 
 # -----------------------------------------------------------------------------
 # HEADER LTUNE.DATA

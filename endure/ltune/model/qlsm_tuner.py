@@ -25,6 +25,7 @@ class QLSMTuner(nn.Module):
         hidden = []
         for _ in range(hidden_length):
             hidden.append(nn.Linear(hidden_width, hidden_width))
+            hidden.append(nn.ReLU(inplace=True))
         self.hidden = nn.Sequential(*hidden)
 
         self.q_decision = nn.Linear(hidden_width, capacity_range)
@@ -44,7 +45,6 @@ class QLSMTuner(nn.Module):
         out = self.relu(out)
         out = self.dropout(out)
         out = self.hidden(out)
-        out = self.relu(out)
 
         bits = self.bits_decision(out)
         q = self.q_decision(out)

@@ -3,7 +3,7 @@ from typing import Any
 from torch import Tensor
 import torch
 
-from .util import one_hot_lcm, one_hot_lcm_classic
+from .util import eval_lcm_impl
 from endure.lcm.data.generator import LCMDataGenerator
 from endure.lsm.cost import EndureCost
 from endure.lsm.types import LSMDesign, Policy, System
@@ -18,6 +18,8 @@ class LCMEvalUtil:
         self.config = config
         self.model = model
         self.gen = generator
+        self.min_t = config["lsm"]["size_ratio"]["min"]
+        self.max_t = config["lsm"]["size_ratio"]["max"]
         self.cf = EndureCost(config)
 
     def eval_lcm(
@@ -27,48 +29,16 @@ class LCMEvalUtil:
         z0: float,
         z1: float,
         q: float,
-        w: float,
+        w: float
     ) -> float:
-        x = self.create_input_from_types(design, system, z0, z1, q, w)
-        x = x.to(torch.float).view(1, -1)
-        self.model.eval()
-        with torch.no_grad():
-            pred = self.model(x)
-            pred = pred.sum().item()
-
-        return pred
-
-    def create_input_from_types(
-        self,
-        design: LSMDesign,
-        system: System,
-        z0: float,
-        z1: float,
-        q: float,
-        w: float,
-    ) -> Tensor:
-        max_cap = self.config['lsm']['size_ratio']['max']
-        min_cap = self.config['lsm']['size_ratio']['min']
-        categories = max_cap - min_cap + 1
-        wl = [z0, z1, q, w]
-        sys = [system.B, system.s, system.E, system.H, system.N]
-        size_ratio = design.T - min_cap
-        if design.policy in (Policy.Tiering, Policy.Leveling):
-            inputs = wl + sys + [design.h, size_ratio, design.policy.value]
-            data = torch.Tensor(inputs)
-            out = one_hot_lcm_classic(data, categories)
-        else: # design.policy == Policy.QFixed
-            inputs = wl + sys + [design.h, size_ratio, design.Q - 1]
-            data = torch.Tensor(inputs)
-            out = one_hot_lcm(data, len(inputs), 2, categories)
-
-        return out
+        return eval_lcm_impl(design, system, z0, z1, q, w,
+                             self.model, self.min_t, self.max_t)
 
     def gen_random_sample(self):
         row = {}
         z0, z1, q, w = self.gen._sample_workload(4)
-        system = self.gen._sample_system()
-        design = self.gen._sample_design(system)
+        system: System = self.gen._sample_system()
+        design: LSMDesign = self.gen._sample_design(system)
         cost_lcm = self.eval_lcm(design, system, z0, z1, q, w)
         cost_acm = self.cf.calc_cost(design, system, z0, z1, q, w)
         row = {
