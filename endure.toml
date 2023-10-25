@@ -34,9 +34,9 @@ data_dir = "/scratchNVMe/ndhuynh/data"
 [job]
 to_run = [
     # "LCMDataGen",
-    "LCMTrain",
+    # "LCMTrain",
     # "LTuneDataGen",
-    # "LTuneTrain",
+    "LTuneTrain",
     # TODO: "CreateTunings",
     # TODO: "RunExperiments",
 ]
@@ -57,7 +57,7 @@ overwrite_if_exists = true
 [job.LCMTrain]
 # -----------------------------------------------------------------------------
 max_epochs = 100
-save_dir = "models/lcm/qcost-10-06-v3"
+save_dir = "models/lcm/qcost-10-19-v0"
 use_gpu_if_avail = true
 
 # Different loss functions to train via
@@ -67,7 +67,7 @@ use_gpu_if_avail = true
 #   RMSE - Root mean square error
 #   RMSLE - Root mean squared log error
 #   Huber - Huber loss
-loss_fn = "Huber"
+loss_fn = "MSE"
 
 # Supported optimizers
 #   SGD - Stochastic gradient descent
@@ -85,7 +85,7 @@ no_checkpoint = false
 [job.LCMTrain.train]
 dir = "train-data/qcost-t30"
 format = "parquet"
-batch_size = 8192
+batch_size = 4096
 shuffle = true
 num_workers = 12
 drop_last = true
@@ -112,15 +112,15 @@ overwrite_if_exists = true
 # -----------------------------------------------------------------------------
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
-max_epochs = 50
-save_dir = "models/ltune/qlsm-10-05-v1"
+max_epochs = 100
+save_dir = "models/ltune/qlsm-10-24"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
-loss_fn_path = "models/lcm/qcost-10-04-v1"
+loss_fn_path = "models/lcm/qcost-10-19-v0"
 
 # Check train.optimizer for available options
-optimizer = "SGD"
+optimizer = "Adam"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
@@ -133,13 +133,13 @@ dir = "train-data/ltune/std"
 format = "parquet"
 batch_size = 1024
 shuffle = true
-num_workers = 10
+num_workers = 8
 drop_last = true
 
 [job.LTuneTrain.test]
 dir = "test-data/ltune/std"
 format = "parquet"
-batch_size = 65536
+batch_size = 32768
 shuffle = false
 num_workers = 4
 drop_last = true
@@ -217,7 +217,7 @@ output_features = ["z0_cost", "z1_cost", "q_cost", "w_cost"]
 # -----------------------------------------------------------------------------
 [lcm.model]
 embedding_size = 8
-hidden_length = 2
+hidden_length = 3
 hidden_width = 32
 
 # Dropout percentage
@@ -256,7 +256,14 @@ output_features = ["h", "T", "Q"]
 #   Model configurations
 # -----------------------------------------------------------------------------
 [ltune.model]
-dropout = 0.1  # percentage for dropout during training
+hidden_length = 4
+hidden_width = 64
+
+# Dropout percentage
+dropout = 0.1
+
+# Batch or Layer norm
+norm_layer = "Batch"
 
 # kwargs specific to LTune models during forward pass
 [ltune.model.train_kwargs]
@@ -266,14 +273,6 @@ hard = false
 [ltune.model.test_kwargs]
 temp = 0.01
 hard = true
-
-[ltune.model.classic]
-normalize = 'Batch'
-layer_size = 128
-num_layers = 4
-
-[ltune.model.klsm]
-hidden_layers = 16
 
 # -----------------------------------------------------------------------------
 # HEADER LTUNE.DATA
@@ -299,7 +298,7 @@ eta_min = 0.0001  # minimum learning rate
 gamma = 0.9
 
 [train.optimizer.Adam]
-lr = 0.01
+lr = 0.001
 
 [train.optimizer.SGD]
 lr = 0.001
