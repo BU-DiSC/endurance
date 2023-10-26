@@ -10,7 +10,7 @@ from endure.lsm.cost import EndureCost
 
 
 class LCMDataGenerator:
-    def __init__(self, config: dict[str, Any], precision=3):
+    def __init__(self, config: dict[str, Any], precision=3) -> None:
         self.log = logging.getLogger(config["log"]["name"])
         self._config = config
         self._header = None

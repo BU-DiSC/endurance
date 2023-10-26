@@ -1,14 +1,18 @@
-from copy import deepcopy
 from typing import Any, Union
 import logging
 
 import numpy as np
 
+from endure.lsm.types import LSMDesign, System, Policy
+
 
 class LTuneGenerator:
     def __init__(
-        self, config: dict[str, Any], format: str = "parquet", precision: int = 3
-    ):
+        self,
+        config: dict[str, Any],
+        format: str = "parquet",
+        precision: int = 3,
+    ) -> None:
         self.log = logging.getLogger(config["log"]["name"])
         self._config = config
         self._header = self._gen_workload_header() + self._gen_system_header()
@@ -48,14 +52,15 @@ class LTuneGenerator:
         low, high = self._config["generator"]["elements_range"]
         return np.random.randint(low=low, high=high)
 
-    def _sample_system(self) -> tuple:
+    def _sample_system(self) -> System:
         E = self._sample_entry_size()
         B = self._sample_entry_per_page(entry_size=E)
         s = self._sample_selectivity()
         H = self._sample_memory_budget()
         N = self._sample_total_elements()
+        system = System(E, s, B, N, H)
 
-        return (B, s, E, H, N)
+        return system
 
     def _gen_system_header(self) -> list:
         return ["B", "s", "E", "H", "N"]
@@ -66,11 +71,23 @@ class LTuneGenerator:
     def generate_header(self) -> list:
         return self._gen_workload_header() + self._gen_system_header()
 
-    def generate_row_csv(self) -> list[float]:
+    def generate_row_csv(self) -> list:
         z0, z1, q, w = self._sample_workload(4)
-        B, s, E, H, N = self._sample_system()
+        system: System = self._sample_system()
 
-        return [z0, z1, q, w, B, s, E, H, N]
+        line = [
+            z0,
+            z1,
+            q,
+            w,
+            system.B,
+            system.s,
+            system.E,
+            system.H,
+            system.N,
+        ]
+
+        return line
 
     def generate_row_parquet(self) -> dict[str, Union[int, float]]:
         header = self.generate_header()
