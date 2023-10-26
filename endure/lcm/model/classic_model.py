@@ -12,7 +12,7 @@ class ClassicModel(nn.Module):
         num_feats: int,
         capacity_range: int,
         embedding_size: int = 8,
-        hidden_length: int = 0,
+        hidden_length: int = 1,
         hidden_width: int = 32,
         dropout_percentage: float = 0,
         out_width: int = 4,
@@ -30,7 +30,6 @@ class ClassicModel(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.dropout = nn.Dropout(p=dropout_percentage)
         hidden = []
-        hidden.append(nn.Identity())
         for _ in range(hidden_length):
             hidden.append(nn.Linear(hidden_width, hidden_width))
             hidden.append(nn.ReLU(inplace=True))
@@ -49,14 +48,12 @@ class ClassicModel(nn.Module):
         feats = x[:, :t_boundary]
 
         if self.training:
-            size_ratio = x[:, t_boundary : policy_boundary]
+            size_ratio = x[:, t_boundary]
             size_ratio = size_ratio.to(torch.long)
             size_ratio = F.one_hot(size_ratio, num_classes=self.capacity_range)
-            size_ratio = torch.flatten(size_ratio, start_dim=1)
-            policy = x[:, policy_boundary : policy_boundary + 1]
+            policy = x[:, -1]
             policy = policy.to(torch.long)
             policy = F.one_hot(policy, num_classes=2)
-            policy = torch.flatten(policy, start_dim=1)
         else:
             policy = x[:, policy_boundary : policy_boundary + 2]
             size_ratio = x[:, t_boundary : policy_boundary]

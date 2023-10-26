@@ -19,13 +19,20 @@ class QLSMTuner(nn.Module):
             norm_layer = nn.BatchNorm1d
 
         self.in_norm = norm_layer(num_feats)
-        self.in_layer = nn.Linear(num_feats, hidden_width)
-        self.relu = nn.ReLU(inplace=True)
+        self.in_layer = nn.Linear(
+            num_feats,
+            max(int(hidden_width / 2), num_feats)
+        )
+        self.in_layer2 = nn.Linear(
+            max(int(hidden_width / 2), num_feats),
+            hidden_width
+        )
+        self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=dropout_percentage)
         hidden = []
         for _ in range(hidden_length):
             hidden.append(nn.Linear(hidden_width, hidden_width))
-            hidden.append(nn.ReLU(inplace=True))
+            # hidden.append(nn.ReLU())
         self.hidden = nn.Sequential(*hidden)
 
         self.q_decision = nn.Linear(hidden_width, capacity_range)
@@ -44,6 +51,8 @@ class QLSMTuner(nn.Module):
         out = self.in_layer(out)
         out = self.relu(out)
         out = self.dropout(out)
+        out = self.in_layer2(out)
+        out = self.relu(out)
         out = self.hidden(out)
 
         bits = self.bits_decision(out)

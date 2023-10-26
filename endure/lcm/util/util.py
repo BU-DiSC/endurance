@@ -24,9 +24,9 @@ def one_hot_lcm_classic(
     data: Tensor,
     categories: int
 ) -> Tensor:
-    policy = data[-2].to(torch.long)
+    policy = data[-1].to(torch.long)
     policy = F.one_hot(policy, num_classes=2)
-    size_ratio = data[-1].to(torch.long)
+    size_ratio = data[-2].to(torch.long)
     size_ratio = F.one_hot(size_ratio, num_classes=categories)
     out = [data[:-2], size_ratio, policy]
     out = torch.cat(out)

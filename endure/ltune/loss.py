@@ -49,7 +49,8 @@ class LearnedCostModelLoss(torch.nn.Module):
 
     def forward(self, pred, label):
         assert self.model.training is False
-        # For learned cost model loss, pred is the DB configuration, label is the workload
+        # For learned cost model loss, the prediction is the DB configuration
+        # and label is the workload
         bpe, categorical_feats = self.split_tuner_out(pred)
         bpe, penalty = self.calc_mem_penalty(label, bpe)
 

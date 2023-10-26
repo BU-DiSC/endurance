@@ -72,7 +72,7 @@ class LTuneEvalUtil:
         z1: float,
         q: float,
         w: float,
-        temp=1e-3,
+        temp=1e-2,
         hard=False,
     ) -> Tensor:
         x = torch.Tensor([z0, z1, q, w, system.B, system.s,
@@ -151,7 +151,7 @@ class LTuneEvalUtil:
         ltune_loss_indirect = self.eval_lcm(ltune_design, system, z0, z1, q, w)
         ltune_loss = self.eval_lcm_direct(out, system, z0, z1, q, w)
         ltune_cost = self.cf.calc_cost(ltune_design, system, z0, z1, q, w)
-        
+
         row = {
             'z0': z0,
             'z1': z1,
@@ -165,11 +165,13 @@ class LTuneEvalUtil:
             'stune_policy': stune_design.policy.value,
             'stune_h': stune_design.h,
             'stune_T': stune_design.T,
+            'stune_Q': stune_design.Q,
             'stune_cost': stune_cost,
             'stune_loss': stune_loss,
             'ltune_policy': ltune_design.policy.value,
             'ltune_h': ltune_design.h,
             'ltune_T': ltune_design.T,
+            'ltune_Q': ltune_design.Q,
             'ltune_cost': ltune_cost,
             'ltune_loss': ltune_loss_indirect,
             'ltune_loss_indirect': ltune_loss,
