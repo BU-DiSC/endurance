@@ -119,8 +119,8 @@ class LTuneEvalUtil:
         out = output.flatten()
         cap_range = self.calc_size_ratio_range()
         h = out[0].item()
-        t = torch.argmax(out[1:cap_range]).item() + 2
-        q = torch.argmax(out[cap_range:]).item() + 1
+        t = torch.argmax(out[1:cap_range+1]).item() + 2
+        q = torch.argmax(out[cap_range+1:]).item() + 1
 
         return LSMDesign(h=h, T=t, Q=q, policy=Policy.QFixed)
 
