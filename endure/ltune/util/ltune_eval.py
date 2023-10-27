@@ -143,13 +143,16 @@ class LTuneEvalUtil:
         z0, z1, q, w = self.gen._sample_workload(4)
 
         stune_design, _ = self.get_solver_nominal_design(system, z0, z1, q, w)
+        stune_design.T = int(stune_design.T)
+        stune_design.Q = int(stune_design.Q)
+        # print(stune_design)
         stune_loss = self.eval_lcm(stune_design, system, z0, z1, q, w)
         stune_cost = self.cf.calc_cost(stune_design, system, z0, z1, q, w)
 
         out = self.get_ltune_out(system, z0, z1, q, w)
         ltune_design = self.convert_ltune_output(out)
-        ltune_loss_indirect = self.eval_lcm(ltune_design, system, z0, z1, q, w)
-        ltune_loss = self.eval_lcm_direct(out, system, z0, z1, q, w)
+        ltune_loss = self.eval_lcm(ltune_design, system, z0, z1, q, w)
+        ltune_loss_direct = self.eval_lcm_direct(out, system, z0, z1, q, w)
         ltune_cost = self.cf.calc_cost(ltune_design, system, z0, z1, q, w)
 
         row = {
@@ -173,8 +176,8 @@ class LTuneEvalUtil:
             'ltune_T': ltune_design.T,
             'ltune_Q': ltune_design.Q,
             'ltune_cost': ltune_cost,
-            'ltune_loss': ltune_loss_indirect,
-            'ltune_loss_indirect': ltune_loss,
+            'ltune_loss': ltune_loss,
+            'ltune_loss_direct': ltune_loss_direct,
         }
 
         return row

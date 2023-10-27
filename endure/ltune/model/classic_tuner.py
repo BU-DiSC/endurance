@@ -20,7 +20,7 @@ class ClassicTuner(nn.Module):
 
         self.in_norm = norm_layer(num_feats)
         self.in_layer = nn.Linear(num_feats, hidden_width)
-        self.relu = nn.ReLU(inplace=True)
+        self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=dropout_percentage)
         hidden = []
         for _ in range(hidden_length):
@@ -47,10 +47,10 @@ class ClassicTuner(nn.Module):
         out = self.relu(out)
 
         bits = self.bits_decision(out)
-        policy = self.policy_decision(out)
-        policy = nn.functional.gumbel_softmax(policy, tau=temp, hard=hard)
         t = self.t_decision(out)
         t = nn.functional.gumbel_softmax(t, tau=temp, hard=hard)
+        policy = self.policy_decision(out)
+        policy = nn.functional.gumbel_softmax(policy, tau=temp, hard=hard)
 
         out = torch.concat([bits, t, policy], dim=-1)
 
