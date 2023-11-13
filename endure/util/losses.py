@@ -1,18 +1,20 @@
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import torch
 
 
 class LossBuilder:
-    @staticmethod
-    def build(choice) -> Optional[torch.nn.Module]:
-        losses = {
+    def __init__(self, config: dict[str, Any]) -> None:
+        self.config = config
+
+    def build(self, choice: str) -> Optional[torch.nn.Module]:
+        losses : dict[str, Callable] = {
             "MSLE": MSLELoss,
             "NMSE": NMSELoss,
             "RMSLE": RMSLELoss,
             "RMSE": RMSELoss,
-            "MSE": torch.nn.MSELoss,
-            "Huber": torch.nn.HuberLoss,
+            "MSE": self._build_mse,
+            "Huber": self._build_huber,
         }
         loss = losses.get(choice, None)
         if loss is None:
@@ -20,6 +22,11 @@ class LossBuilder:
 
         return loss()
 
+    def _build_huber(self) -> torch.nn.Module:
+        return torch.nn.HuberLoss(**self.config['loss']['Huber'])
+
+    def _build_mse(self) -> torch.nn.Module:
+        return torch.nn.MSELoss(**self.config['loss']['MSE'])
 
 class MSLELoss(torch.nn.Module):
     def __init__(self):
