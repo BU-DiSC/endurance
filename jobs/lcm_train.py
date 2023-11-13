@@ -30,10 +30,10 @@ class LCMTrainJob:
         choice = self._setting["loss_fn"]
         self.log.info(f"Loss function: {choice}")
 
-        loss = LossBuilder.build(choice)
+        loss = LossBuilder(self._config).build(choice)
         if loss is None:
             self.log.warn("Invalid loss function. Defaulting to MSE")
-            loss = LossBuilder.build("MSE")
+            loss = LossBuilder(self._config).build("MSE")
         assert loss is not None
 
         if self._setting["use_gpu_if_avail"] and torch.cuda.is_available():

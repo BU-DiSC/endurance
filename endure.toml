@@ -306,6 +306,18 @@ lr = 0.001
 [train.optimizer.Adagrad]
 lr = 0.001
 
+
+# =============================================================================
+# HEADER LOSS
+#   Settings for individual loss functions
+# =============================================================================
+[loss.Huber]
+reduction = 'sum'
+delta = 10
+
+[loss.MSE]
+reduction = 'mean'
+
 # =============================================================================
 # HEADER CREATETUNING
 #   Generic IO settings for experiments, saving data, etc
