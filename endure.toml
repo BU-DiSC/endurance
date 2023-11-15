@@ -60,6 +60,10 @@ max_epochs = 100
 save_dir = "models/lcm/qcost-10-19-v0"
 use_gpu_if_avail = true
 
+# Model selection, picking None will give automatically select the model
+# associated with the LSM design in the configuration file
+model = "QLSMMultiHead"
+
 # Different loss functions to train via
 #   MSE - Mean squared error
 #   NMSE - Normalized mean squared error
