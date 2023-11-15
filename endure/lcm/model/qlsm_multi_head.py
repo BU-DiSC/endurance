@@ -35,10 +35,10 @@ class QModelMultiHead(nn.Module):
             hidden.append(nn.ReLU(inplace=True))
         self.hidden = nn.Sequential(*hidden)
         self.out_layer = nn.Linear(hidden_width, 64)
-        self.z0 = nn.Sequential(nn.Linear(16, 4), nn.Linear(4, 1))
-        self.z1 = nn.Sequential(nn.Linear(16, 4), nn.Linear(4, 1))
-        self.q = nn.Sequential(nn.Linear(16, 4), nn.Linear(4, 1))
-        self.w = nn.Sequential(nn.Linear(16, 4), nn.Linear(4, 1))
+        self.z0 = nn.Linear(16, 1)
+        self.z1 = nn.Linear(16, 1)
+        self.q = nn.Linear(16, 1)
+        self.w = nn.Linear(16, 1)
 
         self.capacity_range = capacity_range
         self.num_feats = num_feats
@@ -80,10 +80,10 @@ class QModelMultiHead(nn.Module):
         out = self.dropout(out)
         out = self.hidden(out)
         out = self.out_layer(out)
-        z0 = self.z0(out[0:16])
-        z1 = self.z1(out[0:16])
-        q = self.q(out[0:16])
-        w = self.w(out[0:16])
+        z0 = self.z0(out[:, 0:16])
+        z1 = self.z1(out[:, 16:32])
+        q = self.q(out[:, 32:48])
+        w = self.w(out[:, 48:64])
         out = torch.cat([z0, z1, q, w], dim=-1)
 
         return out
