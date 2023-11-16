@@ -2,14 +2,15 @@ import pytest
 import torch
 
 from endure.lcm.util import one_hot_lcm
-from endure.lcm.model import QModel
+from endure.lcm.model import QModel, QModelMultiHead
 
 
 @pytest.mark.parametrize("num_feats", [10])
 @pytest.mark.parametrize("capacity_range", [20])
 @pytest.mark.parametrize("out_width", [4])
-def test_qlsm_lcm_train_shape(num_feats, capacity_range, out_width):
-    model = QModel(
+@pytest.mark.parametrize("model_type", [QModelMultiHead, QModel])
+def test_qlsm_lcm_train_shape(num_feats, capacity_range, out_width, model_type):
+    model = model_type(
         num_feats=num_feats,
         capacity_range=capacity_range,
         out_width=out_width,
@@ -28,8 +29,9 @@ def test_qlsm_lcm_train_shape(num_feats, capacity_range, out_width):
 @pytest.mark.parametrize("num_feats", [10])
 @pytest.mark.parametrize("capacity_range", [20])
 @pytest.mark.parametrize("out_width", [4])
-def test_qlsm_lcm_eval_shape(num_feats, capacity_range, out_width):
-    model = QModel(
+@pytest.mark.parametrize("model_type", [QModelMultiHead, QModel])
+def test_qlsm_lcm_eval_shape(num_feats, capacity_range, out_width, model_type):
+    model = model_type(
         num_feats=num_feats,
         capacity_range=capacity_range,
         out_width=out_width,
@@ -48,8 +50,14 @@ def test_qlsm_lcm_eval_shape(num_feats, capacity_range, out_width):
 @pytest.mark.parametrize("num_feats", [10])
 @pytest.mark.parametrize("capacity_range", [20])
 @pytest.mark.parametrize("out_width", [4])
-def test_qlsm_lcm_eval_deterministic(num_feats, capacity_range, out_width):
-    model = QModel(
+@pytest.mark.parametrize("model_type", [QModelMultiHead, QModel])
+def test_qlsm_lcm_eval_deterministic(
+    num_feats,
+    capacity_range,
+    out_width,
+    model_type
+):
+    model = model_type(
         num_feats=num_feats,
         capacity_range=capacity_range,
         out_width=out_width,
