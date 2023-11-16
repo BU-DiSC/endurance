@@ -42,7 +42,8 @@ class LCMTrainJob:
         return loss
 
     def _build_model(self) -> Union[Callable, torch.nn.Module]:
-        model = LearnedCostModelBuilder(self._config).build_model()
+        model_choice = self._setting['model']
+        model = LearnedCostModelBuilder(self._config).build_model(model_choice)
         if self._setting["use_gpu_if_avail"] and torch.cuda.is_available():
             model.to("cuda")
 

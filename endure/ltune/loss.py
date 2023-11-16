@@ -17,7 +17,8 @@ class LearnedCostModelLoss(torch.nn.Module):
             os.path.join(config["io"]["data_dir"], model_path, "endure.toml")
         )
         self.lcm_builder = LearnedCostModelBuilder(self._lcm_config)
-        self.model = self.lcm_builder.build_model()
+        lcm_model = self._lcm_config["job"]["LCMTrain"]["model"]
+        self.model = self.lcm_builder.build_model(lcm_model)
 
         data = torch.load(
             os.path.join(config["io"]["data_dir"], model_path, "best.model")

@@ -4,7 +4,7 @@ from torch import nn
 import logging
 import torch
 
-from endure.lcm.model import FlexModel, QModel, ClassicModel
+from endure.lcm.model import FlexModel, QModel, ClassicModel, QModelMultiHead
 
 
 class LearnedCostModelBuilder:
@@ -14,6 +14,7 @@ class LearnedCostModelBuilder:
         self._models = {
             "KLSM": FlexModel,
             "QLSM": QModel,
+            "QLSMMultiHead": QModelMultiHead,
             "Classic": ClassicModel,
         }
 
@@ -22,7 +23,7 @@ class LearnedCostModelBuilder:
 
     def build_model(self, choice: Optional[str] = None) -> torch.nn.Module:
         lsm_design: str = self._config["lsm"]["design"]
-        if choice is None:
+        if choice is None or choice == "Auto":
             choice = lsm_design
 
         num_feats = len(self._config["lcm"]["input_features"])
