@@ -15,7 +15,6 @@ class QModelMultiHead(nn.Module):
         hidden_length: int = 1,
         hidden_width: int = 32,
         dropout_percentage: float = 0,
-        out_width: int = 4,
         norm_layer: Optional[Callable[..., nn.Module]] = None
     ) -> None:
         super().__init__()
