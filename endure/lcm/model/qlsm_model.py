@@ -5,6 +5,7 @@ from torch import nn
 import torch
 import torch.nn.functional as F
 
+OUT_WIDTH = 4
 
 class QModel(nn.Module):
     def __init__(
@@ -15,7 +16,6 @@ class QModel(nn.Module):
         hidden_length: int = 1,
         hidden_width: int = 32,
         dropout_percentage: float = 0,
-        out_width: int = 4,
         norm_layer: Optional[Callable[..., nn.Module]] = None
     ) -> None:
         super().__init__()
@@ -34,7 +34,7 @@ class QModel(nn.Module):
             hidden.append(nn.Linear(hidden_width, hidden_width))
             hidden.append(nn.ReLU(inplace=True))
         self.hidden = nn.Sequential(*hidden)
-        self.out_layer = nn.Linear(hidden_width, out_width)
+        self.out_layer = nn.Linear(hidden_width, OUT_WIDTH)
 
         self.capacity_range = capacity_range
         self.num_feats = num_feats
