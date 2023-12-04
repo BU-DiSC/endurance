@@ -92,6 +92,7 @@ class LCMTrainJob:
             - self._config["lsm"]["size_ratio"]["min"]
             + 1
         )
+        max_levels = self._config["lsm"]["max_levels"]
         inputs = []
         num_features = len(self._config["lcm"]["input_features"])
 
@@ -104,8 +105,11 @@ class LCMTrainJob:
                 x = one_hot_lcm(item[1], num_features, 2, categories)
                 inputs.append(x)
         elif self._config["lsm"]["design"] == "KLSM":
-            self.log.critical("Not implemented")
-            sys.exit(1)
+            # Add number of features to expand K to K0, K1, ..., K_maxlevels
+            num_features += (max_levels - 1)
+            for item in data:
+                x = one_hot_lcm(item[1], num_features, max_levels + 1, categories)
+                inputs.append(x)
         elif self._config["lsm"]["design"] in ["QLSMIntegerVars"]:
             inputs = data
         else:

@@ -16,10 +16,11 @@ class KapModel(nn.Module):
         hidden_length: int = 1,
         hidden_width: int = 32,
         dropout_percentage: float = 0,
+        max_levels: int = 20,
         norm_layer: Optional[Callable[..., nn.Module]] = None
     ) -> None:
         super().__init__()
-        width = (num_feats - 2) + (2 * embedding_size)
+        width = (num_feats - (max_levels + 1)) + ((max_levels + 1) * embedding_size)
         if norm_layer is None:
             norm_layer = nn.BatchNorm1d
         self.t_embedding = nn.Linear(capacity_range, embedding_size)
@@ -42,13 +43,14 @@ class KapModel(nn.Module):
 
         self.capacity_range = capacity_range
         self.num_feats = num_feats
+        self.max_levels = max_levels
 
         for module in self.modules():
             if isinstance(module, nn.Linear):
                 nn.init.xavier_normal_(module.weight)
 
     def _split_input(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
-        categorical_bound = self.num_feats - 2
+        categorical_bound = self.num_feats - (self.max_levels + 1)
         feats = x[:, :categorical_bound]
         capacities = x[:, categorical_bound:]
 
@@ -81,10 +83,11 @@ class KapModel(nn.Module):
         out = self.dropout(out)
         out = self.hidden(out)
         out = self.out_layer(out)
-        z0 = self.z0(out[:, 0:DECISION_DIM])
-        z1 = self.z1(out[:, DECISION_DIM:2*DECISION_DIM])
-        q = self.q(out[:, 2*DECISION_DIM:3*DECISION_DIM])
-        w = self.w(out[:, 3*DECISION_DIM:4*DECISION_DIM])
+        head_dim = int(DECISION_DIM / 4)
+        z0 = self.z0(out[:, 0:head_dim])
+        z1 = self.z1(out[:, head_dim:2*head_dim])
+        q = self.q(out[:, 2*head_dim:3*head_dim])
+        w = self.w(out[:, 3*head_dim:4*head_dim])
         out = torch.cat([z0, z1, q, w], dim=-1)
 
         return out
