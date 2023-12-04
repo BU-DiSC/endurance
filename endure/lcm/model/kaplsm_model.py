@@ -23,7 +23,7 @@ class KapModel(nn.Module):
         if norm_layer is None:
             norm_layer = nn.BatchNorm1d
         self.t_embedding = nn.Linear(capacity_range, embedding_size)
-        self.q_embedding = nn.Linear(capacity_range, embedding_size)
+        self.k_embedding = nn.Linear(capacity_range, embedding_size)
 
         self.in_norm = norm_layer(width)
         self.in_layer = nn.Linear(width, hidden_width)
@@ -59,20 +59,21 @@ class KapModel(nn.Module):
             capacities = torch.unflatten(capacities, 1, (-1, self.capacity_range))
 
         size_ratio = capacities[:, 0, :]
-        q_cap = capacities[:, 1, :]
+        k_cap = capacities[:, 1:, :]
 
-        return (feats, size_ratio, q_cap)
+        return (feats, size_ratio, k_cap)
 
     def _forward_impl(self, x: Tensor) -> Tensor:
-        feats, size_ratio, q_cap = self._split_input(x)
+        feats, size_ratio, k_cap = self._split_input(x)
 
         size_ratio = size_ratio.to(torch.float)
         size_ratio = self.t_embedding(size_ratio)
 
-        q_cap = q_cap.to(torch.float)
-        q_cap = self.q_embedding(q_cap)
+        k_cap = k_cap.to(torch.float)
+        k_cap = self.k_embedding(k_cap)
+        k_cap = torch.flatten(k_cap, start_dim=1)
 
-        inputs = torch.cat([feats, size_ratio, q_cap], dim=-1)
+        inputs = torch.cat([feats, size_ratio, k_cap], dim=-1)
 
         out = self.in_norm(inputs)
         out = self.in_layer(out)

@@ -4,7 +4,7 @@ from torch import nn
 import logging
 import torch
 
-from endure.lcm.model import FlexModel, QModel, ClassicModel, QModelMultiHead
+from endure.lcm.model import KapModel, QModel, ClassicModel, QModelMultiHead
 
 
 class LearnedCostModelBuilder:
@@ -12,7 +12,7 @@ class LearnedCostModelBuilder:
         self.log = logging.getLogger(config["log"]["name"])
         self._config = config
         self._models = {
-            "KLSM": FlexModel,
+            "KLSM": KapModel,
             "QLSM": QModel,
             "QLSMMultiHead": QModelMultiHead,
             "Classic": ClassicModel,
@@ -37,7 +37,6 @@ class LearnedCostModelBuilder:
         hidden_length = model_params["hidden_length"]
         hidden_width = model_params["hidden_width"]
         dropout_percentage = model_params["dropout"]
-        out_width = len(self._config["lcm"]["output_features"])
 
         norm_layer = None
         if model_params["norm_layer"] == "Batch":
@@ -57,7 +56,6 @@ class LearnedCostModelBuilder:
                 hidden_length=hidden_length,
                 hidden_width=hidden_width,
                 dropout_percentage=dropout_percentage,
-                out_width=out_width,
                 norm_layer=norm_layer,
                 policy_embedding_size=policy_embedding_size,
             )
@@ -69,7 +67,6 @@ class LearnedCostModelBuilder:
                 hidden_length=hidden_length,
                 hidden_width=hidden_width,
                 dropout_percentage=dropout_percentage,
-                out_width=out_width,
                 norm_layer=norm_layer,
             )
 
