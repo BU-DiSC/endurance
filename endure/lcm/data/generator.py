@@ -34,7 +34,7 @@ class LCMDataGenerator:
         # See stackoverflow thread for why the simple solution is not uniform
         # https://stackoverflow.com/questions/8064629
         workload = np.around(np.random.rand(dimensions - 1), self.precision)
-        workload = np.concatenate([workload, [0, 1]])
+        workload = np.concatenate((workload, np.array([0, 1])))
         workload = np.sort(workload)
 
         return [b - a for a, b in zip(workload, workload[1:])]

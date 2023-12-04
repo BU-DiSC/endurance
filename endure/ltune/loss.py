@@ -4,7 +4,7 @@ import os
 import torch
 import toml
 
-from endure.lcm.model import LearnedCostModelBuilder
+from endure.lcm.model.builder import LearnedCostModelBuilder
 
 
 class LearnedCostModelLoss(torch.nn.Module):

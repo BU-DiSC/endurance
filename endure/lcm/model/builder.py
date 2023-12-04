@@ -4,7 +4,7 @@ from torch import nn
 import logging
 import torch
 
-from endure.lcm.model import FlexModel, QModel, ClassicModel, QModelMultiHead
+from endure.lcm.model import KapModel, QModel, ClassicModel, QModelMultiHead
 
 
 class LearnedCostModelBuilder:
@@ -12,7 +12,7 @@ class LearnedCostModelBuilder:
         self.log = logging.getLogger(config["log"]["name"])
         self._config = config
         self._models = {
-            "KLSM": FlexModel,
+            "KLSM": KapModel,
             "QLSM": QModel,
             "QLSMMultiHead": QModelMultiHead,
             "Classic": ClassicModel,
@@ -26,7 +26,11 @@ class LearnedCostModelBuilder:
         if choice is None or choice == "Auto":
             choice = lsm_design
 
+        max_levels = self._config["lsm"]["max_levels"]
         num_feats = len(self._config["lcm"]["input_features"])
+        if "K" in self._config["lcm"]["input_features"]:
+            # Add number of features to expand K to K0, K1, ..., K_maxlevels
+            num_feats += max_levels - 1
         capacity_range = (
             self._config["lsm"]["size_ratio"]["max"] -
             self._config["lsm"]["size_ratio"]["min"] + 1
@@ -58,6 +62,17 @@ class LearnedCostModelBuilder:
                 dropout_percentage=dropout_percentage,
                 norm_layer=norm_layer,
                 policy_embedding_size=policy_embedding_size,
+            )
+        elif model_class == KapModel:
+            model = model_class(
+                num_feats=num_feats,
+                capacity_range=capacity_range,
+                embedding_size=embedding_size,
+                hidden_length=hidden_length,
+                hidden_width=hidden_width,
+                dropout_percentage=dropout_percentage,
+                norm_layer=norm_layer,
+                max_levels=max_levels,
             )
         else:
             model = model_class(
