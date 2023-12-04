@@ -3,8 +3,7 @@ import torch
 
 from endure.lcm.util import one_hot_lcm
 from endure.lcm.model import QModel, QModelMultiHead
-
-OUT_WIDTH = 4
+from endure.lcm.model.qlsm_model import OUT_WIDTH
 
 @pytest.mark.parametrize("num_feats", [10])
 @pytest.mark.parametrize("capacity_range", [20])
