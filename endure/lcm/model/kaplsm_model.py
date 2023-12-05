@@ -5,9 +5,9 @@ from torch import nn
 import torch
 import torch.nn.functional as F
 
-OUT_WIDTH = 4
+DECISION_DIM = 64
 
-class ClassicModel(nn.Module):
+class KapModel(nn.Module):
     def __init__(
         self,
         num_feats: int,
@@ -16,15 +16,16 @@ class ClassicModel(nn.Module):
         hidden_length: int = 1,
         hidden_width: int = 32,
         dropout_percentage: float = 0,
-        policy_embedding_size: int = 1,
+        max_levels: int = 20,
         norm_layer: Optional[Callable[..., nn.Module]] = None
     ) -> None:
         super().__init__()
-        width = (num_feats - 2) + embedding_size + policy_embedding_size
+        width = (num_feats - (max_levels + 1)) + ((max_levels + 1) * embedding_size)
         if norm_layer is None:
             norm_layer = nn.BatchNorm1d
         self.t_embedding = nn.Linear(capacity_range, embedding_size)
-        self.policy_embedding = nn.Linear(2, policy_embedding_size)
+        self.k_embedding = nn.Linear(capacity_range, embedding_size)
+
         self.in_norm = norm_layer(width)
         self.in_layer = nn.Linear(width, hidden_width)
         self.relu = nn.ReLU(inplace=True)
@@ -34,41 +35,47 @@ class ClassicModel(nn.Module):
             hidden.append(nn.Linear(hidden_width, hidden_width))
             hidden.append(nn.ReLU(inplace=True))
         self.hidden = nn.Sequential(*hidden)
-        self.out_layer = nn.Linear(hidden_width, OUT_WIDTH)
+        self.out_layer = nn.Linear(hidden_width, DECISION_DIM)
+        self.z0 = nn.Linear(int(DECISION_DIM / 4), 1)
+        self.z1 = nn.Linear(int(DECISION_DIM / 4), 1)
+        self.q = nn.Linear(int(DECISION_DIM / 4), 1)
+        self.w = nn.Linear(int(DECISION_DIM / 4), 1)
+
         self.capacity_range = capacity_range
         self.num_feats = num_feats
+        self.max_levels = max_levels
 
         for module in self.modules():
             if isinstance(module, nn.Linear):
                 nn.init.xavier_normal_(module.weight)
 
     def _split_input(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
-        t_boundary = self.num_feats - 2
-        policy_boundary = t_boundary + self.capacity_range
-        feats = x[:, :t_boundary]
+        categorical_bound = self.num_feats - (self.max_levels + 1)
+        feats = x[:, :categorical_bound]
+        capacities = x[:, categorical_bound:]
 
         if self.training:
-            size_ratio = x[:, t_boundary]
-            size_ratio = size_ratio.to(torch.long)
-            size_ratio = F.one_hot(size_ratio, num_classes=self.capacity_range)
-            policy = x[:, -1]
-            policy = policy.to(torch.long)
-            policy = F.one_hot(policy, num_classes=2)
+            capacities = capacities.to(torch.long)
+            capacities = F.one_hot(capacities, num_classes=self.capacity_range)
         else:
-            policy = x[:, policy_boundary : policy_boundary + 2]
-            size_ratio = x[:, t_boundary : policy_boundary]
+            capacities = torch.unflatten(capacities, 1, (-1, self.capacity_range))
 
-        return (feats, size_ratio, policy)
+        size_ratio = capacities[:, 0, :]
+        k_cap = capacities[:, 1:, :]
+
+        return (feats, size_ratio, k_cap)
 
     def _forward_impl(self, x: Tensor) -> Tensor:
-        feats, size_ratio, policy = self._split_input(x)
+        feats, size_ratio, k_cap = self._split_input(x)
+
         size_ratio = size_ratio.to(torch.float)
         size_ratio = self.t_embedding(size_ratio)
 
-        policy = policy.to(torch.float)
-        policy = self.policy_embedding(policy)
+        k_cap = k_cap.to(torch.float)
+        k_cap = self.k_embedding(k_cap)
+        k_cap = torch.flatten(k_cap, start_dim=1)
 
-        inputs = torch.cat([feats, size_ratio, policy], dim=-1)
+        inputs = torch.cat([feats, size_ratio, k_cap], dim=-1)
 
         out = self.in_norm(inputs)
         out = self.in_layer(out)
@@ -76,10 +83,16 @@ class ClassicModel(nn.Module):
         out = self.dropout(out)
         out = self.hidden(out)
         out = self.out_layer(out)
+        head_dim = int(DECISION_DIM / 4)
+        z0 = self.z0(out[:, 0:head_dim])
+        z1 = self.z1(out[:, head_dim:2*head_dim])
+        q = self.q(out[:, 2*head_dim:3*head_dim])
+        w = self.w(out[:, 3*head_dim:4*head_dim])
+        out = torch.cat([z0, z1, q, w], dim=-1)
 
         return out
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Tensor) -> Tensor:
         out = self._forward_impl(x)
 
         return out
