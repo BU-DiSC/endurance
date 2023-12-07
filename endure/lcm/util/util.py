@@ -50,6 +50,12 @@ def create_input_from_types(
         inputs = wl + sys + [design.h, size_ratio, design.policy.value]
         data = torch.Tensor(inputs)
         out = one_hot_lcm_classic(data, categories)
+    elif design.policy == Policy.KHybrid:
+        ks = [k - 1 if k > 0 else 0 for k in design.K]
+        inputs = wl + sys + [design.h, size_ratio] + ks
+        data = torch.Tensor(inputs)
+        num_feats = 1 + len(design.K)
+        out = one_hot_lcm(data, len(inputs), num_feats, categories)
     else: # design.policy == Policy.QFixed
         inputs = wl + sys + [design.h, size_ratio, design.Q - 1]
         data = torch.Tensor(inputs)

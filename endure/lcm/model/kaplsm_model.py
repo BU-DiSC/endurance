@@ -7,6 +7,36 @@ import torch.nn.functional as F
 
 DECISION_DIM = 64
 
+class KapEmbedding(nn.Module):
+    """
+    Special embedding that creates separate embeddings for each K_i on each
+    level. Number of k's will dictate the number of linear layers.
+    """
+    def __init__(
+        self,
+        input_size: int,
+        embedding_size: int,
+        num_k: int
+    ) -> None:
+        super().__init__()
+        embeddings = []
+        for _ in range(num_k):
+            embeddings.append(nn.Linear(input_size, embedding_size))
+        self.num_k = num_k
+        self.embeddings = embeddings
+
+    def _forward_impl(self, x: Tensor) -> Tensor:
+        out = []
+        for idx in range(self.num_k):
+            out.append(self.embeddings[idx](x[:, idx, :]))
+
+        return torch.stack(out, dim=1)
+
+    def forward(self, x: Tensor) -> Tensor:
+        out = self._forward_impl(x)
+
+        return out
+
 class KapModel(nn.Module):
     def __init__(
         self,
@@ -20,7 +50,8 @@ class KapModel(nn.Module):
         norm_layer: Optional[Callable[..., nn.Module]] = None
     ) -> None:
         super().__init__()
-        width = (num_feats - (max_levels + 1)) + ((max_levels + 1) * embedding_size)
+        width = ((max_levels + 1) * embedding_size
+                 + num_feats - (max_levels + 1))
         if norm_layer is None:
             norm_layer = nn.BatchNorm1d
         self.t_embedding = nn.Linear(capacity_range, embedding_size)
@@ -36,10 +67,11 @@ class KapModel(nn.Module):
             hidden.append(nn.ReLU(inplace=True))
         self.hidden = nn.Sequential(*hidden)
         self.out_layer = nn.Linear(hidden_width, DECISION_DIM)
-        self.z0 = nn.Linear(int(DECISION_DIM / 4), 1)
-        self.z1 = nn.Linear(int(DECISION_DIM / 4), 1)
-        self.q = nn.Linear(int(DECISION_DIM / 4), 1)
-        self.w = nn.Linear(int(DECISION_DIM / 4), 1)
+        split_head_width = int(DECISION_DIM / 4)
+        self.z0 = nn.Linear(split_head_width, 1)
+        self.z1 = nn.Linear(split_head_width, 1)
+        self.q = nn.Linear(split_head_width, 1)
+        self.w = nn.Linear(split_head_width, 1)
 
         self.capacity_range = capacity_range
         self.num_feats = num_feats
