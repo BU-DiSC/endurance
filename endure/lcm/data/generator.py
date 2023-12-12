@@ -119,7 +119,10 @@ class LCMDataGenerator:
     def generate_header(self) -> list:
         return []
 
-    def generate_row(self, row_type: str = "parquet") -> Union[list, dict]:
+    def generate_row(
+        self,
+        row_type: str = "parquet"
+    ) -> Union[list, dict[str, Union[int, float]]]:
         if row_type == "parquet":
             row = self.generate_row_parquet()
         else:  # format == 'csv'
@@ -187,10 +190,11 @@ class KHybridGenerator(LCMDataGenerator):
         h = design.h
         T = design.T
         levels = int(self.cf.L(design, system, ceil=True))
-        K = random.sample(self._gen_k_levels(levels, int(T) - 1), 1)[0]
-        K = np.pad(K, (0, self.max_levels - len(K)))
-        K = K.tolist()
-        design = LSMDesign(h=h, T=T, policy=Policy.KHybrid, K=K)
+        k = np.random.randint(low=1, high=int(T), size=(levels))
+        # k = random.sample(self._gen_k_levels(levels, int(T) - 1), 1)[0]
+        remaining = np.ones(self.max_levels - len(k))
+        k = np.concatenate([k, remaining])
+        design = LSMDesign(h=h, T=T, policy=Policy.KHybrid, K=k.tolist())
 
         return design
 

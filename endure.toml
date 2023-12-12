@@ -45,24 +45,24 @@ to_run = [
 [job.LCMDataGen]
 # -----------------------------------------------------------------------------
 format = "parquet"
-generator = "QCost"
-dir = "test-data/qcost-t30"
-file_prefix = "cost"
+generator = "KHybridCost"
+dir = "test-data/kcost-t30"
+file_prefix = "kcost"
 num_workers = -1 # -1 forces all cores to be used
-num_files = 8
-samples = 1048576  # per file sample
+num_files = 2
+samples = 1024  # per file sample
 overwrite_if_exists = true
 
 # -----------------------------------------------------------------------------
 [job.LCMTrain]
 # -----------------------------------------------------------------------------
-max_epochs = 100
-save_dir = "models/lcm/qcost-10-19-v0"
-use_gpu_if_avail = true
+max_epochs = 5
+save_dir = "models/lcm/kcost"
+use_gpu_if_avail = false
 
-# Model selection, picking None will give automatically select the model
+# Model selection, picking "Auto" will give automatically select the model
 # associated with the LSM design in the configuration file
-model = "QLSMMultiHead"
+model = "Auto"
 
 # Different loss functions to train via
 #   MSE - Mean squared error
@@ -81,23 +81,23 @@ optimizer = "Adam"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
-lr_scheduler = "CosineAnnealing"
+lr_scheduler = "Constant"
 
 # Stop checkpointing to improve training
 no_checkpoint = false
 
 [job.LCMTrain.train]
-dir = "train-data/qcost-t30"
+dir = "train-data/kcost-t30"
 format = "parquet"
-batch_size = 4096
+batch_size = 32
 shuffle = true
-num_workers = 12
+num_workers = 2
 drop_last = true
 
 [job.LCMTrain.test]
-dir = "test-data/qcost-t30"
+dir = "test-data/kcost-t30"
 format = "parquet"
-batch_size = 65536
+batch_size = 1024
 shuffle = false
 num_workers = 4
 drop_last = true
@@ -106,22 +106,22 @@ drop_last = true
 [job.LTuneDataGen]
 # -----------------------------------------------------------------------------
 format = "parquet"
-dir = "train-data/ltune/std"
+dir = "test-data/ltune/std"
 file_prefix = "wl"
-num_workers = -1  # -1 forces all cores to be used
-num_files = 128
-samples = 1048576  # per file sample
+num_workers = 4  # -1 forces all cores to be used
+num_files = 2
+samples = 1024  # per file sample
 overwrite_if_exists = true
 
 # -----------------------------------------------------------------------------
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
-max_epochs = 100
-save_dir = "models/ltune/qlsm-10-24"
+max_epochs = 5
+save_dir = "models/ltune/klsm"
 use_gpu_if_avail = true
 
 # Learned cost model is our loss, input full path to checkpoint or model file
-loss_fn_path = "models/lcm/qcost-10-19-v0"
+loss_fn_path = "models/lcm/kcost"
 
 # Check train.optimizer for available options
 optimizer = "Adam"
@@ -135,17 +135,17 @@ no_checkpoint = false
 [job.LTuneTrain.train]
 dir = "train-data/ltune/std"
 format = "parquet"
-batch_size = 1024
+batch_size = 2
 shuffle = true
-num_workers = 8
+num_workers = 1
 drop_last = true
 
 [job.LTuneTrain.test]
 dir = "test-data/ltune/std"
 format = "parquet"
-batch_size = 32768
+batch_size = 2
 shuffle = false
-num_workers = 4
+num_workers = 1
 drop_last = true
 
 # =============================================================================
@@ -162,7 +162,7 @@ drop_last = true
 #   QLSM
 #   YZLSM
 # design = 'QLSMIntegerVars'
-design = 'QLSM'
+design = 'KLSM'
 max_levels = 20
 
 [lsm.size_ratio]
@@ -170,7 +170,7 @@ max = 31
 min = 2
 
 [lsm.bits_per_elem]
-max = 9.9
+max = 10
 min = 0
 
 [lsm.system]
@@ -212,7 +212,7 @@ desc = 'Learned Cost Model'
 #   Classic: ["z0", "z1", "q", "w", "B", "s", "E", "H", "N", "h", "policy", "T"]
 #   QLSM: ["z0", "z1", "q", "w", "B", "s", "E", "H", "N", "h", "T", "Q"]
 #   KLSM: ["z0", "z1", "q", "w", "B", "s", "E", "H", "N", "h", "T", "K"]
-input_features = ["z0", "z1", "q", "w", "B", "s", "E", "H", "N", "h", "T", "Q"]
+input_features = ["z0", "z1", "q", "w", "B", "s", "E", "H", "N", "h", "T", "K"]
 output_features = ["z0_cost", "z1_cost", "q_cost", "w_cost"]
 
 # -----------------------------------------------------------------------------
@@ -251,23 +251,28 @@ normalize_inputs = false
 # =============================================================================
 [ltune]
 desc = 'Learned Tuner'
-penalty_factor = 1000
+penalty_factor = 10
 input_features = ["z0", "z1", "q", "w", "B", "s", "E", "H", "N"]
 output_features = ["h", "T", "Q"]
+k_penalty = true
 
 # -----------------------------------------------------------------------------
 # HEADER LTUNE.MODEL
 #   Model configurations
 # -----------------------------------------------------------------------------
 [ltune.model]
-hidden_length = 4
+hidden_length = 1
 hidden_width = 64
 
 # Dropout percentage
-dropout = 0.1
+dropout = 0
 
 # Batch or Layer norm
 norm_layer = "Batch"
+
+categorical_mode = "reinmax"
+
+k_clip = true
 
 # kwargs specific to LTune models during forward pass
 [ltune.model.train_kwargs]

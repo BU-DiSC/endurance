@@ -3,7 +3,7 @@ import os
 import torch
 import logging
 import toml
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import torch.optim as Opt
 from torch.utils.data import DataLoader
@@ -68,7 +68,7 @@ class LTuneTrainJob:
             drop_last=self._setting["train"]["drop_last"],
             num_workers=self._setting["train"]["num_workers"],
             pin_memory=True,
-            prefetch_factor=50,
+            prefetch_factor=10,
         )
 
         return train
@@ -110,6 +110,38 @@ class LTuneTrainJob:
 
         return save_dir
 
+    @staticmethod
+    def gumbel_temp_schedule(
+        train_kwargs: dict,
+        decay_rate: float = 0.95,
+        floor: float = 0.01,
+    ) -> None:
+        train_kwargs["temp"] *= decay_rate
+        if train_kwargs["temp"] < floor:
+            train_kwargs["temp"] = floor
+
+        return
+
+    @staticmethod
+    def reinmax_temp_schedule(
+        train_kwargs: dict,
+        decay_rate: float = 0.9,
+        floor: float = 1,
+    ) -> None:
+        train_kwargs["temp"] *= decay_rate
+        if train_kwargs["temp"] < floor:
+            train_kwargs["temp"] = floor
+
+        return
+
+    def get_train_callback(self) -> Optional[Callable[[dict], None]]:
+        if not self._config["lsm"]["design"] == "KLSM":
+            return None
+        if self._config["ltune"]["model"]["categorical_mode"] == "reinmax":
+            return lambda train_kwargs: self.reinmax_temp_schedule(train_kwargs)
+
+        return lambda train_kwargs: self.gumbel_temp_schedule(train_kwargs)
+
     def run(self) -> Optional[Trainer]:
         model_base_dir = self._make_save_dir()
         if model_base_dir is None:
@@ -123,6 +155,7 @@ class LTuneTrainJob:
         test_data = self._build_test()
         loss_fn = self._build_loss_fn()
         disable_tqdm = self._config["log"]["disable_tqdm"]
+        callback = self.get_train_callback()
 
         trainer = Trainer(
             log=self.log,
@@ -139,6 +172,7 @@ class LTuneTrainJob:
             model_test_kwargs=self._config["ltune"]["model"]["test_kwargs"],
             disable_tqdm=disable_tqdm,
             no_checkpoint=self._config["job"]["LTuneTrain"]["no_checkpoint"],
+            train_callback=callback
         )
         trainer.run()
 
