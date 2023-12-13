@@ -93,6 +93,8 @@ class LTuneEvalUtil:
     ) -> Tuple[LSMDesign, SciOpt.OptimizeResult]:
         if self.design_type == "QLSM":
             solver = QLSMSolver(self.config)
+        elif self.design_type == "KLSM":
+            raise NotImplementedError
         else: # design_type == "Classic"
             solver = ClassicSolver(self.config)
 
@@ -110,17 +112,30 @@ class LTuneEvalUtil:
     def convert_ltune_output(self, output: Tensor):
         if self.design_type == "QLSM":
             design = self._qlsm_convert(output)
+        elif self.design_type == "KLSM":
+            design = self._klsm_convert(output)
         else:
             design = self._classic_convert(output)
 
         return design
 
+    def _klsm_convert(self, output: Tensor) -> LSMDesign:
+        out = output.flatten()
+        cap_range = self.calc_size_ratio_range()
+        h = out[0].item()
+        caps = out[1:].reshape(-1, cap_range)
+        t = torch.argmax(caps[0]).item() + 2
+        k = [torch.argmax(x).item() + 1 for x in caps[1:]]
+
+        return LSMDesign(h=h, T=t, K=k, policy=Policy.KHybrid)
+
     def _qlsm_convert(self, output: Tensor) -> LSMDesign:
         out = output.flatten()
         cap_range = self.calc_size_ratio_range()
         h = out[0].item()
-        t = torch.argmax(out[1:cap_range+1]).item() + 2
-        q = torch.argmax(out[cap_range+1:]).item() + 1
+        caps = out[1:].reshape(-1, cap_range)
+        t = torch.argmax(caps[0]).item() + 2
+        q = torch.argmax(caps[1]).item() + 1
 
         return LSMDesign(h=h, T=t, Q=q, policy=Policy.QFixed)
 
@@ -128,8 +143,8 @@ class LTuneEvalUtil:
         out = output.flatten()
         cap_range = self.calc_size_ratio_range()
         h = out[0].item()
-        t = torch.argmax(out[1:cap_range]).item() + 2
-        policy_val = torch.argmax(out[cap_range:]).item()
+        t = torch.argmax(out[1:cap_range+1]).item() + 2
+        policy_val = torch.argmax(out[cap_range+1:]).item()
         if policy_val:
             policy = Policy.Leveling
         else:
@@ -145,7 +160,6 @@ class LTuneEvalUtil:
         stune_design, _ = self.get_solver_nominal_design(system, z0, z1, q, w)
         stune_design.T = int(stune_design.T)
         stune_design.Q = int(stune_design.Q)
-        # print(stune_design)
         stune_loss = self.eval_lcm(stune_design, system, z0, z1, q, w)
         stune_cost = self.cf.calc_cost(stune_design, system, z0, z1, q, w)
 
