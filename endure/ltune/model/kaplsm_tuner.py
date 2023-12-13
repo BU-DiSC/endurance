@@ -6,11 +6,9 @@ import torch
 class KapDecision(nn.Module):
     def __init__(self, input_size: int, num_classes: int, num_kap: int) -> None:
         super().__init__()
-        decision_layers = []
-        for _ in range(num_kap):
-            decision_layers.append(nn.Linear(input_size, num_classes))
-
-        self.decision_layers = decision_layers
+        self.decision_layers = nn.ModuleList(
+            [nn.Linear(input_size, num_classes) for _ in range(num_kap)]
+        )
 
     def _forward_impl(self, x: Tensor, temp=1e-3, hard=False) -> Tensor:
         out = []
