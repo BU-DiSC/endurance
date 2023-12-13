@@ -174,7 +174,6 @@ class ClassicSolver:
 
         return design, solution
 
-
 class QLSMSolver:
     def __init__(self, config: dict[str, Any]):
         self.config = config
@@ -314,4 +313,107 @@ class QLSMSolver:
 
         return design, solution
 
+class KLSMSolver:
+    def __init__(self, config: dict[str, Any]):
+        self.config = config
+        self.cf = EndureCost(config)
 
+    def kl_div_con(self, input):
+        return np.exp(input) - 1
+
+    def robust_objective(
+        self,
+        x: np.ndarray,
+        system: System,
+        rho: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+    ) -> float:
+        raise NotImplementedError
+
+    def nominal_objective(
+        self,
+        x: np.ndarray,
+        system: System,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+    ):
+        h, T, Q = x
+        design = LSMDesign(h=h, T=T, Q=Q, policy=Policy.QFixed)
+        cost = self.cf.calc_cost(design, system, z0, z1, q, w)
+
+        return cost
+
+    def get_bounds(self, system: Optional[System] = None) -> SciOpt.Bounds:
+        h_lb = self.config["lsm"]["bits_per_elem"]["min"]
+        if system is None:
+            h_ub = self.config["lsm"]["system"]["H"] - 0.1
+        else:
+            h_ub = system.H - 0.1
+        t_ub = self.config["lsm"]["size_ratio"]["max"]
+        t_lb = self.config["lsm"]["size_ratio"]["min"]
+        q_ub = t_ub - 1
+        q_lb = t_lb - 1
+
+        lb = (h_lb, t_lb, q_lb)
+        ub = (h_ub, t_ub, q_ub)
+        keep_feasible = True
+
+        # SciPy's typing with Bounds is not correct
+        return SciOpt.Bounds(lb=lb, ub=ub, keep_feasible=keep_feasible)  # type: ignore
+
+    def get_robust_bounds(self) -> SciOpt.Bounds:
+        raise NotImplementedError
+
+    def get_robust_design(
+        self,
+        system: System,
+        rho: float,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+        init_args: np.ndarray = np.array(
+            [H_DEFAULT, T_DEFAULT, Q_DEFAULT, LAMBDA_DEFAULT, ETA_DEFAULT]
+        ),
+        minimizer_kwargs: dict = {},
+        callback_fn: Optional[Callable] = None,
+    ) -> Tuple[LSMDesign, SciOpt.OptimizeResult]:
+        raise NotImplementedError
+
+    def get_nominal_design(
+        self,
+        system: System,
+        z0: float,
+        z1: float,
+        q: float,
+        w: float,
+        init_args: np.ndarray = np.array([H_DEFAULT, T_DEFAULT, Q_DEFAULT]),
+        minimizer_kwargs: dict = {},
+        callback_fn: Optional[Callable] = None,
+    ) -> Tuple[LSMDesign, SciOpt.OptimizeResult]:
+        default_kwargs = {
+            "method": "SLSQP",
+            "bounds": self.get_bounds(system=system),
+            "options": {"ftol": 1e-6, "disp": False, "maxiter": 1000},
+        }
+        default_kwargs.update(minimizer_kwargs)
+
+        solution = SciOpt.minimize(
+            fun=lambda x: self.nominal_objective(x, system, z0, z1, q, w),
+            x0=init_args,
+            callback=callback_fn,
+            **default_kwargs
+        )
+        design = LSMDesign(
+            h=solution.x[0],
+            T=solution.x[1],
+            Q=solution.x[2],
+            policy=Policy.QFixed,
+        )
+
+        return design, solution
