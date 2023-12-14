@@ -5,14 +5,8 @@ import scipy.optimize as SciOpt
 
 from endure.lsm.cost import EndureCost
 from endure.lsm.types import LSMDesign, Policy, System
-from .util import kl_div_con
-from .util import get_bounds
-
-H_DEFAULT = 5
-T_DEFAULT = 10
-LAMBDA_DEFAULT = 1
-ETA_DEFAULT = 1
-
+from .util import kl_div_con, get_bounds
+from .util import H_DEFAULT, T_DEFAULT, LAMBDA_DEFAULT, ETA_DEFAULT
 
 class ClassicSolver:
     def __init__(
@@ -45,6 +39,7 @@ class ClassicSolver:
         query_cost += q * kl_div_con((self.cf.Q(design, system) - eta) / lamb)
         query_cost += w * kl_div_con((self.cf.W(design, system) - eta) / lamb)
         cost = eta + (rho * lamb) + (lamb * query_cost)
+
         return cost
 
     def nominal_objective(
@@ -56,7 +51,7 @@ class ClassicSolver:
         z1: float,
         q: float,
         w: float,
-    ):
+    ) -> float:
         h, T = x
         design = LSMDesign(h=h, T=T, policy=policy)
         cost = self.cf.calc_cost(design, system, z0, z1, q, w)
@@ -77,9 +72,6 @@ class ClassicSolver:
         minimizer_kwargs: dict = {},
         callback_fn: Optional[Callable] = None,
     ) -> Tuple[LSMDesign, SciOpt.OptimizeResult]:
-        design = None
-        solution = None
-
         default_kwargs = {
             "method": "SLSQP",
             "bounds": get_bounds(
@@ -90,26 +82,24 @@ class ClassicSolver:
             "options": {"ftol": 1e-6, "disp": False, "maxiter": 1000},
         }
         default_kwargs.update(minimizer_kwargs)
-
-        min_sol = np.inf
-        assert len(self.policies) > 0
-        for policy in self.policies:
-            sol = SciOpt.minimize(
+        solutions = [
+            SciOpt.minimize(
                 fun=lambda x: self.robust_objective(
-                    x, policy, system, rho, z0, z1, q, w
-                ),
+                    x, policy, system, rho, z0, z1, q, w),
                 x0=init_args,
                 callback=callback_fn,
                 **default_kwargs
-            )
-            if sol.fun < min_sol or (design is None and solution is None):
-                min_sol = sol.fun
-                design = LSMDesign(sol.x[0], sol.x[1], policy=policy)
-                solution = sol
-        assert design is not None
-        assert solution is not None
+            ) for policy in self.policies
+        ]
+        min_cost_idx = np.argmin([sol.fun for sol in solutions]) 
+        sol = solutions[min_cost_idx]
+        design = LSMDesign(
+            h=sol.x[0],
+            T=sol.x[1],
+            policy=self.policies[min_cost_idx]
+        )
 
-        return design, solution
+        return design, sol
 
     def get_nominal_design(
         self,
@@ -132,21 +122,21 @@ class ClassicSolver:
             "options": {"ftol": 1e-6, "disp": False, "maxiter": 1000},
         }
         default_kwargs.update(minimizer_kwargs)
-
-        design, solution = None, None
-        min_sol = np.inf
-        for policy in self.policies:
-            sol = SciOpt.minimize(
-                fun=lambda x: self.nominal_objective(x, policy, system, z0, z1, q, w),
+        solutions = [
+            SciOpt.minimize(
+                fun=lambda x: self.nominal_objective(
+                    x, policy, system, z0, z1, q, w),
                 x0=init_args,
                 callback=callback_fn,
                 **default_kwargs
-            )
-            if sol.fun < min_sol or (design is None and solution is None):
-                min_sol = sol.fun
-                design = LSMDesign(sol.x[0], sol.x[1], policy=policy)
-                solution = sol
-        assert design is not None
-        assert solution is not None
+            ) for policy in self.policies
+        ]
+        min_cost_idx = np.argmin([sol.fun for sol in solutions]) 
+        sol = solutions[min_cost_idx]
+        design = LSMDesign(
+            h=sol.x[0],
+            T=sol.x[1],
+            policy=self.policies[min_cost_idx]
+        )
 
-        return design, solution
+        return design, sol

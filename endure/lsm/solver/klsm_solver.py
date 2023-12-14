@@ -85,6 +85,7 @@ class KLSMSolver:
             "method": "SLSQP",
             "bounds": get_bounds(
                 config=self.config,
+                policy=Policy.KHybrid,
                 system=system,
                 robust=False,
             ),
@@ -92,7 +93,10 @@ class KLSMSolver:
         }
         default_kwargs.update(minimizer_kwargs)
         kap_val = init_args[-1]
-        init_args = init_args[0:2] + [kap_val for _ in range(max_levels)]
+        init_args = np.concatenate(
+            (init_args[0:2],
+             np.array([kap_val for _ in range(max_levels)]))
+        )
 
         solution = SciOpt.minimize(
             fun=lambda x: self.nominal_objective(x, system, z0, z1, q, w),
