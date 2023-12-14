@@ -7,10 +7,10 @@ from endure.lsm.types import Policy, System
 
 H_DEFAULT = 3
 T_DEFAULT = 3
-Z_DEFAULT = 3
-Y_DEFAULT = 3
-Q_DEFAULT = 3
-K_DEFAULT = 3
+Z_DEFAULT = 1
+Y_DEFAULT = 1
+Q_DEFAULT = 1
+K_DEFAULT = 1
 LAMBDA_DEFAULT = 1
 ETA_DEFAULT = 1
 
