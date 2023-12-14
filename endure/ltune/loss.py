@@ -59,6 +59,7 @@ class LearnedCostModelLoss(torch.nn.Module):
         out = self.model(inputs)
         out = out.sum(dim=-1)
         out = out + penalty
+        out = out.square()
         out = out.mean()
 
         return out

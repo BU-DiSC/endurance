@@ -119,14 +119,13 @@ class LCMDataGenerator:
     def generate_header(self) -> list:
         return []
 
-    def generate_row(self) -> Union[list, dict]:
-        if self._config["data"]["gen"]["format"] == "parquet":
+    def generate_row(self, row_type: str = "parquet") -> Union[list, dict]:
+        if row_type == "parquet":
             row = self.generate_row_parquet()
         else:  # format == 'csv'
             row = self.generate_row_csv()
 
         return row
-
 
 class ClassicGenerator(LCMDataGenerator):
     def __init__(
@@ -171,7 +170,6 @@ class ClassicGenerator(LCMDataGenerator):
         ]
 
         return line
-
 
 class KHybridGenerator(LCMDataGenerator):
     def __init__(self, config: dict[str, Any], precision: int = 3):
@@ -230,7 +228,6 @@ class KHybridGenerator(LCMDataGenerator):
             line.append(design.K[level_idx])
 
         return line
-
 
 class QCostGenerator(LCMDataGenerator):
     def __init__(self, config: dict[str, Any], precision: int = 3):

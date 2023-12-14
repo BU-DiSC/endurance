@@ -64,7 +64,7 @@ class LCMDataGenJob:
                 ncols=80,
                 disable=self.config["log"]["disable_tqdm"],
             ):
-                row = generator.generate_row()
+                row = generator.generate_row_csv()
                 writer.writerow(row)
 
         return idx
