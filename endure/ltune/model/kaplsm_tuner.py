@@ -49,6 +49,10 @@ class KapLSMTuner(nn.Module):
             hidden.append(nn.Linear(hidden_width, hidden_width))
         self.hidden = nn.Sequential(*hidden)
 
+        self.k_path = nn.Linear(hidden_width, hidden_width)
+        self.t_path = nn.Linear(hidden_width, hidden_width)
+        self.bits_path = nn.Linear(hidden_width, hidden_width)
+
         self.k_decision = KapDecision(hidden_width, capacity_range, num_kap)
         self.t_decision = nn.Linear(hidden_width, capacity_range)
         self.bits_decision = nn.Linear(hidden_width, 1)
@@ -68,10 +72,15 @@ class KapLSMTuner(nn.Module):
         out = self.dropout(out)
         out = self.hidden(out)
 
-        bits = self.bits_decision(out)
-        k = self.k_decision(out, temp=temp, hard=hard)
+        bits_out = self.bits_path(out)
+        bits = self.bits_decision(bits_out)
+
+        k_out = self.k_path(out)
+        k = self.k_decision(k_out, temp=temp, hard=hard)
         k = torch.flatten(k, start_dim=1)
-        t = self.t_decision(out)
+
+        t_out = self.t_path(out)
+        t = self.t_decision(t_out)
         t = nn.functional.gumbel_softmax(t, tau=temp, hard=hard)
 
         out = torch.concat([bits, t, k], dim=-1)
