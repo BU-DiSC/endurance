@@ -2,6 +2,7 @@ import torch
 import logging
 from typing import Any, Optional
 from torch import nn
+from reinmax import reinmax
 
 from endure.ltune.model import ClassicTuner, QLSMTuner, KapLSMTuner
 
@@ -51,6 +52,7 @@ class LTuneModelBuilder:
 
         if model_class is KapLSMTuner:
             args['num_kap'] = self._config['lsm']['max_levels']
+            args['categorical_mode'] = model_params['categorical_mode']
 
         model = model_class(**args)
 

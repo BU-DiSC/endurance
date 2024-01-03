@@ -254,6 +254,7 @@ desc = 'Learned Tuner'
 penalty_factor = 1000
 input_features = ["z0", "z1", "q", "w", "B", "s", "E", "H", "N"]
 output_features = ["h", "T", "Q"]
+k_penalty = true
 
 # -----------------------------------------------------------------------------
 # HEADER LTUNE.MODEL
@@ -268,6 +269,10 @@ dropout = 0.1
 
 # Batch or Layer norm
 norm_layer = "Batch"
+
+categorical_mode = "reinmax"
+
+k_clip = true
 
 # kwargs specific to LTune models during forward pass
 [ltune.model.train_kwargs]

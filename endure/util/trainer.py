@@ -91,10 +91,10 @@ class Trainer:
             if self.scheduler is not None:
                 self.scheduler.step()
 
-        if "temp" in self.model_train_kwargs:
-            self.model_train_kwargs["temp"] *= 0.9
-            if self.model_train_kwargs["temp"] < 0.01:
-                self.model_train_kwargs["temp"] = 0.01
+        # if "temp" in self.model_train_kwargs:
+        #     self.model_train_kwargs["temp"] *= 0.9
+        #     if self.model_train_kwargs["temp"] < 0.01:
+        #         self.model_train_kwargs["temp"] = 0.01
 
         if self.train_len == 0:
             self.train_len = batch + 1

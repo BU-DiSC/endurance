@@ -24,6 +24,10 @@ class LearnedCostModelLoss(torch.nn.Module):
             os.path.join(config["io"]["data_dir"], model_path, "best.model")
         )
         status = self.model.load_state_dict(data)
+        self.k_penalty : bool = (
+            config["ltune"]["k_penalty"]
+            and (config["lsm"]["design"] == "KLSM")
+        )
         assert len(status.missing_keys) == 0
         assert len(status.unexpected_keys) == 0
         self.model.eval()

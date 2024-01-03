@@ -2,19 +2,30 @@ from typing import Callable, Optional
 
 from torch import Tensor, nn
 import torch
+from reinmax import reinmax
 
 class KapDecision(nn.Module):
-    def __init__(self, input_size: int, num_classes: int, num_kap: int) -> None:
+    def __init__(
+        self,
+        input_size: int,
+        num_classes: int,
+        num_kap: int,
+        categorical_mode: str = 'gumbel',
+    ) -> None:
         super().__init__()
         self.decision_layers = nn.ModuleList(
             [nn.Linear(input_size, num_classes) for _ in range(num_kap)]
         )
+        self.categorical_mode = categorical_mode
 
     def _forward_impl(self, x: Tensor, temp=1e-3, hard=False) -> Tensor:
         out = []
         for layer in self.decision_layers:
             k = layer(x)
-            k = nn.functional.gumbel_softmax(k, tau=temp, hard=hard)
+            if self.categorical_mode == 'reinmax':
+                k, _ = reinmax(k, tau=temp)
+            else: # categorical_mode == 'gumbel'
+                k = nn.functional.gumbel_softmax(k, tau=temp, hard=hard)
             out.append(k)
         out = torch.stack(out, dim=1)
 
@@ -34,6 +45,7 @@ class KapLSMTuner(nn.Module):
         hidden_width: int = 32,
         dropout_percentage: float = 0,
         num_kap: int = 10,
+        categorical_mode: str = 'gumbel',
         norm_layer: Optional[Callable[..., nn.Module]] = None
     ) -> None:
         super().__init__()
@@ -60,6 +72,7 @@ class KapLSMTuner(nn.Module):
         self.capacity_range = capacity_range
         self.num_feats = num_feats
         self.num_kap = num_kap
+        self.categorical_mode = categorical_mode
 
         for module in self.modules():
             if isinstance(module, nn.Linear):
@@ -81,7 +94,10 @@ class KapLSMTuner(nn.Module):
 
         t_out = self.t_path(out)
         t = self.t_decision(t_out)
-        t = nn.functional.gumbel_softmax(t, tau=temp, hard=hard)
+        if self.categorical_mode == 'reinmax':
+            t, _ = reinmax(t, tau=temp)
+        else: # categorical_mode == 'gumbel'
+            t = nn.functional.gumbel_softmax(t, tau=temp, hard=hard)
 
         out = torch.concat([bits, t, k], dim=-1)
 
