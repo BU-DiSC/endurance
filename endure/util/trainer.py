@@ -25,6 +25,7 @@ class Trainer:
         model_test_kwargs: dict[str, Any] = {},
         disable_tqdm: bool = False,
         no_checkpoint: bool = False,
+        train_callback: Optional[Callable[[dict], None]] = None,
     ) -> None:
         self.log = log
         self.model = model
@@ -45,6 +46,7 @@ class Trainer:
         self.device = self._check_device()
         self.model_train_kwargs = model_train_kwargs
         self.model_test_kwargs = model_test_kwargs
+        self.train_callback = train_callback
 
     def _check_device(self) -> torch.device:
         if self.use_gpu_if_avail and torch.cuda.is_available():
@@ -90,6 +92,9 @@ class Trainer:
             total_loss += loss
             if self.scheduler is not None:
                 self.scheduler.step()
+
+        if self.train_callback is not None:
+            self.train_callback(self.model_train_kwargs)
 
         # if "temp" in self.model_train_kwargs:
         #     self.model_train_kwargs["temp"] *= 0.9
