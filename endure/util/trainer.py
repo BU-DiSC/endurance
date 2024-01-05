@@ -73,6 +73,10 @@ class Trainer:
 
     def _train_loop(self) -> float:
         self.model.train()
+        self.log.info(f"{self.model_train_kwargs=}")
+
+        total_loss = 0
+        batch = 0
         if self.train_len == 0:
             pbar = tqdm(self.train_data, ncols=80, disable=self.disable_tqdm)
         else:
@@ -82,9 +86,6 @@ class Trainer:
                 total=self.train_len,
                 disable=self.disable_tqdm,
             )
-
-        total_loss = 0
-        batch = 0
         for batch, (labels, features) in enumerate(pbar):
             loss = self._train_step(labels, features)
             if batch % (100) == 0:
@@ -95,11 +96,6 @@ class Trainer:
 
         if self.train_callback is not None:
             self.train_callback(self.model_train_kwargs)
-
-        # if "temp" in self.model_train_kwargs:
-        #     self.model_train_kwargs["temp"] *= 0.9
-        #     if self.model_train_kwargs["temp"] < 0.01:
-        #         self.model_train_kwargs["temp"] = 0.01
 
         if self.train_len == 0:
             self.train_len = batch + 1

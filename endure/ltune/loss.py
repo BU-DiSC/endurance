@@ -82,11 +82,14 @@ class LearnedCostModelLoss(torch.nn.Module):
 
     def l1_penalty_klsm(self, k_decision: Tensor):
         batch, _ = k_decision.shape
-        base = torch.ones((batch, self.num_levels))
+        base = torch.zeros((batch, self.num_levels))
         base = torch.nn.functional.one_hot(
             base.to(torch.long),
             num_classes=self.capacity_range
         ).flatten(start_dim=1)
+
+        if k_decision.get_device() >= 0:  # Tensor on GPU
+            base = base.to(k_decision.get_device())
 
         penalty = k_decision - base
         penalty = penalty.square()
@@ -108,6 +111,6 @@ class LearnedCostModelLoss(torch.nn.Module):
         out = out.sum(dim=-1)
         out = out + penalty
         out = out.mean()
-        out = out + self.l1_penalty_klsm(categorical_feats[:, self.capacity_range:])
+        # out = out + self.l1_penalty_klsm(categorical_feats[:, self.capacity_range:])
 
         return out

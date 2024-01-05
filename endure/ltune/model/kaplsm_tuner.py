@@ -88,7 +88,7 @@ class KapLSMTuner(nn.Module):
     ) -> Tensor:
         # KLSM: ["z0", "z1", "q", "w", "B", "s", "E", "H", "N"]
         # IDX:  [  0 ,   1 ,  2 ,  3 ,  4 ,  5 ,  6 ,  7 ,  8]
-        size_ratio = torch.squeeze(torch.argmax(size_ratio, dim=-1))
+        size_ratio = torch.squeeze(torch.argmax(size_ratio, dim=-1)) + 2
         bpe = torch.squeeze(torch.clone(bpe))
         bpe[bpe < 0] = 0
         max_bits = x[:, 7]    # H
@@ -96,7 +96,8 @@ class KapLSMTuner(nn.Module):
         entry_size = x[:, 6]  # E
         bpe[bpe > max_bits] = max_bits[bpe > max_bits] - 0.1
         mbuff = (max_bits - bpe) * num_elem
-        level = torch.log(((num_elem * entry_size) / mbuff) + 1) / torch.log(size_ratio)
+        level = torch.log(((num_elem * entry_size) / mbuff) + 1)
+        level = level / torch.log(size_ratio)
         level = torch.ceil(level)
 
         return level
@@ -122,9 +123,17 @@ class KapLSMTuner(nn.Module):
         k = self.k_decision(k_out, temp=temp, hard=hard)
         k = torch.flatten(k, start_dim=1)
 
-        # max_levels = self.calc_max_level(x, bits, t)
-        # max_levels = max_levels.to(torch.long)
-        # level_blanks = 1 - nn.functional.one_hot(max_levels).cumsum(dim=1)
+        max_levels = self.calc_max_level(x, bits, t)
+        max_levels = max_levels.to(torch.long)
+
+        levels_tensor = []
+        for sample in max_levels:
+            left = torch.ones(self.capacity_range * sample)
+            right = torch.zeros(self.capacity_range * (self.num_kap - sample))
+            base = torch.cat((left, right))
+            levels_tensor.append(base)
+        levels_tensor = torch.stack(levels_tensor)
+        k = k * levels_tensor
 
         out = torch.concat([bits, t, k], dim=-1)
 

@@ -52,7 +52,7 @@ class LTuneModelBuilder:
 
         if model_class is KapLSMTuner:
             args['num_kap'] = self._config['lsm']['max_levels']
-            args['categorical_mode'] = model_params['categorical_mode']
+            args['categorical_mode'] = model_params.get('categorical_mode', 'gumbel')
 
         model = model_class(**args)
 
