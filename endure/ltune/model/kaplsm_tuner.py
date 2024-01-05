@@ -1,5 +1,7 @@
 from typing import Callable, Optional
+import sys
 
+import numpy as np
 from torch import Tensor, nn
 import torch
 from reinmax import reinmax
@@ -78,6 +80,28 @@ class KapLSMTuner(nn.Module):
             if isinstance(module, nn.Linear):
                 nn.init.xavier_normal_(module.weight)
 
+    def calc_max_level(
+        self,
+        x: Tensor,  # input tensor
+        bpe: Tensor,
+        size_ratio: Tensor,
+    ) -> Tensor:
+        # KLSM: ["z0", "z1", "q", "w", "B", "s", "E", "H", "N"]
+        # IDX:  [  0 ,   1 ,  2 ,  3 ,  4 ,  5 ,  6 ,  7 ,  8]
+        size_ratio = torch.squeeze(torch.argmax(size_ratio, dim=-1)) + 2
+        bpe = torch.squeeze(torch.clone(bpe))
+        bpe[bpe < 0] = 0
+        max_bits = x[:, 7]    # H
+        num_elem = x[:, 8]    # N
+        entry_size = x[:, 6]  # E
+        bpe[bpe > max_bits] = max_bits[bpe > max_bits] - 0.1
+        mbuff = (max_bits - bpe) * num_elem
+        level = torch.log(((num_elem * entry_size) / mbuff) + 1)
+        level = level / torch.log(size_ratio)
+        level = torch.ceil(level)
+
+        return level
+
     def _forward_impl(self, x: Tensor, temp=1e-3, hard=False) -> Tensor:
         out = self.in_norm(x)
         out = self.in_layer(out)
@@ -88,16 +112,28 @@ class KapLSMTuner(nn.Module):
         bits_out = self.bits_path(out)
         bits = self.bits_decision(bits_out)
 
-        k_out = self.k_path(out)
-        k = self.k_decision(k_out, temp=temp, hard=hard)
-        k = torch.flatten(k, start_dim=1)
-
         t_out = self.t_path(out)
         t = self.t_decision(t_out)
         if self.categorical_mode == 'reinmax':
             t, _ = reinmax(t, tau=temp)
         else: # categorical_mode == 'gumbel'
             t = nn.functional.gumbel_softmax(t, tau=temp, hard=hard)
+
+        k_out = self.k_path(out)
+        k = self.k_decision(k_out, temp=temp, hard=hard)
+        k = torch.flatten(k, start_dim=1)
+
+        max_levels = self.calc_max_level(x, bits, t)
+        max_levels = max_levels.to(torch.long)
+
+        levels_tensor = []
+        for sample in max_levels:
+            left = torch.ones(self.capacity_range * sample)
+            right = torch.zeros(self.capacity_range * (self.num_kap - sample))
+            base = torch.cat((left, right))
+            levels_tensor.append(base)
+        levels_tensor = torch.stack(levels_tensor)
+        k = k * levels_tensor
 
         out = torch.concat([bits, t, k], dim=-1)
 
