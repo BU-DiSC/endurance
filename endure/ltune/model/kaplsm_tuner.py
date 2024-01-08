@@ -89,16 +89,17 @@ class KapLSMTuner(nn.Module):
         # KLSM: ["z0", "z1", "q", "w", "B", "s", "E", "H", "N"]
         # IDX:  [  0 ,   1 ,  2 ,  3 ,  4 ,  5 ,  6 ,  7 ,  8]
         size_ratio = torch.squeeze(torch.argmax(size_ratio, dim=-1)) + 2
-        bpe = torch.squeeze(torch.clone(bpe))
-        bpe[bpe < 0] = 0
+        bits = torch.squeeze(bpe)
         max_bits = x[:, 7]    # H
         num_elem = x[:, 8]    # N
         entry_size = x[:, 6]  # E
-        bpe[bpe > max_bits] = max_bits[bpe > max_bits] - 0.1
-        mbuff = (max_bits - bpe) * num_elem
+        min_bits = torch.zeros(bits.shape).to(bits.device)
+        bits = torch.clamp(bits, min=min_bits, max=(max_bits - 0.1))
+        mbuff = (max_bits - bits) * num_elem
         level = torch.log(((num_elem * entry_size) / mbuff) + 1)
         level = level / torch.log(size_ratio)
         level = torch.ceil(level)
+        level = torch.clamp(level, min=1)
 
         return level
 
@@ -121,19 +122,30 @@ class KapLSMTuner(nn.Module):
 
         k_out = self.k_path(out)
         k = self.k_decision(k_out, temp=temp, hard=hard)
-        k = torch.flatten(k, start_dim=1)
 
         max_levels = self.calc_max_level(x, bits, t)
         max_levels = max_levels.to(torch.long)
 
-        levels_tensor = []
-        for sample in max_levels:
-            left = torch.ones(self.capacity_range * sample)
-            right = torch.zeros(self.capacity_range * (self.num_kap - sample))
-            base = torch.cat((left, right))
-            levels_tensor.append(base)
-        levels_tensor = torch.stack(levels_tensor)
-        k = k * levels_tensor
+        mask = nn.functional.one_hot(max_levels, num_classes=self.num_kap)
+        cum_sum = torch.cumsum(mask, dim=1)
+        mask = mask - cum_sum + cum_sum[-1:None]  # Reverse cumulative sum
+        k = mask.unsqueeze(-1) * k
+        default = torch.zeros(self.capacity_range)
+        default[0] = 1
+        k[k.sum(-1) == 0] += default.to(torch.long)
+
+        k = torch.flatten(k, start_dim=1)
+
+        # levels_tensor = []
+        # for sample in max_levels:
+        #     left = torch.ones(self.capacity_range * sample)
+        #     right = torch.zeros(self.capacity_range * (self.num_kap - sample))
+        #     base = torch.cat((left, right))
+        #     levels_tensor.append(base)
+        # levels_tensor = torch.stack(levels_tensor)
+        # if k.get_device() >= 0:  # Tensor on GPU
+        #     levels_tensor = levels_tensor.to(k.device)
+        # k = k * levels_tensor
 
         out = torch.concat([bits, t, k], dim=-1)
 
