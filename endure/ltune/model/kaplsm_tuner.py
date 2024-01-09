@@ -132,7 +132,8 @@ class KapLSMTuner(nn.Module):
         k = mask.unsqueeze(-1) * k
         default = torch.zeros(self.capacity_range)
         default[0] = 1
-        k[k.sum(-1) == 0] += default.to(torch.long)
+        default = default.to(k.device).to(torch.long)
+        k[k.sum(-1) == 0] += default
 
         k = torch.flatten(k, start_dim=1)
 
