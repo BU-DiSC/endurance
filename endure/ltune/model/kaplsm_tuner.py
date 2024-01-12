@@ -1,7 +1,5 @@
 from typing import Callable, Optional
-import sys
 
-import numpy as np
 from torch import Tensor, nn
 import torch
 from reinmax import reinmax
@@ -134,19 +132,7 @@ class KapLSMTuner(nn.Module):
         default[0] = 1
         default = default.to(k.device).to(torch.long)
         k[k.sum(-1) == 0] += default
-
         k = torch.flatten(k, start_dim=1)
-
-        # levels_tensor = []
-        # for sample in max_levels:
-        #     left = torch.ones(self.capacity_range * sample)
-        #     right = torch.zeros(self.capacity_range * (self.num_kap - sample))
-        #     base = torch.cat((left, right))
-        #     levels_tensor.append(base)
-        # levels_tensor = torch.stack(levels_tensor)
-        # if k.get_device() >= 0:  # Tensor on GPU
-        #     levels_tensor = levels_tensor.to(k.device)
-        # k = k * levels_tensor
 
         out = torch.concat([bits, t, k], dim=-1)
 
