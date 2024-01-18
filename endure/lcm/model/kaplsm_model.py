@@ -19,7 +19,7 @@ class KapEmbedding(nn.Module):
         num_k: int
     ) -> None:
         super().__init__()
-        embeddings = []
+        embeddings = nn.ModuleList()
         for _ in range(num_k):
             embeddings.append(nn.Linear(input_size, embedding_size))
         self.num_k = num_k

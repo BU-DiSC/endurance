@@ -23,7 +23,7 @@ class LTuneGenerator:
         # See stackoverflow thread for why the simple solution is not uniform
         # https://stackoverflow.com/questions/8064629
         workload = np.around(np.random.rand(dimensions - 1), self.precision)
-        workload = np.concatenate([workload, [0, 1]])
+        workload = np.concatenate((workload, np.array([0, 1])))
         workload = np.sort(workload)
 
         return [b - a for a, b in zip(workload, workload[1:])]
@@ -98,8 +98,11 @@ class LTuneGenerator:
 
         return line
 
-    def generate_row(self) -> Union[list, dict[str, Union[int, float]]]:
-        if self.format == "parquet":
+    def generate_row(
+        self,
+        row_type: str = "parquet"
+    ) -> Union[list, dict[str, Union[int, float]]]:
+        if row_type == "parquet":
             row = self.generate_row_parquet()
         else:  # format == 'csv'
             row = self.generate_row_csv()

@@ -9,7 +9,7 @@ from endure.lsm.cost import EndureCost
 from endure.lsm.types import LSMDesign, System, Policy
 from endure.ltune.data.generator import LTuneGenerator
 from endure.ltune.loss import LearnedCostModelLoss
-from endure.lsm.solver import ClassicSolver, QLSMSolver
+import endure.lsm.solver as Solver
 
 
 class LTuneEvalUtil:
@@ -92,9 +92,11 @@ class LTuneEvalUtil:
         **kwargs,
     ) -> Tuple[LSMDesign, SciOpt.OptimizeResult]:
         if self.design_type == "QLSM":
-            solver = QLSMSolver(self.config)
+            solver = Solver.QLSMSolver(self.config)
+        elif self.design_type == "KLSM":
+            solver = Solver.KLSMSolver(self.config)
         else: # design_type == "Classic"
-            solver = ClassicSolver(self.config)
+            solver = Solver.ClassicSolver(self.config)
 
         design, sol = solver.get_nominal_design(
             system,
@@ -110,17 +112,30 @@ class LTuneEvalUtil:
     def convert_ltune_output(self, output: Tensor):
         if self.design_type == "QLSM":
             design = self._qlsm_convert(output)
+        elif self.design_type == "KLSM":
+            design = self._klsm_convert(output)
         else:
             design = self._classic_convert(output)
 
         return design
 
+    def _klsm_convert(self, output: Tensor) -> LSMDesign:
+        out = output.flatten()
+        cap_range = self.calc_size_ratio_range()
+        h = out[0].item()
+        caps = out[1:].reshape(-1, cap_range)
+        t = torch.argmax(caps[0]).item() + 2
+        k = [torch.argmax(x).item() + 1 for x in caps[1:]]
+
+        return LSMDesign(h=h, T=t, K=k, policy=Policy.KHybrid)
+
     def _qlsm_convert(self, output: Tensor) -> LSMDesign:
         out = output.flatten()
         cap_range = self.calc_size_ratio_range()
         h = out[0].item()
-        t = torch.argmax(out[1:cap_range+1]).item() + 2
-        q = torch.argmax(out[cap_range+1:]).item() + 1
+        caps = out[1:].reshape(-1, cap_range)
+        t = torch.argmax(caps[0]).item() + 2
+        q = torch.argmax(caps[1]).item() + 1
 
         return LSMDesign(h=h, T=t, Q=q, policy=Policy.QFixed)
 
@@ -128,8 +143,8 @@ class LTuneEvalUtil:
         out = output.flatten()
         cap_range = self.calc_size_ratio_range()
         h = out[0].item()
-        t = torch.argmax(out[1:cap_range]).item() + 2
-        policy_val = torch.argmax(out[cap_range:]).item()
+        t = torch.argmax(out[1:cap_range+1]).item() + 2
+        policy_val = torch.argmax(out[cap_range+1:]).item()
         if policy_val:
             policy = Policy.Leveling
         else:
@@ -144,16 +159,23 @@ class LTuneEvalUtil:
 
         stune_design, _ = self.get_solver_nominal_design(system, z0, z1, q, w)
         stune_design.T = int(stune_design.T)
-        stune_design.Q = int(stune_design.Q)
-        # print(stune_design)
+        if stune_design.policy == Policy.QFixed:
+            stune_design.Q = int(stune_design.Q)
+        elif stune_design.policy == Policy.KHybrid:
+            stune_design.K = [int(k) for k in stune_design.K]
+        elif stune_design.policy == Policy.YZHybrid:
+            stune_design.Y = int(stune_design.Y)
+            stune_design.Z = int(stune_design.Z)
         stune_loss = self.eval_lcm(stune_design, system, z0, z1, q, w)
         stune_cost = self.cf.calc_cost(stune_design, system, z0, z1, q, w)
+        stune_level = self.cf.L(stune_design, system, ceil=True)
 
         out = self.get_ltune_out(system, z0, z1, q, w)
         ltune_design = self.convert_ltune_output(out)
         ltune_loss = self.eval_lcm(ltune_design, system, z0, z1, q, w)
         ltune_loss_direct = self.eval_lcm_direct(out, system, z0, z1, q, w)
         ltune_cost = self.cf.calc_cost(ltune_design, system, z0, z1, q, w)
+        ltune_level = self.cf.L(ltune_design, system, ceil=True)
 
         row = {
             'z0': z0,
@@ -168,16 +190,22 @@ class LTuneEvalUtil:
             'stune_policy': stune_design.policy.value,
             'stune_h': stune_design.h,
             'stune_T': stune_design.T,
-            'stune_Q': stune_design.Q,
+            'stune_level': stune_level,
             'stune_cost': stune_cost,
             'stune_loss': stune_loss,
             'ltune_policy': ltune_design.policy.value,
             'ltune_h': ltune_design.h,
             'ltune_T': ltune_design.T,
-            'ltune_Q': ltune_design.Q,
+            'ltune_level': ltune_level,
             'ltune_cost': ltune_cost,
             'ltune_loss': ltune_loss,
             'ltune_loss_direct': ltune_loss_direct,
         }
+        if stune_design.policy == Policy.QFixed:
+            row['stune_Q'] = stune_design.Q
+            row['ltune_Q'] = ltune_design.Q
+        elif stune_design.policy == Policy.KHybrid:
+            row['stune_K'] = stune_design.K
+            row['ltune_K'] = ltune_design.K
 
         return row
