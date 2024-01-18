@@ -6,6 +6,7 @@ pandas
 pandas-stubs
 pyarrow
 pytest
+reinmax
 scipy
 toml
 torch

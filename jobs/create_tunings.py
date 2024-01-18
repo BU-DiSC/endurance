@@ -6,6 +6,7 @@ import pandas as pd
 
 from endure.lcm.data.generator import LCMDataGenerator
 import endure.lsm.solver as Solvers
+from endure.lsm.types import Policy
 
 
 class CreateTuningsJob:
@@ -24,12 +25,11 @@ class CreateTuningsJob:
     def _generate_solver(self):
         choice = self.config["tunings"]["cost_model"]
         choices = {
-            "YZCost": Solvers.EndureYZSolver(self.config),
-            "KCost": Solvers.EndureKSolver(self.config),
-            "QCost": Solvers.EndureQSolver(self.config),
-            "TierCost": Solvers.EndureTierSolver(self.config),
-            "LevelCost": Solvers.EndureLevelSolver(self.config),
-            "TierLevelCost": Solvers.EndureTierLevelSolver(self.config),
+            "KCost": Solvers.KLSMSolver(self.config),
+            "QCost": Solvers.QLSMSolver(self.config),
+            "TierCost": Solvers.ClassicSolver(self.config, policies=[Policy.Tiering]),
+            "LevelCost": Solvers.ClassicSolver(self.config, policies=[Policy.Leveling]),
+            "TierLevelCost": Solvers.ClassicSolver(self.config)
         }
         solver = choices.get(choice, None)
         if solver is None:
