@@ -5,8 +5,6 @@ from torch import nn
 import torch
 import torch.nn.functional as F
 
-DECISION_DIM = 64
-
 
 class KapEmbedding(nn.Module):
     """
@@ -14,12 +12,7 @@ class KapEmbedding(nn.Module):
     level. Number of k's will dictate the number of linear layers.
     """
 
-    def __init__(
-        self,
-        input_size: int,
-        embedding_size: int,
-        num_k: int
-    ) -> None:
+    def __init__(self, input_size: int, embedding_size: int, num_k: int) -> None:
         super().__init__()
         embeddings = nn.ModuleList()
         for _ in range(num_k):
@@ -50,11 +43,11 @@ class KapModel(nn.Module):
         hidden_width: int = 32,
         dropout_percentage: float = 0,
         max_levels: int = 20,
-        norm_layer: Optional[Callable[..., nn.Module]] = None
+        decision_dim: int = 64,
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
     ) -> None:
         super().__init__()
-        width = ((max_levels + 1) * embedding_size
-                 + num_feats - (max_levels + 1))
+        width = (max_levels + 1) * embedding_size + num_feats - (max_levels + 1)
         if norm_layer is None:
             norm_layer = nn.BatchNorm1d
         self.t_embedding = nn.Linear(capacity_range, embedding_size)
@@ -69,8 +62,8 @@ class KapModel(nn.Module):
             hidden.append(nn.Linear(hidden_width, hidden_width))
             hidden.append(nn.ReLU(inplace=True))
         self.hidden = nn.Sequential(*hidden)
-        self.out_layer = nn.Linear(hidden_width, DECISION_DIM)
-        split_head_width = int(DECISION_DIM / 4)
+        self.out_layer = nn.Linear(hidden_width, decision_dim)
+        split_head_width = int(decision_dim / 4)
         self.z0 = nn.Linear(split_head_width, 1)
         self.z1 = nn.Linear(split_head_width, 1)
         self.q = nn.Linear(split_head_width, 1)
@@ -79,6 +72,7 @@ class KapModel(nn.Module):
         self.capacity_range = capacity_range
         self.num_feats = num_feats
         self.max_levels = max_levels
+        self.decision_dim = decision_dim
 
         for module in self.modules():
             if isinstance(module, nn.Linear):
@@ -93,8 +87,7 @@ class KapModel(nn.Module):
             capacities = capacities.to(torch.long)
             capacities = F.one_hot(capacities, num_classes=self.capacity_range)
         else:
-            capacities = torch.unflatten(
-                capacities, 1, (-1, self.capacity_range))
+            capacities = torch.unflatten(capacities, 1, (-1, self.capacity_range))
 
         size_ratio = capacities[:, 0, :]
         k_cap = capacities[:, 1:, :]
@@ -119,11 +112,11 @@ class KapModel(nn.Module):
         out = self.dropout(out)
         out = self.hidden(out)
         out = self.out_layer(out)
-        head_dim = int(DECISION_DIM / 4)
+        head_dim = int(self.decision_dim / 4)
         z0 = self.z0(out[:, 0:head_dim])
-        z1 = self.z1(out[:, head_dim:2*head_dim])
-        q = self.q(out[:, 2*head_dim:3*head_dim])
-        w = self.w(out[:, 3*head_dim:4*head_dim])
+        z1 = self.z1(out[:, head_dim : 2 * head_dim])
+        q = self.q(out[:, 2 * head_dim : 3 * head_dim])
+        w = self.w(out[:, 3 * head_dim : 4 * head_dim])
         out = torch.cat([z0, z1, q, w], dim=-1)
 
         return out
