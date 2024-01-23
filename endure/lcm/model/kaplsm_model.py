@@ -7,11 +7,13 @@ import torch.nn.functional as F
 
 DECISION_DIM = 64
 
+
 class KapEmbedding(nn.Module):
     """
     Special embedding that creates separate embeddings for each K_i on each
     level. Number of k's will dictate the number of linear layers.
     """
+
     def __init__(
         self,
         input_size: int,
@@ -36,6 +38,7 @@ class KapEmbedding(nn.Module):
         out = self._forward_impl(x)
 
         return out
+
 
 class KapModel(nn.Module):
     def __init__(
@@ -90,7 +93,8 @@ class KapModel(nn.Module):
             capacities = capacities.to(torch.long)
             capacities = F.one_hot(capacities, num_classes=self.capacity_range)
         else:
-            capacities = torch.unflatten(capacities, 1, (-1, self.capacity_range))
+            capacities = torch.unflatten(
+                capacities, 1, (-1, self.capacity_range))
 
         size_ratio = capacities[:, 0, :]
         k_cap = capacities[:, 1:, :]

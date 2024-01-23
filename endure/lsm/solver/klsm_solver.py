@@ -8,6 +8,7 @@ from endure.lsm.types import LSMDesign, Policy, System
 from .util import kl_div_con, get_bounds
 from .util import H_DEFAULT, T_DEFAULT, LAMBDA_DEFAULT, ETA_DEFAULT, K_DEFAULT
 
+
 class KLSMSolver:
     def __init__(self, config: dict[str, Any]):
         self.config = config
@@ -28,8 +29,10 @@ class KLSMSolver:
         lamb, eta = x[-2:]
         design = LSMDesign(h=h, T=t, K=kaps, policy=Policy.KHybrid)
         query_cost = 0
-        query_cost += z0 * kl_div_con((self.cf.Z0(design, system) - eta) / lamb)
-        query_cost += z1 * kl_div_con((self.cf.Z1(design, system) - eta) / lamb)
+        query_cost += z0 * \
+            kl_div_con((self.cf.Z0(design, system) - eta) / lamb)
+        query_cost += z1 * \
+            kl_div_con((self.cf.Z1(design, system) - eta) / lamb)
         query_cost += q * kl_div_con((self.cf.Q(design, system) - eta) / lamb)
         query_cost += w * kl_div_con((self.cf.W(design, system) - eta) / lamb)
         cost = eta + (rho * lamb) + (lamb * query_cost)
