@@ -78,7 +78,9 @@ class LCMTrainJob:
         train_data = LCMDataSet(
             folder=train_dir,
             lsm_design=self.lsm_design,
-            max_levels = self.app_cfg["lsm"]["max_levels"],
+            min_size_ratio=self.app_cfg["lsm"]["size_ratio"]["min"],
+            max_size_ratio=self.app_cfg["lsm"]["size_ratio"]["max"],
+            max_levels=self.app_cfg["lsm"]["max_levels"],
             shuffle=self.job_cfg["train"]["shuffle"],
         )
         train = DataLoader(
@@ -139,7 +141,10 @@ class LCMTrainJob:
         test_data = LCMDataSet(
             folder=test_dir,
             lsm_design=self.lsm_design,
-            max_levels = self.app_cfg["lsm"]["max_levels"],
+            min_size_ratio=self.app_cfg["lsm"]["size_ratio"]["min"],
+            max_size_ratio=self.app_cfg["lsm"]["size_ratio"]["max"],
+            max_levels=self.app_cfg["lsm"]["max_levels"],
+            test=True,
             shuffle=self.job_cfg["test"]["shuffle"],
         )
         test = DataLoader(
@@ -147,7 +152,7 @@ class LCMTrainJob:
             batch_size=self.job_cfg["test"]["batch_size"],
             drop_last=self.job_cfg["test"]["drop_last"],
             num_workers=self.job_cfg["test"]["num_workers"],
-            collate_fn=self._test_collate_fn,
+            # collate_fn=self._test_collate_fn,
             pin_memory=True,
         )
 
