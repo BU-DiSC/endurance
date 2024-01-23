@@ -96,7 +96,7 @@ class LCMDataGenerator:
         return (system.B, system.s, system.E, system.H, system.N, design.h, design.T)
 
     def _gen_system_header(self) -> list:
-        return ["B", "s", "E", "H", "N"]
+        return ["B", "s", "E", "max_h", "N"]
 
     def _gen_workload_header(self) -> list:
         return ["z0", "z1", "q", "w"]
