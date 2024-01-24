@@ -12,9 +12,8 @@ class LearnedCostModelBuilder:
         self.log = logging.getLogger(config["log"]["name"])
         self._config = config
         self._models = {
-            "KLSM": KapModel,
-            "QLSM": QModel,
-            "QLSMMultiHead": QModelMultiHead,
+            "KHybrid": KapModel,
+            "QFixed": QModel,
             "Classic": ClassicModel,
         }
 
