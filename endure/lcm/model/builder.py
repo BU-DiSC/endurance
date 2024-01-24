@@ -4,7 +4,7 @@ from torch import nn
 import logging
 import torch
 
-from endure.lcm.model import KapModel, QModel, ClassicModel, QModelMultiHead
+from endure.lcm.model import KapModel, QModel, ClassicModel
 
 
 class LearnedCostModelBuilder:
@@ -12,9 +12,8 @@ class LearnedCostModelBuilder:
         self.log = logging.getLogger(config["log"]["name"])
         self._config = config
         self._models = {
-            "KLSM": KapModel,
-            "QLSM": QModel,
-            "QLSMMultiHead": QModelMultiHead,
+            "KHybrid": KapModel,
+            "QFixed": QModel,
             "Classic": ClassicModel,
         }
 

@@ -93,44 +93,44 @@ class LCMTrainJob:
 
         return train
 
-    def _gather_inputs(self, data):
-        categories = (
-            self.app_cfg["lsm"]["size_ratio"]["max"]
-            - self.app_cfg["lsm"]["size_ratio"]["min"]
-            + 1
-        )
-        max_levels = self.app_cfg["lsm"]["max_levels"]
-        inputs = []
-        num_features = len(self.app_cfg["lcm"]["input_features"])
-
-        if self.lsm_design == Policy.Classic:
-            for item in data:
-                x = one_hot_lcm_classic(item[1], categories)
-                inputs.append(x)
-        elif self.lsm_design == Policy.QFixed:
-            for item in data:
-                x = one_hot_lcm(item[1], num_features, 2, categories)
-                inputs.append(x)
-        elif self.lsm_design == Policy.KHybrid:
-            # Add number of features to expand K to K0, K1, ..., K_{maxlevels}
-            num_features += max_levels - 1
-            for item in data:
-                x = one_hot_lcm(item[1], num_features, max_levels + 1, categories)
-                inputs.append(x)
-        else:
-            raise TypeError("Illegal design option, defaulting to Classic")
-
-        inputs = torch.stack(inputs)
-
-        return inputs
-
-    def _test_collate_fn(self, data):
-        labels = np.array([item[0].numpy() for item in data])
-        labels = torch.from_numpy(labels)
-
-        inputs = self._gather_inputs(data)
-
-        return labels, inputs
+    # def _gather_inputs(self, data):
+    #     categories = (
+    #         self.app_cfg["lsm"]["size_ratio"]["max"]
+    #         - self.app_cfg["lsm"]["size_ratio"]["min"]
+    #         + 1
+    #     )
+    #     max_levels = self.app_cfg["lsm"]["max_levels"]
+    #     inputs = []
+    #     num_features = len(self.app_cfg["lcm"]["input_features"])
+    #
+    #     if self.lsm_design == Policy.Classic:
+    #         for item in data:
+    #             x = one_hot_lcm_classic(item[1], categories)
+    #             inputs.append(x)
+    #     elif self.lsm_design == Policy.QFixed:
+    #         for item in data:
+    #             x = one_hot_lcm(item[1], num_features, 2, categories)
+    #             inputs.append(x)
+    #     elif self.lsm_design == Policy.KHybrid:
+    #         # Add number of features to expand K to K0, K1, ..., K_{maxlevels}
+    #         num_features += max_levels - 1
+    #         for item in data:
+    #             x = one_hot_lcm(item[1], num_features, max_levels + 1, categories)
+    #             inputs.append(x)
+    #     else:
+    #         raise TypeError("Illegal design option, defaulting to Classic")
+    #
+    #     inputs = torch.stack(inputs)
+    #
+    #     return inputs
+    #
+    # def _test_collate_fn(self, data):
+    #     labels = np.array([item[0].numpy() for item in data])
+    #     labels = torch.from_numpy(labels)
+    #
+    #     inputs = self._gather_inputs(data)
+    #
+    #     return labels, inputs
 
     def _build_test(self) -> DataLoader:
         test_dir = os.path.join(
