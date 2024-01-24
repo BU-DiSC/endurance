@@ -47,8 +47,7 @@ class LTuneModelBuilder:
 
         model_class = self._models.get(choice, None)
         if model_class is None:
-            self.log.warn("Invalid model architecture. Defaulting to classic")
-            model_class = ClassicTuner
+            raise NotImplementedError(f"Model for LSM Design not implemented yet")
 
         if model_class is KapLSMTuner:
             args['num_kap'] = self._config['lsm']['max_levels']
