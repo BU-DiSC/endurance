@@ -2,7 +2,9 @@
 import logging
 import os
 import tempfile
+from endure.util.lr_scheduler import LRSchedulerBuilder
 
+import ray
 import ray.train as RayTrain
 import ray.tune as RayTune
 from ray.tune.schedulers import ASHAScheduler
@@ -69,7 +71,7 @@ def build_validate(cfg, lsm_design: Policy) -> DataLoader:
 
 def train_lcm(cfg):
     lsm_choice = STR_POLICY_DICT.get(cfg["lsm"]["design"], Policy.KHybrid)
-    net = LearnedCostModelBuilder(cfg).build_model(cfg["lsm"]["design"])
+    net = LearnedCostModelBuilder(cfg).build_model(lsm_choice)
 
     device = "cpu"
     if torch.cuda.is_available():
@@ -82,6 +84,9 @@ def train_lcm(cfg):
     assert criterion is not None
     optimizer = OptimizerBuilder(cfg).build_optimizer(
         cfg["job"]["LCMTrain"]["optimizer"], net
+    )
+    scheduler = LRSchedulerBuilder(cfg).build_scheduler(
+        optimizer, cfg["job"]["LCMTrain"]["lr_scheduler"]
     )
 
     if RayTrain.get_checkpoint():
@@ -96,7 +101,7 @@ def train_lcm(cfg):
     train_set = build_train(cfg, lsm_choice)
     validate_set = build_validate(cfg, lsm_choice)
 
-    for epoch in range(10):  # loop over the dataset multiple times
+    for epoch in range(50):  # loop over the dataset multiple times
         running_loss = 0.0
         epoch_steps = 0
         net.train()
@@ -123,6 +128,8 @@ def train_lcm(cfg):
                     % (epoch + 1, i + 1, running_loss / epoch_steps)
                 )
                 running_loss = 0.0
+            if scheduler is not None:
+                scheduler.step()
 
         # Validation loss
         val_loss = 0.0
@@ -162,12 +169,18 @@ def main():
     log.setLevel(config["log"]["level"])
 
     config["lcm"]["model"]["embedding_size"] = RayTune.grid_search([4, 8])
-    scheduler = ASHAScheduler(max_t=10, grace_period=1, reduction_factor=2)
+    config["lcm"]["model"]["hidden_length"] = RayTune.grid_search([2, 3, 4])
+    config["lcm"]["model"]["hidden_width"] = RayTune.grid_search([32, 64, 128])
+    config["train"]["optimizer"]["Adam"]["lr"] = RayTune.loguniform(1e-4, 1e-1)
+    config["job"]["LCMTrain"]["lr_scheduler"] = RayTune.grid_search(["CosineAnnealing", "Constant"])
+    scheduler = ASHAScheduler(grace_period=5, max_t=50)
+
+    ray.init(num_gpus=1)
 
     tuner = RayTune.Tuner(
         RayTune.with_resources(
             RayTune.with_parameters(train_lcm),
-            resources={"cpu": 2, "gpu": 0},
+            resources={"cpu": 4, "gpu": 0.25},
         ),
         tune_config=RayTune.TuneConfig(
             metric="loss",
