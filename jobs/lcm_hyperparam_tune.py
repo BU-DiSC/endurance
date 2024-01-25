@@ -1,10 +1,10 @@
 #!/usr/bin/env python
+import toml
 import logging
 import os
 import tempfile
 from endure.util.lr_scheduler import LRSchedulerBuilder
 
-import numpy as np
 import ray
 import ray.train as RayTrain
 import ray.tune as RayTune
@@ -185,21 +185,24 @@ def main():
     tuner = RayTune.Tuner(
         RayTune.with_resources(
             RayTune.with_parameters(train_lcm),
-            resources={"cpu": 8, "gpu": 0.25},
+            resources={"cpu": 4, "gpu": 0},
         ),
         tune_config=RayTune.TuneConfig(
             metric="loss",
             mode="min",
             scheduler=scheduler,
-            num_samples=100,
+            num_samples=2,
         ),
         param_space=config,
     )
     results = tuner.fit()
     best_result = results.get_best_result("loss", "min")
+    assert best_result.config is not None
     assert best_result.metrics is not None
 
     print("Best trial config: {}".format(best_result.config))
+    with open('best.toml', "w") as fid:
+        toml.dump(best_result.config, fid)
     print("Best trial final validation loss: {}".format(best_result.metrics["loss"]))
 
 
