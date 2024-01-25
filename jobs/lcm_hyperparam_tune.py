@@ -4,11 +4,11 @@ import os
 import tempfile
 from endure.util.lr_scheduler import LRSchedulerBuilder
 
+import numpy as np
 import ray
 import ray.train as RayTrain
 import ray.tune as RayTune
 from ray.tune.schedulers import ASHAScheduler
-
 import torch
 from torch.utils.data import DataLoader
 
@@ -19,12 +19,12 @@ from endure.util.losses import LossBuilder
 from endure.util.optimizer import OptimizerBuilder
 
 
-def build_train(cfg, lsm_design: Policy) -> DataLoader:
+def build_train(cfg, lsm_design: Policy) -> LCMDataSet:
     train_dir = os.path.join(
         cfg["io"]["data_dir"],
         cfg["job"]["LCMTrain"]["train"]["dir"],
     )
-    train_data = LCMDataSet(
+    train = LCMDataSet(
         folder=train_dir,
         lsm_design=lsm_design,
         min_size_ratio=cfg["lsm"]["size_ratio"]["min"],
@@ -33,23 +33,16 @@ def build_train(cfg, lsm_design: Policy) -> DataLoader:
         test=False,
         shuffle=cfg["job"]["LCMTrain"]["train"]["shuffle"],
     )
-    train = DataLoader(
-        train_data,
-        batch_size=cfg["job"]["LCMTrain"]["train"]["batch_size"],
-        drop_last=cfg["job"]["LCMTrain"]["train"]["drop_last"],
-        num_workers=cfg["job"]["LCMTrain"]["train"]["num_workers"],
-        pin_memory=True,
-    )
 
     return train
 
 
-def build_validate(cfg, lsm_design: Policy) -> DataLoader:
+def build_validate(cfg, lsm_design: Policy) -> LCMDataSet:
     validate_dir = os.path.join(
         cfg["io"]["data_dir"],
         cfg["job"]["LCMTrain"]["test"]["dir"],
     )
-    validate_data = LCMDataSet(
+    validate = LCMDataSet(
         folder=validate_dir,
         lsm_design=lsm_design,
         min_size_ratio=cfg["lsm"]["size_ratio"]["min"],
@@ -57,13 +50,6 @@ def build_validate(cfg, lsm_design: Policy) -> DataLoader:
         max_levels=cfg["lsm"]["max_levels"],
         test=True,
         shuffle=cfg["job"]["LCMTrain"]["test"]["shuffle"],
-    )
-    validate = DataLoader(
-        validate_data,
-        batch_size=cfg["job"]["LCMTrain"]["test"]["batch_size"],
-        drop_last=cfg["job"]["LCMTrain"]["test"]["drop_last"],
-        num_workers=cfg["job"]["LCMTrain"]["test"]["num_workers"],
-        pin_memory=True,
     )
 
     return validate
@@ -98,10 +84,24 @@ def train_lcm(cfg):
             net.load_state_dict(model_state)
             optimizer.load_state_dict(optimizer_state)
 
-    train_set = build_train(cfg, lsm_choice)
-    validate_set = build_validate(cfg, lsm_choice)
+    train_data = build_train(cfg, lsm_choice)
+    train_set = DataLoader(
+        train_data,
+        batch_size=cfg["job"]["LCMTrain"]["train"]["batch_size"],
+        drop_last=cfg["job"]["LCMTrain"]["train"]["drop_last"],
+        num_workers=cfg["job"]["LCMTrain"]["train"]["num_workers"],
+        pin_memory=True,
+    )
+    validate_data = build_validate(cfg, lsm_choice)
+    validate_set = DataLoader(
+        validate_data,
+        batch_size=cfg["job"]["LCMTrain"]["test"]["batch_size"],
+        drop_last=cfg["job"]["LCMTrain"]["test"]["drop_last"],
+        num_workers=cfg["job"]["LCMTrain"]["test"]["num_workers"],
+        pin_memory=True,
+    )
 
-    for epoch in range(50):  # loop over the dataset multiple times
+    for epoch in range(20):  # loop over the dataset multiple times
         running_loss = 0.0
         epoch_steps = 0
         net.train()
@@ -168,25 +168,30 @@ def main():
     log = logging.getLogger(config["log"]["name"])
     log.setLevel(config["log"]["level"])
 
-    config["lcm"]["model"]["embedding_size"] = RayTune.grid_search([4, 8])
-    config["lcm"]["model"]["hidden_length"] = RayTune.grid_search([2, 3, 4])
-    config["lcm"]["model"]["hidden_width"] = RayTune.grid_search([32, 64, 128])
+    config["lcm"]["model"]["embedding_size"] = RayTune.choice([4, 8])
+    config["lcm"]["model"]["hidden_length"] = RayTune.choice([2, 3, 4])
+    config["lcm"]["model"]["hidden_width"] = RayTune.choice([32, 64, 128])
     config["train"]["optimizer"]["Adam"]["lr"] = RayTune.loguniform(1e-4, 1e-1)
-    config["job"]["LCMTrain"]["lr_scheduler"] = RayTune.grid_search(["CosineAnnealing", "Constant"])
-    scheduler = ASHAScheduler(grace_period=5, max_t=50)
+    config["job"]["LCMTrain"]["lr_scheduler"] = RayTune.choice(
+        ["CosineAnnealing", "Constant"]
+    )
+    config["job"]["LCMTrain"]["train"]["batch_size"] = RayTune.choice(
+        [1024, 2048, 4096, 8192, 16384]
+    )
+    scheduler = ASHAScheduler(grace_period=3, max_t=20, reduction_factor=2)
 
     ray.init(num_gpus=1)
 
     tuner = RayTune.Tuner(
         RayTune.with_resources(
             RayTune.with_parameters(train_lcm),
-            resources={"cpu": 4, "gpu": 0.25},
+            resources={"cpu": 8, "gpu": 0.25},
         ),
         tune_config=RayTune.TuneConfig(
             metric="loss",
             mode="min",
             scheduler=scheduler,
-            num_samples=2,
+            num_samples=100,
         ),
         param_space=config,
     )
