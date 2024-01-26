@@ -12,7 +12,7 @@ class Trainer:
     def __init__(
         self,
         log: logging.Logger,
-        model: Union[torch.nn.Module, Callable],
+        model: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         loss_fn: Union[torch.nn.Module, Callable],
         train_data: Iterable[Union[DataLoader, Dataset]],
@@ -102,7 +102,7 @@ class Trainer:
 
         return total_loss / self.train_len
 
-    def _test_step(self, labels: torch.Tensor, features: torch.Tensor) -> float:
+    def _validation_step(self, labels: torch.Tensor, features: torch.Tensor) -> float:
         assert self.model_test_kwargs is not None
         with torch.no_grad():
             labels = labels.to(self.device)
@@ -112,7 +112,7 @@ class Trainer:
 
         return test_loss
 
-    def _test_loop(self) -> float:
+    def _validation_loop(self) -> float:
         self.model.eval()
         test_loss = 0
         if self.test_len == 0:
@@ -129,7 +129,7 @@ class Trainer:
             )
         batch = 0
         for batch, (labels, features) in enumerate(pbar):
-            loss = self._test_step(labels, features)
+            loss = self._validation_step(labels, features)
             # if batch % (100) == 0:
             pbar.set_description(f"test {loss:e}")
             test_loss += loss
@@ -171,7 +171,7 @@ class Trainer:
             loss_csv_write.writerow(["epoch", "train_loss", "test_loss"])
 
         self.log.info("Initial test with random network")
-        loss_min = self._test_loop()
+        loss_min = self._validation_loop()
         with open(os.path.join(self.base_dir, "losses.csv"), "a") as fid:
             write = csv.writer(fid)
             write.writerow([0, loss_min, loss_min])
@@ -180,7 +180,7 @@ class Trainer:
         for epoch in range(self.max_epochs):
             self.log.info(f"Epoch: [{epoch+1}/{self.max_epochs}]")
             train_loss = self._train_loop()
-            curr_loss = self._test_loop()
+            curr_loss = self._validation_loop()
             self.log.info(f"Train loss: {train_loss}")
             self.log.info(f"Test loss: {curr_loss}")
             self._checkpoint(epoch, curr_loss)

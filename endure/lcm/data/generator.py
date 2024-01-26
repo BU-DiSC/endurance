@@ -7,6 +7,12 @@ import numpy as np
 
 from endure.lsm.types import LSMDesign, System, Policy
 from endure.lsm.cost import EndureCost
+from endure.lcm.data.input_features import (
+    kWORKLOAD_HEADER,
+    kSYSTEM_HEADER,
+    kCOST_HEADER,
+    kINPUT_FEATS_DICT,
+)
 
 
 class LCMDataGenerator:
@@ -96,13 +102,13 @@ class LCMDataGenerator:
         return (system.B, system.s, system.E, system.H, system.N, design.h, design.T)
 
     def _gen_system_header(self) -> list:
-        return ["B", "s", "E", "H", "N"]
+        return kSYSTEM_HEADER
 
     def _gen_workload_header(self) -> list:
-        return ["z0", "z1", "q", "w"]
+        return kWORKLOAD_HEADER
 
     def _gen_cost_header(self) -> list:
-        return ["z0_cost", "z1_cost", "q_cost", "w_cost"]
+        return kCOST_HEADER
 
     def generate_row_csv(self) -> list:
         return []
@@ -120,8 +126,7 @@ class LCMDataGenerator:
         return []
 
     def generate_row(
-        self,
-        row_type: str = "parquet"
+        self, row_type: str = "parquet"
     ) -> Union[list, dict[str, Union[int, float]]]:
         if row_type == "parquet":
             row = self.generate_row_parquet()
@@ -129,6 +134,7 @@ class LCMDataGenerator:
             row = self.generate_row_csv()
 
         return row
+
 
 class ClassicGenerator(LCMDataGenerator):
     def __init__(
@@ -173,6 +179,7 @@ class ClassicGenerator(LCMDataGenerator):
         ]
 
         return line
+
 
 class KHybridGenerator(LCMDataGenerator):
     def __init__(self, config: dict[str, Any], precision: int = 3):
@@ -233,6 +240,7 @@ class KHybridGenerator(LCMDataGenerator):
 
         return line
 
+
 class QCostGenerator(LCMDataGenerator):
     def __init__(self, config: dict[str, Any], precision: int = 3):
         super().__init__(config, precision)
@@ -285,14 +293,15 @@ class QCostGenerator(LCMDataGenerator):
         ]
         return line
 
+
 class QCostBinaryGenerator(QCostGenerator):
     def __init__(self, config: dict[str, Any], precision: int = 3):
         super().__init__(config, precision)
 
     def _sample_q(self, max_size_ratio: int) -> int:
-        choices = (self._config["lsm"]["size_ratio"]["min"] - 1,
-                   max_size_ratio - 1)
+        choices = (self._config["lsm"]["size_ratio"]["min"] - 1, max_size_ratio - 1)
         return np.random.choice(choices)
+
 
 class YZCostGenerator(LCMDataGenerator):
     def __init__(self, config: dict[str, Any], precision: int = 3):

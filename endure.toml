@@ -156,13 +156,13 @@ drop_last = true
 [lsm]
 # Design will effect everything else down stream (e.g. choice of neural network
 # architecture for learned cost model)
-#   Level
 #   Tier
-#   KLSM
-#   QLSM
-#   YZLSM
-# design = 'QLSMIntegerVars'
-design = 'KLSM'
+#   Level
+#   Classic
+#   KHybrid
+#   QFixed
+#   YZHybrid
+design = 'KHybrid'
 max_levels = 20
 
 [lsm.size_ratio]
@@ -223,6 +223,7 @@ output_features = ["z0_cost", "z1_cost", "q_cost", "w_cost"]
 embedding_size = 8
 hidden_length = 3
 hidden_width = 32
+decision_dim = 64
 
 # Dropout percentage
 dropout = 0.0
