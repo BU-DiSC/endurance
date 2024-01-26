@@ -8,6 +8,7 @@ from jobs.lcm_data_gen import LCMDataGenJob
 from jobs.lcm_train import LCMTrainJob
 from jobs.ltune_data_gen import LTuneDataGenJob
 from jobs.ltune_train import LTuneTrainJob
+from jobs.bayesian_pipeline import BayesianPipeline
 
 
 class EndureDriver:
@@ -30,6 +31,7 @@ class EndureDriver:
             "LCMTrain": LCMTrainJob,
             "LTuneDataGen": LTuneDataGenJob,
             "LTuneTrain": LTuneTrainJob,
+            "BayesianBaseline": BayesianPipeline,
         }
 
         jobs_list = self.config["job"]["to_run"]
