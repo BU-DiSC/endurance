@@ -46,6 +46,7 @@ class LearnedCostModelBuilder:
             "hidden_length": model_params["hidden_length"],
             "hidden_width": model_params["hidden_width"],
             "dropout_percentage": model_params["dropout"],
+            "decision_dim": model_params["decision_dim"],
         }
 
         if model_params["norm_layer"] == "Batch":

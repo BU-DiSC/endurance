@@ -223,6 +223,7 @@ output_features = ["z0_cost", "z1_cost", "q_cost", "w_cost"]
 embedding_size = 8
 hidden_length = 3
 hidden_width = 32
+decision_dim = 64
 
 # Dropout percentage
 dropout = 0.0
