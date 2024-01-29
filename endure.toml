@@ -36,7 +36,8 @@ to_run = [
     # "LCMDataGen",
     # "LCMTrain",
     # "LTuneDataGen",
-    "LTuneTrain",
+    # "LTuneTrain",
+    "BayesianBaseline"
     # TODO: "CreateTunings",
     # TODO: "RunExperiments",
 ]
@@ -147,6 +148,44 @@ batch_size = 2
 shuffle = false
 num_workers = 1
 drop_last = true
+
+# -----------------------------------------------------------------------------
+[job.BayesianOptimization]
+# -----------------------------------------------------------------------------
+num_iterations = 15
+num_restarts = 20
+raw_samples = 100
+initial_samples = 50
+
+# This is the q value used in BoTorch Acquisition functions.
+# if it is set to a value above 1 sequential processing will stop in acquisition function and batch processing will start
+# note that for batch processing tensor shape will change and will require modification of code.
+# TODO: Add code to handle batch
+batch_size = 1
+
+# Acquisition function options
+#   [ExpectedImprovement, UpperConfidenceBound, qExpectedImprovement]
+acquisition_function = "ExpectedImprovement"
+
+[job.BayesianOptimization.system]
+E = 8192
+s = 4e-7
+B = 4
+N = 1000000000
+H = 10.0
+phi = 1.0
+
+[job.BayesianOptimization.workload]
+z0 = 0.25
+z1 = 0.25
+q = 0.25
+w = 0.25
+
+[job.BayesianOptimization.bounds]
+h_min = 0.0
+h_max = 10.0
+T_min = 2.0
+T_max = 31.0
 
 # =============================================================================
 # HEADER LSM
