@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Type
+from typing import Tuple
 
 from torch import nn
 import torch
@@ -14,23 +14,26 @@ class LearnedCostModelBuilder:
         hidden_length: int = 1,
         hidden_width: int = 64,
         embedding_size: int = 8,
-        norm_layer: Type[nn.BatchNorm1d | nn.LayerNorm] = nn.BatchNorm1d,
-        policy_embedding_size: int = 2,
+        norm_layer: str = "Batch",
+        policy_embedding_size: int = 2,  # only used for classic model
         decision_dim: int = 64,
-        dropout_percentage: float = 0.0,
+        dropout: float = 0.0,
         size_ratio_range: Tuple[int, int] = (2, 31),
         max_levels: int = 16,
     ) -> None:
         self.embedding_size = embedding_size
         self.policy_embedding_size = policy_embedding_size
-        self.norm_layer = norm_layer
         self.hidden_length = hidden_length
         self.hidden_width = hidden_width
         self.decision_dim = decision_dim
-        self.dropout_percentage = dropout_percentage
+        self.dropout = dropout
         self.max_levels = max_levels
         self.size_ratio_min, self.size_ratio_max = size_ratio_range
         self.capacity_range = self.size_ratio_max - self.size_ratio_min + 1
+
+        self.norm_layer = nn.BatchNorm1d
+        if norm_layer == "Layer":
+            self.norm_layer = nn.LayerNorm
 
         self._models = {
             Policy.KHybrid: KapModel,
@@ -58,7 +61,7 @@ class LearnedCostModelBuilder:
             "hidden_length": self.hidden_length,
             "hidden_width": self.hidden_width,
             "decision_dim": self.decision_dim,
-            "dropout_percentage": self.dropout_percentage,
+            "dropout_percentage": self.dropout,
             "norm_layer": self.norm_layer,
         }
 

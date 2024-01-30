@@ -25,12 +25,17 @@ class LCMDataGenJob:
 
     def _choose_generator(self) -> Generators.LCMDataGenerator:
         choice = self.setting["generator"]
+        max_levels = self.config["lsm"]["max_levels"]
         generators = {
-            "TierCost": Generators.ClassicGenerator(policies=[Policy.Tiering]),
-            "LevelCost": Generators.ClassicGenerator(policies=[Policy.Leveling]),
-            "QCost": Generators.QCostGenerator(),
-            "KHybridCost": Generators.KHybridGenerator(),
-            "ClassicCost": Generators.ClassicGenerator(),
+            "TierCost": Generators.ClassicGenerator(
+                policies=[Policy.Tiering], max_levels=max_levels
+            ),
+            "LevelCost": Generators.ClassicGenerator(
+                policies=[Policy.Leveling], max_levels=max_levels
+            ),
+            "QCost": Generators.QCostGenerator(max_levels=max_levels),
+            "KHybridCost": Generators.KHybridGenerator(max_levels=max_levels),
+            "ClassicCost": Generators.ClassicGenerator(max_levels=max_levels),
         }
         generator = generators.get(choice, None)
         if generator is None:

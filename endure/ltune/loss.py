@@ -14,27 +14,34 @@ class LearnedCostModelLoss(torch.nn.Module):
         self.penalty_factor = config["ltune"]["penalty_factor"]
         self.mem_budget_idx = config["ltune"]["input_features"].index("H")
 
-        self._lcm_config = toml.load(
+        lcm_cfg = toml.load(
             os.path.join(config["io"]["data_dir"], model_path, "endure.toml")
         )
-        self.lcm_builder = LearnedCostModelBuilder(self._lcm_config)
-        lcm_model = self._lcm_config["job"]["LCMTrain"]["model"]
+        lcm_size_ratio_min = lcm_cfg["lsm"]["size_ratio"]["min"]
+        lcm_size_ratio_max = lcm_cfg["lsm"]["size_ratio"]["max"]
+        self.lcm_builder = LearnedCostModelBuilder(
+            size_ratio_range=(lcm_size_ratio_min, lcm_size_ratio_max),
+            max_levels=lcm_cfg["lsm"]["max_levels"],
+            **lcm_cfg["lcm"]["model"],
+        )
+        lcm_model = lcm_cfg["job"]["LCMTrain"]["model"]
         self.model = self.lcm_builder.build_model(lcm_model)
 
         data = torch.load(
             os.path.join(config["io"]["data_dir"], model_path, "best.model")
         )
         status = self.model.load_state_dict(data)
-        self.k_penalty : bool = (
-            config["ltune"]["k_penalty"]
-            and (config["lsm"]["design"] == "KLSM")
+        self.k_penalty: bool = config["ltune"]["k_penalty"] and (
+            config["lsm"]["design"] == "KLSM"
         )
-        self.capacity_range = (
-            config["lsm"]["size_ratio"]["max"] -
-            config["lsm"]["size_ratio"]["min"] + 1
-        )
+        cfg_size_ratio_min = config["lsm"]["size_ratio"]["min"]
+        cfg_size_ratio_max = config["lsm"]["size_ratio"]["max"]
+        self.capacity_range = cfg_size_ratio_max - cfg_size_ratio_min + 1
         self.num_levels = config["lsm"]["max_levels"]
 
+        assert cfg_size_ratio_min == lcm_size_ratio_min
+        assert cfg_size_ratio_max == lcm_size_ratio_max
+        assert lcm_cfg["lsm"]["max_levels"] == config["lsm"]["max_levels"]
         assert len(status.missing_keys) == 0
         assert len(status.unexpected_keys) == 0
         self.model.eval()
@@ -70,8 +77,8 @@ class LearnedCostModelLoss(torch.nn.Module):
         size_ratio = torch.squeeze(torch.argmax(size_ratio, dim=-1))
         bpe = torch.squeeze(torch.clone(bpe))
         bpe[bpe < 0] = 0
-        max_bits = x[:, 7]    # H
-        num_elem = x[:, 8]    # N
+        max_bits = x[:, 7]  # H
+        num_elem = x[:, 8]  # N
         entry_size = x[:, 6]  # E
         bpe[bpe > max_bits] = max_bits[bpe > max_bits] - 0.1
         mbuff = (max_bits - bpe) * num_elem
@@ -84,12 +91,12 @@ class LearnedCostModelLoss(torch.nn.Module):
         batch, _ = k_decision.shape
         base = torch.zeros((batch, self.num_levels))
         base = torch.nn.functional.one_hot(
-            base.to(torch.long),
-            num_classes=self.capacity_range
-        ).flatten(start_dim=1)
+            base.to(torch.long), num_classes=self.capacity_range
+        )
+        base = base.flatten(start_dim=1)
 
         if k_decision.get_device() >= 0:  # Tensor on GPU
-            base = base.to(k_decision.get_device())
+            base = base.to(k_decision.device)
 
         penalty = k_decision - base
         penalty = penalty.square()
