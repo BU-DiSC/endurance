@@ -11,7 +11,6 @@ from endure.lcm.data.input_features import (
     kWORKLOAD_HEADER,
     kSYSTEM_HEADER,
     kCOST_HEADER,
-    kINPUT_FEATS_DICT,
 )
 
 
@@ -83,15 +82,11 @@ class LCMDataGenerator:
     def _sample_design(
         self,
         system: System,
-        policies: List[Policy] = [Policy.Tiering, Policy.Leveling],
     ) -> LSMDesign:
         EPSILON = 0.1
         h = self._sample_bloom_filter_bits(max=(system.H - EPSILON))
         T = self._sample_size_ratio()
-        policy = policies[0]
-        if len(policies) > 1:
-            policy = random.choice(policies)
-        lsm = LSMDesign(h, T, policy)
+        lsm = LSMDesign(h, T)
 
         return lsm
 
@@ -154,10 +149,24 @@ class ClassicGenerator(LCMDataGenerator):
     def generate_header(self) -> list:
         return self.header
 
+    def _sample_design(
+        self,
+        system: System,
+    ) -> LSMDesign:
+        EPSILON = 0.1
+        h = self._sample_bloom_filter_bits(max=(system.H - EPSILON))
+        T = self._sample_size_ratio()
+        policy = self.policies[0]
+        if len(self.policies) > 1:
+            policy = random.choice(self.policies)
+        lsm = LSMDesign(h, T, policy)
+
+        return lsm
+
     def generate_row_csv(self) -> list:
         z0, z1, q, w = self._sample_workload(4)
         system: System = self._sample_system()
-        design: LSMDesign = self._sample_design(system, policies=self.policies)
+        design: LSMDesign = self._sample_design(system)
 
         line = [
             z0 * self.cf.Z0(design, system),
