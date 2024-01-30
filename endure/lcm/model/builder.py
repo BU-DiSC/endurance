@@ -1,7 +1,6 @@
-from typing import Any
+from typing import Any, Tuple, Type
 
 from torch import nn
-import logging
 import torch
 
 from endure.lcm.data.input_features import kINPUT_FEATS_DICT
@@ -10,9 +9,29 @@ from endure.lsm.types import Policy
 
 
 class LearnedCostModelBuilder:
-    def __init__(self, config: dict[str, Any]) -> None:
-        self.log = logging.getLogger(config["log"]["name"])
-        self._config = config
+    def __init__(
+        self,
+        hidden_length: int = 1,
+        hidden_width: int = 64,
+        embedding_size: int = 8,
+        norm_layer: Type[nn.BatchNorm1d | nn.LayerNorm] = nn.BatchNorm1d,
+        policy_embedding_size: int = 2,
+        decision_dim: int = 64,
+        dropout_percentage: float = 0.0,
+        size_ratio_range: Tuple[int, int] = (2, 31),
+        max_levels: int = 16,
+    ) -> None:
+        self.embedding_size = embedding_size
+        self.policy_embedding_size = policy_embedding_size
+        self.norm_layer = norm_layer
+        self.hidden_length = hidden_length
+        self.hidden_width = hidden_width
+        self.decision_dim = decision_dim
+        self.dropout_percentage = dropout_percentage
+        self.max_levels = max_levels
+        self.size_ratio_min, self.size_ratio_max = size_ratio_range
+        self.capacity_range = self.size_ratio_max - self.size_ratio_min + 1
+
         self._models = {
             Policy.KHybrid: KapModel,
             Policy.QFixed: QModel,
@@ -28,41 +47,30 @@ class LearnedCostModelBuilder:
             raise TypeError("Illegal policy")
 
         num_feats = len(feats_list)
-        max_levels = self._config["lsm"]["max_levels"]
         if "K" in feats_list:
             # Add number of features to expand K to K0, K1, ..., K_maxlevels
-            num_feats += max_levels - 1
-        capacity_range = (
-            self._config["lsm"]["size_ratio"]["max"]
-            - self._config["lsm"]["size_ratio"]["min"]
-            + 1
-        )
+            num_feats += self.max_levels - 1
 
-        model_params = self._config["lcm"]["model"]
         args = {
             "num_feats": num_feats,
-            "capacity_range": capacity_range,
-            "embedding_size": model_params["embedding_size"],
-            "hidden_length": model_params["hidden_length"],
-            "hidden_width": model_params["hidden_width"],
-            "dropout_percentage": model_params["dropout"],
-            "decision_dim": model_params["decision_dim"],
+            "capacity_range": self.capacity_range,
+            "embedding_size": self.embedding_size,
+            "hidden_length": self.hidden_length,
+            "hidden_width": self.hidden_width,
+            "decision_dim": self.decision_dim,
+            "dropout_percentage": self.dropout_percentage,
+            "norm_layer": self.norm_layer,
         }
-
-        if model_params["norm_layer"] == "Batch":
-            args["norm_layer"] = nn.BatchNorm1d
-        elif model_params["norm_layer"] == "Layer":
-            args["norm_layer"] = nn.LayerNorm
 
         model_class = self._models.get(policy, None)
         if model_class is None:
-            raise NotImplementedError(f"Model for LSM Design not implemented yet")
+            raise NotImplementedError(f"Model for policy not implemented")
 
         if model_class is ClassicModel:
-            args["policy_embedding_size"] = model_params["policy_embedding_size"]
+            args["policy_embedding_size"] = self.policy_embedding_size
 
         if model_class is KapModel:
-            args["max_levels"] = max_levels
+            args["max_levels"] = self.max_levels
 
         model = model_class(**args)
 
