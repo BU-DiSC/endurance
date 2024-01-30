@@ -26,20 +26,15 @@ class LCMDataGenJob:
     def _choose_generator(self) -> Generators.LCMDataGenerator:
         choice = self.setting["generator"]
         generators = {
-            "TierCost": Generators.ClassicGenerator(
-                self.config, policies=[Policy.Tiering]
-            ),
-            "LevelCost": Generators.ClassicGenerator(
-                self.config, policies=[Policy.Leveling]
-            ),
-            "QCost": Generators.QCostGenerator(self.config),
-            "KHybridCost": Generators.KHybridGenerator(self.config),
-            "ClassicCost": Generators.ClassicGenerator(self.config),
+            "TierCost": Generators.ClassicGenerator(policies=[Policy.Tiering]),
+            "LevelCost": Generators.ClassicGenerator(policies=[Policy.Leveling]),
+            "QCost": Generators.QCostGenerator(),
+            "KHybridCost": Generators.KHybridGenerator(),
+            "ClassicCost": Generators.ClassicGenerator(),
         }
         generator = generators.get(choice, None)
         if generator is None:
-            self.log.warning("Invalid generator choice. Defaulting to KHybridCost")
-            return Generators.KHybridGenerator(self.config)
+            raise TypeError("Invalid generator choice")
 
         return generator
 
@@ -63,7 +58,7 @@ class LCMDataGenJob:
                 ncols=80,
                 disable=self.config["log"]["disable_tqdm"],
             ):
-                row = generator.generate_row_csv()
+                row = generator.generate_row()
                 writer.writerow(row)
 
         return idx
@@ -87,7 +82,7 @@ class LCMDataGenJob:
             ncols=80,
             disable=self.config["log"]["disable_tqdm"],
         ):
-            table.append(generator.generate_row_parquet())
+            table.append(generator.generate_row())
         table = pa.Table.from_pylist(table)
         pq.write_table(table, fpath)
 
