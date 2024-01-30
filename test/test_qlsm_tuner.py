@@ -17,8 +17,9 @@ def test_qlsm_tuner_train_shape(num_feats, capacity_range):
     out = tuner(x)
 
     assert out.shape == torch.Size([batch, output_len])
-    assert out.sum().item() != float('nan')
-    assert out.sum().item() != float('inf')
+    assert out.sum().item() != float("nan")
+    assert out.sum().item() != float("inf")
+
 
 @pytest.mark.parametrize("num_feats", [3])
 @pytest.mark.parametrize("capacity_range", [8])
@@ -33,5 +34,5 @@ def test_qlsm_tuner_test_shape(num_feats, capacity_range):
     out = tuner(x)
 
     assert out.shape == torch.Size([1, output_len])
-    assert out.sum().item() != float('nan')
-    assert out.sum().item() != float('inf')
+    assert out.sum().item() != float("nan")
+    assert out.sum().item() != float("inf")
