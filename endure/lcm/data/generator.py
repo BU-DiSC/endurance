@@ -20,7 +20,7 @@ class LCMDataGenerator:
         self._config = config
         self._header = None
         self.precision = precision
-        self.cf = EndureCost(config)
+        self.cf = EndureCost(self._config["lsm"]["max_levels"])
 
     def _sample_size_ratio(self) -> int:
         return np.random.randint(

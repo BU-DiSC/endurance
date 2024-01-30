@@ -21,7 +21,7 @@ class ClassicSolver:
         policies: Optional[List[Policy]] = None
     ):
         self.config = config
-        self.cf = EndureCost(config)
+        self.cf = EndureCost(config["lsm"]["max_levels"])
         if policies is None:
             policies = [Policy.Tiering, Policy.Leveling]
         self.policies = policies

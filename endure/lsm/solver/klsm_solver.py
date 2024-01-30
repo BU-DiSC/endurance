@@ -12,7 +12,7 @@ from .util import H_DEFAULT, T_DEFAULT, LAMBDA_DEFAULT, ETA_DEFAULT, K_DEFAULT
 class KLSMSolver:
     def __init__(self, config: dict[str, Any]):
         self.config = config
-        self.cf = EndureCost(config)
+        self.cf = EndureCost(config["lsm"]["max_levels"])
 
     def robust_objective(
         self,

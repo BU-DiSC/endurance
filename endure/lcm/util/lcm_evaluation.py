@@ -20,7 +20,7 @@ class LCMEvalUtil:
         self.gen = generator
         self.min_t = config["lsm"]["size_ratio"]["min"]
         self.max_t = config["lsm"]["size_ratio"]["max"]
-        self.cf = EndureCost(config)
+        self.cf = EndureCost(config["lsm"]["max_levels"])
 
     def eval_lcm(
         self,

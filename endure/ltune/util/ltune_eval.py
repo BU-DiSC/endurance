@@ -28,7 +28,7 @@ class LTuneEvalUtil:
         self.max_t = config["lsm"]["size_ratio"]["max"]
         self.min_t = config["lsm"]["size_ratio"]["min"]
         self.model = model
-        self.cf = EndureCost(config)
+        self.cf = EndureCost(config["lsm"]["max_levels"])
         self.config = config
         self.design_type = design_type
 
