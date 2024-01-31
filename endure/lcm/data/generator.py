@@ -153,9 +153,6 @@ class ClassicGenerator(LCMDataGenerator):
         decision = ["policy", "h", "T"]
         self.header = cost_header + workload_header + system_header + decision
 
-    def generate_header(self) -> list:
-        return self.header
-
     def _sample_design(
         self,
         system: System,
@@ -327,9 +324,6 @@ class YZCostGenerator(LCMDataGenerator):
         design = LSMDesign(h=h, T=T, policy=Policy.YZHybrid, Y=Y, Z=Z)
 
         return design
-
-    def generate_header(self) -> list:
-        return self.header
 
     def _gen_row_data(self) -> list:
         z0, z1, q, w = self._sample_workload(4)

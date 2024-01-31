@@ -19,7 +19,7 @@ class LCMDataSet(torch.utils.data.IterableDataset):
 
     def __init__(
         self,
-        folder,
+        folder: str,
         lsm_design: Policy,
         max_levels: int,
         max_size_ratio: int,
