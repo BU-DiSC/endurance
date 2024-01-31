@@ -8,7 +8,7 @@ from typing import Any, Callable, Optional
 import torch.optim as Opt
 from torch.utils.data import DataLoader
 
-from endure.ltune.data.dataset import LTuneIterableDataSet
+from endure.ltune.data.dataset import LTuneDataSet
 from endure.ltune.loss import LearnedCostModelLoss
 from endure.ltune.model.builder import LTuneModelBuilder
 from endure.util.lr_scheduler import LRSchedulerBuilder
@@ -56,8 +56,7 @@ class LTuneTrainJob:
             self._config["io"]["data_dir"],
             self._setting["train"]["dir"],
         )
-        train_data = LTuneIterableDataSet(
-            config=self._config,
+        train_data = LTuneDataSet(
             folder=train_dir,
             shuffle=self._setting["train"]["shuffle"],
             format=self._setting["train"]["format"],
@@ -78,8 +77,7 @@ class LTuneTrainJob:
             self._config["io"]["data_dir"],
             self._setting["test"]["dir"],
         )
-        test_data = LTuneIterableDataSet(
-            config=self._config,
+        test_data = LTuneDataSet(
             folder=test_dir,
             shuffle=self._setting["test"]["shuffle"],
             format=self._setting["test"]["format"],
