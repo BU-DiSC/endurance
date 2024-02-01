@@ -1,6 +1,6 @@
 import logging
 import random
-from typing import Any, List, Union, Optional
+from typing import List, Optional, Tuple
 from itertools import combinations_with_replacement
 
 import numpy as np
@@ -11,30 +11,48 @@ from endure.lcm.data.input_features import (
     kWORKLOAD_HEADER,
     kSYSTEM_HEADER,
     kCOST_HEADER,
-    kINPUT_FEATS_DICT,
 )
 
 
 class LCMDataGenerator:
-    def __init__(self, config: dict[str, Any], precision=3) -> None:
-        self.log = logging.getLogger(config["log"]["name"])
-        self._config = config
+    def __init__(
+        self,
+        bits_per_elem_range: Tuple[int, int] = (1, 10),
+        size_ratio_range: Tuple[int, int] = (2, 31),
+        page_sizes: List[int] = [4, 8, 16],
+        entry_sizes: List[int] = [1024, 2048, 4096, 8192],
+        memory_budget_range: Tuple[float, float] = (5.0, 20.0),
+        selectivity_range: Tuple[float, float] = (1e-7, 1e-9),
+        elements_range: Tuple[int, int] = (100000000, 1000000000),
+        max_levels: int = 16,
+        precision: int = 3,
+    ) -> None:
         self._header = None
         self.precision = precision
-        self.cf = EndureCost(config)
+
+        self.bits_per_elem_min = bits_per_elem_range[0]
+        self.bits_per_elem_max = bits_per_elem_range[1]
+        self.size_ratio_min = size_ratio_range[0]
+        self.size_ratio_max = size_ratio_range[1]
+        self.entry_sizes = entry_sizes
+        self.memory_budget_range = memory_budget_range
+        self.page_sizes = page_sizes
+        self.selectivity_range = selectivity_range
+        self.elements_range = elements_range
+        self.max_levels = max_levels
+        self.cf = EndureCost(max_levels=max_levels)
+
+        self.header = []
 
     def _sample_size_ratio(self) -> int:
-        return np.random.randint(
-            low=self._config["lsm"]["size_ratio"]["min"],
-            high=self._config["lsm"]["size_ratio"]["max"],
-        )
+        return np.random.randint(low=self.size_ratio_min, high=self.size_ratio_max)
 
     def _sample_bloom_filter_bits(self, max: Optional[float] = None) -> float:
         if max is None:
-            max = self._config["lsm"]["bits_per_elem"]["max"]
-        min = self._config["lsm"]["bits_per_elem"]["min"]
+            max = self.bits_per_elem_max
+        min = self.bits_per_elem_min
         sample = (max - min) * np.random.rand() + min
-        return np.around(sample, self._config["lcm"]["data"]["precision"])
+        return np.around(sample, self.precision)
 
     def _sample_workload(self, dimensions: int) -> list:
         # See stackoverflow thread for why the simple solution is not uniform
@@ -50,24 +68,23 @@ class LCMDataGenerator:
     def _sample_entry_per_page(self, entry_size: int = 8192) -> int:
         # Potential page sizes are 4KB, 8KB, 16KB
         KB_TO_BITS = 8 * 1024
-        page_sizes = np.array(self._config["generator"]["page_sizes"])
+        page_sizes = np.array(self.page_sizes)
         entries_per_page = (page_sizes * KB_TO_BITS) / entry_size
         return np.random.choice(entries_per_page)
 
     def _sample_selectivity(self) -> float:
-        low, high = self._config["generator"]["selectivity_range"]
+        low, high = self.selectivity_range
         return (high - low) * np.random.rand() + low
 
     def _sample_entry_size(self) -> int:
-        choices = self._config["generator"]["entry_sizes"]
-        return np.random.choice(choices)
+        return np.random.choice(self.entry_sizes)
 
     def _sample_memory_budget(self) -> float:
-        low, high = self._config["generator"]["memory_budget"]
+        low, high = self.memory_budget_range
         return (high - low) * np.random.rand() + low
 
     def _sample_total_elements(self) -> int:
-        low, high = self._config["generator"]["elements_range"]
+        low, high = self.elements_range
         return np.random.randint(low=low, high=high)
 
     def _sample_system(self) -> System:
@@ -83,15 +100,11 @@ class LCMDataGenerator:
     def _sample_design(
         self,
         system: System,
-        policies: List[Policy] = [Policy.Tiering, Policy.Leveling],
     ) -> LSMDesign:
         EPSILON = 0.1
         h = self._sample_bloom_filter_bits(max=(system.H - EPSILON))
         T = self._sample_size_ratio()
-        policy = policies[0]
-        if len(policies) > 1:
-            policy = random.choice(policies)
-        lsm = LSMDesign(h, T, policy)
+        lsm = LSMDesign(h, T)
 
         return lsm
 
@@ -110,40 +123,29 @@ class LCMDataGenerator:
     def _gen_cost_header(self) -> list:
         return kCOST_HEADER
 
-    def generate_row_csv(self) -> list:
+    def _gen_row_data(self) -> list:
         return []
 
-    def generate_row_parquet(self) -> dict:
+    def generate_header(self) -> list:
+        return self.header
+
+    def generate_row(self) -> dict:
         header = self.generate_header()
-        row = self.generate_row_csv()
+        row = self._gen_row_data()
         line = {}
         for key, val in zip(header, row):
             line[key] = val
 
         return line
 
-    def generate_header(self) -> list:
-        return []
-
-    def generate_row(
-        self, row_type: str = "parquet"
-    ) -> Union[list, dict[str, Union[int, float]]]:
-        if row_type == "parquet":
-            row = self.generate_row_parquet()
-        else:  # format == 'csv'
-            row = self.generate_row_csv()
-
-        return row
-
 
 class ClassicGenerator(LCMDataGenerator):
     def __init__(
         self,
-        config: dict[str, Any],
-        precision: int = 3,
         policies: List[Policy] = [Policy.Tiering, Policy.Leveling],
+        **kwargs,
     ):
-        super().__init__(config, precision)
+        super().__init__(**kwargs)
         self.policies = policies
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
@@ -151,13 +153,24 @@ class ClassicGenerator(LCMDataGenerator):
         decision = ["policy", "h", "T"]
         self.header = cost_header + workload_header + system_header + decision
 
-    def generate_header(self) -> list:
-        return self.header
+    def _sample_design(
+        self,
+        system: System,
+    ) -> LSMDesign:
+        EPSILON = 0.1
+        h = self._sample_bloom_filter_bits(max=(system.H - EPSILON))
+        T = self._sample_size_ratio()
+        policy = self.policies[0]
+        if len(self.policies) > 1:
+            policy = random.choice(self.policies)
+        lsm = LSMDesign(h, T, policy)
 
-    def generate_row_csv(self) -> list:
+        return lsm
+
+    def _gen_row_data(self) -> list:
         z0, z1, q, w = self._sample_workload(4)
         system: System = self._sample_system()
-        design: LSMDesign = self._sample_design(system, policies=self.policies)
+        design: LSMDesign = self._sample_design(system)
 
         line = [
             z0 * self.cf.Z0(design, system),
@@ -182,9 +195,8 @@ class ClassicGenerator(LCMDataGenerator):
 
 
 class KHybridGenerator(LCMDataGenerator):
-    def __init__(self, config: dict[str, Any], precision: int = 3):
-        super().__init__(config, precision)
-        self.max_levels = self._config["lsm"]["max_levels"]
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
         system_header = self._gen_system_header()
@@ -210,10 +222,7 @@ class KHybridGenerator(LCMDataGenerator):
 
         return list(arr)
 
-    def generate_header(self) -> list:
-        return self.header
-
-    def generate_row_csv(self) -> list:
+    def _gen_row_data(self) -> list:
         z0, z1, q, w = self._sample_workload(4)
         system: System = self._sample_system()
         design: LSMDesign = self._sample_design(system)
@@ -242,8 +251,8 @@ class KHybridGenerator(LCMDataGenerator):
 
 
 class QCostGenerator(LCMDataGenerator):
-    def __init__(self, config: dict[str, Any], precision: int = 3):
-        super().__init__(config, precision)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
         system_header = self._gen_system_header()
@@ -252,7 +261,7 @@ class QCostGenerator(LCMDataGenerator):
 
     def _sample_q(self, max_size_ratio: int) -> int:
         return np.random.randint(
-            low=self._config["lsm"]["size_ratio"]["min"] - 1,
+            low=self.size_ratio_min - 1,
             high=max_size_ratio,
         )
 
@@ -265,10 +274,7 @@ class QCostGenerator(LCMDataGenerator):
 
         return design
 
-    def generate_header(self) -> list:
-        return self.header
-
-    def generate_row_csv(self) -> list:
+    def _gen_row_data(self) -> list:
         z0, z1, q, w = self._sample_workload(4)
         system: System = self._sample_system()
         design: LSMDesign = self._sample_design(system)
@@ -294,18 +300,9 @@ class QCostGenerator(LCMDataGenerator):
         return line
 
 
-class QCostBinaryGenerator(QCostGenerator):
-    def __init__(self, config: dict[str, Any], precision: int = 3):
-        super().__init__(config, precision)
-
-    def _sample_q(self, max_size_ratio: int) -> int:
-        choices = (self._config["lsm"]["size_ratio"]["min"] - 1, max_size_ratio - 1)
-        return np.random.choice(choices)
-
-
 class YZCostGenerator(LCMDataGenerator):
-    def __init__(self, config: dict[str, Any], precision: int = 3):
-        super().__init__(config, precision)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
         system_header = self._gen_system_header()
@@ -314,7 +311,7 @@ class YZCostGenerator(LCMDataGenerator):
 
     def _sample_capacity(self, max_size_ratio: int) -> int:
         return np.random.randint(
-            low=self._config["lsm"]["size_ratio"]["min"] - 1,
+            low=self.size_ratio_min - 1,
             high=max_size_ratio,
         )
 
@@ -328,10 +325,7 @@ class YZCostGenerator(LCMDataGenerator):
 
         return design
 
-    def generate_header(self) -> list:
-        return self.header
-
-    def generate_row_csv(self) -> list:
+    def _gen_row_data(self) -> list:
         z0, z1, q, w = self._sample_workload(4)
         system: System = self._sample_system()
         design: LSMDesign = self._sample_design(system)

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from typing import Any
 import toml
 import logging
 import os
@@ -55,9 +56,16 @@ def build_validate(cfg, lsm_design: Policy) -> LCMDataSet:
     return validate
 
 
-def train_lcm(cfg):
+def train_lcm(cfg: dict[str, Any]):
     lsm_choice = STR_POLICY_DICT.get(cfg["lsm"]["design"], Policy.KHybrid)
-    net = LearnedCostModelBuilder(cfg).build_model(lsm_choice)
+    size_ratio_min = cfg["lsm"]["size_ratio"]["min"]
+    size_ratio_max = cfg["lsm"]["size_ratio"]["max"]
+    net_builder = LearnedCostModelBuilder(
+        size_ratio_range=(size_ratio_min, size_ratio_max),
+        max_levels=cfg["lsm"]["max_levels"],
+        **cfg["lcm"]["model"],
+    )
+    net = net_builder.build_model(lsm_choice)
 
     device = "cpu"
     if torch.cuda.is_available():

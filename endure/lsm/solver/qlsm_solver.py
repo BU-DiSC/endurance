@@ -1,4 +1,4 @@
-from typing import Any, Optional, Callable, Tuple, List
+from typing import Any, Optional, Callable, Tuple
 
 import numpy as np
 import scipy.optimize as SciOpt
@@ -11,7 +11,7 @@ from .util import H_DEFAULT, T_DEFAULT, LAMBDA_DEFAULT, ETA_DEFAULT, Q_DEFAULT
 class QLSMSolver:
     def __init__(self, config: dict[str, Any]):
         self.config = config
-        self.cf = EndureCost(config)
+        self.cf = EndureCost(config["lsm"]["max_levels"])
 
     def robust_objective(
         self,

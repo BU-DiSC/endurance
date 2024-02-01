@@ -11,7 +11,6 @@ import torch.optim as TorchOpt
 
 from endure.lcm.data.dataset import LCMDataSet
 from endure.lcm.model.builder import LearnedCostModelBuilder
-from endure.lcm.util import one_hot_lcm, one_hot_lcm_classic
 from endure.lsm.types import STR_POLICY_DICT, Policy
 from endure.util.losses import LossBuilder
 from endure.util.lr_scheduler import LRSchedulerBuilder
@@ -21,24 +20,24 @@ from endure.util.trainer import Trainer
 
 class LCMTrainJob:
     def __init__(self, config: dict[str, Any]) -> None:
-        self.app_cfg = config
-        self.log = logging.getLogger(self.app_cfg["log"]["name"])
+        self.config = config
+        self.log = logging.getLogger(self.config["log"]["name"])
         self.log.info("Running Training Job")
 
         self.job_cfg = config["job"]["LCMTrain"]
-        lsm_design = STR_POLICY_DICT.get(self.app_cfg["lsm"]["design"], None)
+        lsm_design = STR_POLICY_DICT.get(self.config["lsm"]["design"], None)
         if lsm_design is None:
-            raise TypeError(f"Invalid LSM design: {self.app_cfg['lsm']['design']}")
+            raise TypeError(f"Invalid LSM design: {self.config['lsm']['design']}")
         self.lsm_design = lsm_design
 
     def _build_loss_fn(self) -> torch.nn.Module:
         choice = self.job_cfg["loss_fn"]
         self.log.info(f"Loss function: {choice}")
 
-        loss = LossBuilder(self.app_cfg).build(choice)
+        loss = LossBuilder(self.config).build(choice)
         if loss is None:
             self.log.warn("Invalid loss function. Defaulting to MSE")
-            loss = LossBuilder(self.app_cfg).build("MSE")
+            loss = LossBuilder(self.config).build("MSE")
         assert loss is not None
 
         if self.job_cfg["use_gpu_if_avail"] and torch.cuda.is_available():
@@ -47,15 +46,22 @@ class LCMTrainJob:
         return loss
 
     def _build_model(self) -> torch.nn.Module:
-        model_choice = self.job_cfg["model"]
-        model = LearnedCostModelBuilder(self.app_cfg).build_model(model_choice)
+        lsm_choice = STR_POLICY_DICT.get(self.config["lsm"]["design"], Policy.KHybrid)
+        size_ratio_min = self.config["lsm"]["size_ratio"]["min"]
+        size_ratio_max = self.config["lsm"]["size_ratio"]["max"]
+        model_builder = LearnedCostModelBuilder(
+            size_ratio_range=(size_ratio_min, size_ratio_max),
+            max_levels=self.config["lsm"]["max_levels"],
+            **self.config["lcm"]["model"],
+        )
+        model = model_builder.build_model(lsm_choice)
         if self.job_cfg["use_gpu_if_avail"] and torch.cuda.is_available():
             model.to("cuda")
 
         return model
 
     def _build_optimizer(self, model) -> TorchOpt.Optimizer:
-        builder = OptimizerBuilder(self.app_cfg)
+        builder = OptimizerBuilder(self.config)
         choice = self.job_cfg["optimizer"]
 
         return builder.build_optimizer(choice, model)
@@ -63,24 +69,24 @@ class LCMTrainJob:
     def _build_scheduler(
         self, optimizer: TorchOpt.Optimizer
     ) -> Optional[TorchOpt.lr_scheduler._LRScheduler]:
-        builder = LRSchedulerBuilder(self.app_cfg)
+        builder = LRSchedulerBuilder(self.config)
         choice = self.job_cfg["lr_scheduler"]
 
         return builder.build_scheduler(optimizer, choice)
 
     def _build_train(self) -> DataLoader:
         train_dir = os.path.join(
-            self.app_cfg["io"]["data_dir"],
+            self.config["io"]["data_dir"],
             self.job_cfg["train"]["dir"],
         )
         self.log.debug(f"Train data dir: {train_dir}")
-        self.log.debug(f"Training features: {self.app_cfg['lcm']['input_features']}")
+        self.log.debug(f"Training features: {self.config['lcm']['input_features']}")
         train_data = LCMDataSet(
             folder=train_dir,
             lsm_design=self.lsm_design,
-            min_size_ratio=self.app_cfg["lsm"]["size_ratio"]["min"],
-            max_size_ratio=self.app_cfg["lsm"]["size_ratio"]["max"],
-            max_levels=self.app_cfg["lsm"]["max_levels"],
+            min_size_ratio=self.config["lsm"]["size_ratio"]["min"],
+            max_size_ratio=self.config["lsm"]["size_ratio"]["max"],
+            max_levels=self.config["lsm"]["max_levels"],
             shuffle=self.job_cfg["train"]["shuffle"],
         )
         train = DataLoader(
@@ -93,57 +99,18 @@ class LCMTrainJob:
 
         return train
 
-    # def _gather_inputs(self, data):
-    #     categories = (
-    #         self.app_cfg["lsm"]["size_ratio"]["max"]
-    #         - self.app_cfg["lsm"]["size_ratio"]["min"]
-    #         + 1
-    #     )
-    #     max_levels = self.app_cfg["lsm"]["max_levels"]
-    #     inputs = []
-    #     num_features = len(self.app_cfg["lcm"]["input_features"])
-    #
-    #     if self.lsm_design == Policy.Classic:
-    #         for item in data:
-    #             x = one_hot_lcm_classic(item[1], categories)
-    #             inputs.append(x)
-    #     elif self.lsm_design == Policy.QFixed:
-    #         for item in data:
-    #             x = one_hot_lcm(item[1], num_features, 2, categories)
-    #             inputs.append(x)
-    #     elif self.lsm_design == Policy.KHybrid:
-    #         # Add number of features to expand K to K0, K1, ..., K_{maxlevels}
-    #         num_features += max_levels - 1
-    #         for item in data:
-    #             x = one_hot_lcm(item[1], num_features, max_levels + 1, categories)
-    #             inputs.append(x)
-    #     else:
-    #         raise TypeError("Illegal design option, defaulting to Classic")
-    #
-    #     inputs = torch.stack(inputs)
-    #
-    #     return inputs
-    #
-    # def _test_collate_fn(self, data):
-    #     labels = np.array([item[0].numpy() for item in data])
-    #     labels = torch.from_numpy(labels)
-    #
-    #     inputs = self._gather_inputs(data)
-    #
-    #     return labels, inputs
-
     def _build_test(self) -> DataLoader:
         test_dir = os.path.join(
-            self.app_cfg["io"]["data_dir"],
+            self.config["io"]["data_dir"],
             self.job_cfg["test"]["dir"],
         )
         self.log.info(f"Test data: {test_dir}")
         test_data = LCMDataSet(
             folder=test_dir,
             lsm_design=self.lsm_design,
-            min_size_ratio=self.app_cfg["lsm"]["size_ratio"]["min"],
-            max_size_ratio=self.app_cfg["lsm"]["size_ratio"]["max"],
-            max_levels=self.app_cfg["lsm"]["max_levels"],
+            min_size_ratio=self.config["lsm"]["size_ratio"]["min"],
+            max_size_ratio=self.config["lsm"]["size_ratio"]["max"],
+            max_levels=self.config["lsm"]["max_levels"],
             test=True,
             shuffle=self.job_cfg["test"]["shuffle"],
         )
@@ -161,7 +128,7 @@ class LCMTrainJob:
     def _make_save_dir(self) -> Optional[str]:
         self.log.info(f"Saving tuner in {self.job_cfg['save_dir']}")
         save_dir = os.path.join(
-            self.app_cfg["io"]["data_dir"],
+            self.config["io"]["data_dir"],
             self.job_cfg["save_dir"],
         )
         try:
@@ -171,7 +138,7 @@ class LCMTrainJob:
 
         # dump configuration file
         with open(os.path.join(save_dir, "endure.toml"), "w") as fid:
-            toml.dump(self.app_cfg, fid)
+            toml.dump(self.config, fid)
 
         return save_dir
 
@@ -187,7 +154,7 @@ class LCMTrainJob:
         train_data = self._build_train()
         test_data = self._build_test()
         loss_fn = self._build_loss_fn()
-        disable_tqdm = self.app_cfg["log"]["disable_tqdm"]
+        disable_tqdm = self.config["log"]["disable_tqdm"]
 
         trainer = Trainer(
             log=self.log,

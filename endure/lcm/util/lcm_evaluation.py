@@ -1,6 +1,3 @@
-from typing import Any
-
-from torch import Tensor
 import torch
 
 from .util import eval_lcm_impl
@@ -11,16 +8,17 @@ from endure.lsm.types import LSMDesign, Policy, System
 class LCMEvalUtil:
     def __init__(
         self,
-        config: dict[str, Any],
+        min_size_ratio: int,
+        max_size_ratio: int,
+        max_levels: int,
         model: torch.nn.Module,
         generator: LCMDataGenerator,
     ) -> None:
-        self.config = config
         self.model = model
         self.gen = generator
-        self.min_t = config["lsm"]["size_ratio"]["min"]
-        self.max_t = config["lsm"]["size_ratio"]["max"]
-        self.cf = EndureCost(config)
+        self.min_t = min_size_ratio
+        self.max_t = max_size_ratio
+        self.cf = EndureCost(max_levels=max_levels)
 
     def eval_lcm(
         self,

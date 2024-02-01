@@ -1,15 +1,12 @@
-from typing import Any
-
 import numpy as np
 import endure.lsm.lsm_cost as Cost
 from endure.lsm.types import Policy, System, LSMDesign
 
 
 class EndureCost:
-    def __init__(self, config: dict[str, Any]) -> None:
+    def __init__(self, max_levels: int) -> None:
         super().__init__()
-        self._config = config
-        self.max_levels = config["lsm"]["max_levels"]
+        self.max_levels = max_levels
 
     def L(self, design: LSMDesign, system: System, ceil=False):
         level = Cost.calc_level(design.h, design.T, system.E, system.H, system.N, ceil)
