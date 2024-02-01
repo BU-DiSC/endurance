@@ -1,22 +1,26 @@
-from typing import Any, Union
-import logging
+from typing import List, Tuple, Union
 
 import numpy as np
 
-from endure.lsm.types import LSMDesign, System, Policy
+from endure.lsm.types import System
+from endure.ltune.data.input_features import kSYSTEM_HEADER, kWORKLOAD_HEADER
 
 
-class LTuneGenerator:
+class LTuneDataGenerator:
     def __init__(
         self,
-        config: dict[str, Any],
-        format: str = "parquet",
+        page_sizes: List[int] = [4, 8, 16],
+        entry_sizes: List[int] = [1024, 2048, 4096, 8192],
+        memory_budget_range: Tuple[float, float] = (5.0, 20.0),
+        selectivity_range: Tuple[float, float] = (1e-7, 1e-9),
+        elements_range: Tuple[int, int] = (100000000, 1000000000),
         precision: int = 3,
     ) -> None:
-        self.log = logging.getLogger(config["log"]["name"])
-        self._config = config
-        self._header = self._gen_workload_header() + self._gen_system_header()
-        self.format = format
+        self.entry_sizes = entry_sizes
+        self.memory_budget_range = memory_budget_range
+        self.page_sizes = page_sizes
+        self.selectivity_range = selectivity_range
+        self.elements_range = elements_range
         self.precision = precision
 
     def _sample_workload(self, dimensions: int) -> list:
@@ -31,25 +35,25 @@ class LTuneGenerator:
     # TODO: Will want to configure environment to simulate larger ranges over
     # potential system values
     def _sample_entry_per_page(self, entry_size: int = 8192) -> int:
+        # Potential page sizes are 4KB, 8KB, 16KB
         KB_TO_BITS = 8 * 1024
-        page_sizes = np.array(self._config["generator"]["page_sizes"])
+        page_sizes = np.array(self.page_sizes)
         entries_per_page = (page_sizes * KB_TO_BITS) / entry_size
         return np.random.choice(entries_per_page)
 
     def _sample_selectivity(self) -> float:
-        low, high = self._config["generator"]["selectivity_range"]
+        low, high = self.selectivity_range
         return (high - low) * np.random.rand() + low
 
     def _sample_entry_size(self) -> int:
-        choices = self._config["generator"]["entry_sizes"]
-        return np.random.choice(choices)
+        return np.random.choice(self.entry_sizes)
 
     def _sample_memory_budget(self) -> float:
-        low, high = self._config["generator"]["memory_budget"]
+        low, high = self.memory_budget_range
         return (high - low) * np.random.rand() + low
 
     def _sample_total_elements(self) -> int:
-        low, high = self._config["generator"]["elements_range"]
+        low, high = self.elements_range
         return np.random.randint(low=low, high=high)
 
     def _sample_system(self) -> System:
@@ -63,10 +67,10 @@ class LTuneGenerator:
         return system
 
     def _gen_system_header(self) -> list:
-        return ["B", "s", "E", "H", "N"]
+        return kSYSTEM_HEADER
 
     def _gen_workload_header(self) -> list:
-        return ["z0", "z1", "q", "w"]
+        return kWORKLOAD_HEADER
 
     def generate_header(self) -> list:
         return self._gen_workload_header() + self._gen_system_header()
@@ -89,7 +93,7 @@ class LTuneGenerator:
 
         return line
 
-    def generate_row_parquet(self) -> dict[str, Union[int, float]]:
+    def generate_row(self) -> dict[str, Union[int, float]]:
         header = self.generate_header()
         row = self.generate_row_csv()
         line = {}
@@ -97,14 +101,3 @@ class LTuneGenerator:
             line[key] = val
 
         return line
-
-    def generate_row(
-        self,
-        row_type: str = "parquet"
-    ) -> Union[list, dict[str, Union[int, float]]]:
-        if row_type == "parquet":
-            row = self.generate_row_parquet()
-        else:  # format == 'csv'
-            row = self.generate_row_csv()
-
-        return row

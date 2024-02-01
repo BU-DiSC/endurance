@@ -9,7 +9,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from endure.data.io import Reader
-from endure.ltune.data.generator import LTuneGenerator
+from endure.ltune.data.generator import LTuneDataGenerator
 
 
 class LTuneDataGenJob:
@@ -23,7 +23,7 @@ class LTuneDataGenJob:
         )
 
     def _choose_generator(self):
-        return LTuneGenerator(self.config)
+        return LTuneDataGenerator()
 
     def generate_csv_file(self, generator, idx: int, pos: int) -> int:
         fname_prefix = self.setting["file_prefix"]
@@ -52,7 +52,7 @@ class LTuneDataGenJob:
         return idx
 
     def generate_parquet_file(
-        self, generator: LTuneGenerator, idx: int, pos: int
+        self, generator: LTuneDataGenerator, idx: int, pos: int
     ) -> int:
         fname_prefix = self.setting["file_prefix"]
         fname = f"{fname_prefix}-{idx:04}.parquet"
@@ -71,7 +71,7 @@ class LTuneDataGenJob:
             ncols=80,
             disable=self.config["log"]["disable_tqdm"],
         ):
-            table.append(generator.generate_row_parquet())
+            table.append(generator.generate_row())
         table = pa.Table.from_pylist(table)
         pq.write_table(table, fpath)
 
