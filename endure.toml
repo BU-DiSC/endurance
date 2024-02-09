@@ -312,8 +312,6 @@ norm_layer = "Batch"
 
 categorical_mode = "reinmax"
 
-k_clip = true
-
 # kwargs specific to LTune models during forward pass
 [ltune.model.train_kwargs]
 temp = 1

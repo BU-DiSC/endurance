@@ -1,44 +1,33 @@
 import glob
-import logging
 import numpy as np
 import os
 import pandas as pd
 import pyarrow.parquet as pa
 import torch
 import torch.utils.data
-from typing import Any
+
+from endure.ltune.data.input_features import kINPUT_FEATS
 
 
-class LTuneIterableDataSet(torch.utils.data.IterableDataset):
+class LTuneDataSet(torch.utils.data.IterableDataset):
     def __init__(
         self,
-        config: dict[str, Any],
         folder: str,
         format: str = "parquet",
         shuffle: bool = False,
-    ):
-        self.log = logging.getLogger(config["log"]["name"])
-        self._config = config
+    ) -> None:
         self._format = format
         self._fnames = glob.glob(os.path.join(folder, "*." + format))
         self._shuffle = shuffle
 
     def _get_input_cols(self):
-        return self._config["ltune"]["input_features"]
+        return kINPUT_FEATS
 
     def _load_data(self, fname):
         if self._format == "parquet":
             df = pa.read_table(fname).to_pandas()
         else:
             df = pd.read_csv(fname)
-        if self._config["ltune"]["data"]["normalize_inputs"]:
-            df = self._normalize_df(df)
-
-        return df
-
-    def _normalize_df(self, df):
-        df[["z0", "z1", "q", "w"]] -= [0.5, 0.5, 0.5, 0.5]
-        df[["z0", "z1", "q", "w"]] /= [0.3, 0.3, 0.3, 0.3]
 
         return df
 

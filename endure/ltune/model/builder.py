@@ -1,58 +1,65 @@
 import torch
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, Tuple, Type
 from torch import nn
-from reinmax import reinmax
+from endure.lsm.types import Policy
 
 from endure.ltune.model import ClassicTuner, QLSMTuner, KapLSMTuner
+from endure.ltune.data.input_features import kINPUT_FEATS
 
 
 class LTuneModelBuilder:
-    def __init__(self, config: dict[str, Any]):
-        self._config = config
-        self.log = logging.getLogger(self._config["log"]["name"])
+    def __init__(
+        self,
+        hidden_length: int = 1,
+        hidden_width: int = 64,
+        norm_layer: str = "Batch",
+        dropout: float = 0.0,
+        categorical_mode: str = "gumbel",
+        size_ratio_range: Tuple[int, int] = (2, 31),
+        max_levels: int = 16,
+    ) -> None:
+        self.hidden_length = hidden_length
+        self.hidden_width = hidden_width
+        self.dropout = dropout
+        self.categorical_mode = categorical_mode
+        self.max_levels = max_levels
+        self.size_ratio_min, self.size_ratio_max = size_ratio_range
+        self.capacity_range = self.size_ratio_max - self.size_ratio_min + 1
+
+        self.norm_layer = nn.BatchNorm1d
+        if norm_layer == "Layer":
+            self.norm_layer = nn.LayerNorm
+
         self._models = {
-            # "Tier": ClassicTuner,
-            # "Level": ClassicTuner,
-            "KLSM": KapLSMTuner,
-            "Classic": ClassicTuner,
-            "QLSM": QLSMTuner,
+            Policy.Classic: ClassicTuner,
+            Policy.QFixed: QLSMTuner,
+            Policy.KHybrid: KapLSMTuner,
         }
 
     def get_choices(self):
         return self._models.keys()
 
-    def build_model(self, choice: Optional[str] = None) -> torch.nn.Module:
-        lsm_design: str = self._config["lsm"]["design"]
-        if choice is None:
-            choice = lsm_design
+    def build_model(self, policy: Policy) -> torch.nn.Module:
+        feat_list = kINPUT_FEATS
 
-        model_params = self._config["ltune"]["model"]
-        capacity_range = (
-            self._config["lsm"]["size_ratio"]["max"] -
-            self._config["lsm"]["size_ratio"]["min"] + 1
-        )
-        args = {
-            'num_feats': len(self._config["ltune"]["input_features"]),
-            'capacity_range': capacity_range,
-            'hidden_length': model_params["hidden_length"],
-            'hidden_width': model_params["hidden_width"],
-            'dropout_percentage': model_params["dropout"],
+        kwargs = {
+            "num_feats": len(feat_list),
+            "capacity_range": self.capacity_range,
+            "hidden_length": self.hidden_length,
+            "hidden_width": self.hidden_width,
+            "dropout_percentage": self.dropout,
+            "norm_layer": self.norm_layer,
         }
 
-        if model_params["norm_layer"] == "Batch":
-            args['norm_layer'] = nn.BatchNorm1d
-        elif model_params["norm_layer"] == "Layer":
-            args['norm_layer'] = nn.LayerNorm
-
-        model_class = self._models.get(choice, None)
+        model_class = self._models.get(policy, None)
         if model_class is None:
-            raise NotImplementedError(f"Model for LSM Design not implemented yet")
+            raise NotImplementedError(f"Tuner for LSM Design not implemented.")
 
         if model_class is KapLSMTuner:
-            args['num_kap'] = self._config['lsm']['max_levels']
-            args['categorical_mode'] = model_params.get('categorical_mode', 'gumbel')
+            kwargs["num_kap"] = self.max_levels
+            kwargs["categorical_mode"] = self.categorical_mode
 
-        model = model_class(**args)
+        model = model_class(**kwargs)
 
         return model

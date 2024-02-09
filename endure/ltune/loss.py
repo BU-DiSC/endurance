@@ -6,6 +6,7 @@ from torch import Tensor
 import toml
 
 from endure.lcm.model.builder import LearnedCostModelBuilder
+from endure.lsm.types import STR_POLICY_DICT
 
 
 class LearnedCostModelLoss(torch.nn.Module):
@@ -24,7 +25,9 @@ class LearnedCostModelLoss(torch.nn.Module):
             max_levels=lcm_cfg["lsm"]["max_levels"],
             **lcm_cfg["lcm"]["model"],
         )
-        lcm_model = lcm_cfg["job"]["LCMTrain"]["model"]
+        lcm_model = STR_POLICY_DICT.get(lcm_cfg["lsm"]["design"], None)
+        if lcm_model is None:
+            raise TypeError(f"Illegal LCM model choice: {lcm_model=}")
         self.model = self.lcm_builder.build_model(lcm_model)
 
         data = torch.load(

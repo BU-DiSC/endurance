@@ -8,7 +8,8 @@ from typing import Any, Callable, Optional
 import torch.optim as Opt
 from torch.utils.data import DataLoader
 
-from endure.ltune.data.dataset import LTuneIterableDataSet
+from endure.lsm.types import STR_POLICY_DICT
+from endure.ltune.data.dataset import LTuneDataSet
 from endure.ltune.loss import LearnedCostModelLoss
 from endure.ltune.model.builder import LTuneModelBuilder
 from endure.util.lr_scheduler import LRSchedulerBuilder
@@ -23,6 +24,11 @@ class LTuneTrainJob:
         self.log = logging.getLogger(self._config["log"]["name"])
         self.log.info("Running Training Job")
 
+        policy = STR_POLICY_DICT.get(self._config["lsm"]["design"], None)
+        if policy is None:
+            raise TypeError(f"Invalid LSM Design")
+        self.policy = policy
+
     def _build_loss_fn(self) -> torch.nn.Module:
         model = LearnedCostModelLoss(self._config, self._setting["loss_fn_path"])
         if self._setting["use_gpu_if_avail"] and torch.cuda.is_available():
@@ -31,7 +37,18 @@ class LTuneTrainJob:
         return model
 
     def _build_model(self) -> torch.nn.Module:
-        model = LTuneModelBuilder(self._config).build_model()
+        size_ratio_min = self._config["lsm"]["size_ratio"]["min"]
+        size_ratio_max = self._config["lsm"]["size_ratio"]["max"]
+        builder = LTuneModelBuilder(
+            hidden_width=self._config["ltune"]["model"]["hidden_width"],
+            hidden_length=self._config["ltune"]["model"]["hidden_length"],
+            dropout=self._config["ltune"]["model"]["dropout"],
+            norm_layer=self._config["ltune"]["model"]["norm_layer"],
+            categorical_mode=self._config["ltune"]["model"]["categorical_mode"],
+            size_ratio_range=(size_ratio_min, size_ratio_max),
+            max_levels=self._config["lsm"]["max_levels"],
+        )
+        model = builder.build_model(self.policy)
         if self._setting["use_gpu_if_avail"] and torch.cuda.is_available():
             model.to("cuda")
 
@@ -56,8 +73,7 @@ class LTuneTrainJob:
             self._config["io"]["data_dir"],
             self._setting["train"]["dir"],
         )
-        train_data = LTuneIterableDataSet(
-            config=self._config,
+        train_data = LTuneDataSet(
             folder=train_dir,
             shuffle=self._setting["train"]["shuffle"],
             format=self._setting["train"]["format"],
@@ -78,8 +94,7 @@ class LTuneTrainJob:
             self._config["io"]["data_dir"],
             self._setting["test"]["dir"],
         )
-        test_data = LTuneIterableDataSet(
-            config=self._config,
+        test_data = LTuneDataSet(
             folder=test_dir,
             shuffle=self._setting["test"]["shuffle"],
             format=self._setting["test"]["format"],
