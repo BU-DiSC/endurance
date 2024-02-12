@@ -3,6 +3,7 @@ import numpy as np
 from typing import List, Optional, Tuple
 import logging
 import csv
+import os
 
 from botorch.models import MixedSingleTaskGP
 from botorch.fit import fit_gpytorch_model
@@ -42,21 +43,30 @@ class BayesianPipeline:
         self.raw_samples: int = self.bayesian_setting["raw_samples"]
         self.num_iterations: int = self.bayesian_setting["num_iterations"]
         self.beta_value: float = self.bayesian_setting["beta_value"]
-        self.conn = initialize_database()
+        self.conn = None
         self.run_id: int = None
+        self.write_to_db = self.bayesian_setting["write_to_db"]
+        self.output_dir = os.path.join(
+            self.config["io"]["data_dir"], self.bayesian_setting["db_path"]
+        )
+        self.db_path = os.path.join(self.output_dir, self.bayesian_setting["db_name"])
 
     def run(self, system: Optional[System] = None, z0: Optional[float] = None, z1: Optional[float] = None,
             q: Optional[float] = None, w: Optional[float] = None, num_iterations: Optional[int] = None,
-            sample_size: Optional[int] = None, acqf: Optional[str] = None) -> Tuple[Optional[LSMDesign], Optional[float]]:
-
+            sample_size: Optional[int] = None, acqf: Optional[str] = None) -> Tuple[Optional[LSMDesign],
+                                                                                    Optional[float]]:
+        os.makedirs(self.output_dir, exist_ok=True)
+        self.conn = initialize_database(self.db_path)
         system = system if system is not None else self.system
         sample_size = sample_size if sample_size is not None else self.initial_samples
         z0 = z0 if z0 is not None else self.workload.z0
         z1 = z1 if z1 is not None else self.workload.z1
         q = q if q is not None else self.workload.q
         w = w if w is not None else self.workload.w
+        w = w if w is not None else self.workload.w
         acqf = acqf if acqf is not None else self.acquisition_function
         workload = Workload(z0, z1, q, w)
+        print("path", self.db_path)
         self.run_id = log_new_run(self.conn, system, workload)
         iterations = num_iterations if num_iterations is not None else self.num_iterations
         train_x, train_y, best_y = self._generate_initial_data(z0, z1, q, w, system, sample_size)
