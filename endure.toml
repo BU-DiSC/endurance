@@ -153,9 +153,10 @@ drop_last = true
 [job.BayesianOptimization]
 # -----------------------------------------------------------------------------
 num_iterations = 15
-num_restarts = 20
-raw_samples = 100
-initial_samples = 50
+num_restarts = 200
+raw_samples = 512
+initial_samples = 30
+max_levels = 16
 
 # This is the q value used in BoTorch Acquisition functions.
 # if it is set to a value above 1 sequential processing will stop in acquisition function and batch processing will start
@@ -166,23 +167,24 @@ batch_size = 1
 # Acquisition function options
 #   [ExpectedImprovement, UpperConfidenceBound, qExpectedImprovement]
 acquisition_function = "ExpectedImprovement"
+beta_value = 0.3
 
 [job.BayesianOptimization.system]
-E = 8192
-s = 4e-7
-B = 4
-N = 1000000000
-H = 10.0
+E = 1024
+s = 1.905581e-8
+B = 64.0
+N = 522365629
+H = 5.705814
 phi = 1.0
 
 [job.BayesianOptimization.workload]
-z0 = 0.25
-z1 = 0.25
-q = 0.25
-w = 0.25
+z0 = 0.063
+z1 = 0.190
+q = 0.545
+w = 0.202
 
 [job.BayesianOptimization.bounds]
-h_min = 0.0
+h_min = 1.0
 h_max = 10.0
 T_min = 2.0
 T_max = 31.0
