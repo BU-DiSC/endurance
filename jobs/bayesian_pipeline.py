@@ -1,217 +1,251 @@
 import torch
 import numpy as np
-from typing import Any, List, Union, Optional, Tuple
+from typing import List, Optional, Tuple
 import logging
+import csv
+import os
 
-from botorch.models import SingleTaskGP
+from botorch.models import MixedSingleTaskGP
 from botorch.fit import fit_gpytorch_model
 from gpytorch.mlls import ExactMarginalLogLikelihood
-from botorch.acquisition import ExpectedImprovement
-from botorch.acquisition import UpperConfidenceBound
+from botorch.acquisition import ExpectedImprovement, UpperConfidenceBound
 from botorch.acquisition.monte_carlo import qExpectedImprovement
-from botorch.optim import optimize_acqf
+from botorch.optim import optimize_acqf_mixed
+from botorch.models.transforms import Normalize, Standardize
 
 from endure.lsm.cost import EndureCost
 from endure.data.io import Reader
-from endure.lcm.data.generator import LCMDataGenerator
 from endure.lsm.types import LSMDesign, System, Policy, Workload
+from endure.lcm.data.generator import LCMDataGenerator
 from endure.lsm.solver.classic_solver import ClassicSolver
+from endure.util.db_log import initialize_database, log_new_run, log_design_cost
 
 
 class BayesianPipeline:
-    def __init__(self, config):
-        self.config = config
-        self.bayesian_setting = config["job"]["BayesianOptimization"]
-        self.cf = EndureCost(self.config["lsm"]["max_levels"])
-        self.log = logging.getLogger(config["log"]["name"])
-        self.lcm_data_generator = LCMDataGenerator(config)
+    def __init__(self, conf: dict) -> None:
+        self.config: dict = conf
+        self.bayesian_setting: dict = self.config["job"]["BayesianOptimization"]
+        self.cf: EndureCost = EndureCost(self.bayesian_setting["max_levels"])
+        self.log: logging.Logger = logging.getLogger(self.config["log"]["name"])
 
-        self.system = System(**self.bayesian_setting["system"])
-        self.workload = Workload(**self.bayesian_setting["workload"])
-        self.h_bounds = torch.tensor(
-            [
-                self.bayesian_setting["bounds"]["h_min"],
-                self.bayesian_setting["bounds"]["h_max"],
-            ]
+        self.system: System = System(**self.bayesian_setting["system"])
+        self.workload: Workload = Workload(**self.bayesian_setting["workload"])
+        self.h_bounds: torch.Tensor = torch.tensor([self.bayesian_setting["bounds"]["h_min"],
+                                                    self.bayesian_setting["system"]["H"]])
+        self.T_bounds: torch.Tensor = torch.tensor([self.bayesian_setting["bounds"]["T_min"],
+                                                    self.bayesian_setting["bounds"]["T_max"]])
+        self.policy_bounds: torch.Tensor = torch.tensor([0.0, 1.0])
+        self.bounds: torch.Tensor = torch.stack([self.h_bounds, self.T_bounds, self.policy_bounds], dim=-1)
+        self.initial_samples: int = self.bayesian_setting["initial_samples"]
+        self.acquisition_function: str = self.bayesian_setting["acquisition_function"]
+        self.q: int = self.bayesian_setting["batch_size"]
+        self.num_restarts: int = self.bayesian_setting["num_restarts"]
+        self.raw_samples: int = self.bayesian_setting["raw_samples"]
+        self.num_iterations: int = self.bayesian_setting["num_iterations"]
+        self.beta_value: float = self.bayesian_setting["beta_value"]
+        self.conn = None
+        self.run_id: int = None
+        self.write_to_db = self.bayesian_setting["write_to_db"]
+        self.output_dir = os.path.join(
+            self.config["io"]["data_dir"], self.bayesian_setting["db_path"]
         )
-        self.T_bounds = torch.tensor(
-            [
-                self.bayesian_setting["bounds"]["T_min"],
-                self.bayesian_setting["bounds"]["T_max"],
-            ]
-        )
-        self.bounds = torch.stack([self.h_bounds, self.T_bounds])
-        self.initial_samples = self.bayesian_setting["initial_samples"]
-        self.acquisition_function = self.bayesian_setting["acquisition_function"]
-        self.q = self.bayesian_setting["batch_size"]
-        self.num_restarts = self.bayesian_setting["num_restarts"]
-        self.raw_samples = self.bayesian_setting["raw_samples"]
-        self.num_iterations = self.bayesian_setting["num_iterations"]
-        self.best_designs = []
+        self.db_path = os.path.join(self.output_dir, self.bayesian_setting["db_name"])
 
-        # model initial generation where:
-        # train_x is the parameters we are optimizing
-        # train_y is the target that we are optimizing that is minimized or maximized
-        self.train_x, self.train_y = self._generate_initial_data(
-            self.system, self.initial_samples
-        )
-        self.scaled_train_x, self.standardized_train_y = self._scale_and_standardize(
-            self.train_x, self.train_y
-        )
-        self.mll, self.gp_model = self._initialize_model(
-            self.scaled_train_x, self.standardized_train_y
-        )
+    def run(self, system: Optional[System] = None, z0: Optional[float] = None, z1: Optional[float] = None,
+            q: Optional[float] = None, w: Optional[float] = None, num_iterations: Optional[int] = None,
+            sample_size: Optional[int] = None, acqf: Optional[str] = None) -> Tuple[Optional[LSMDesign],
+                                                                                    Optional[float]]:
+        os.makedirs(self.output_dir, exist_ok=True)
+        self.conn = initialize_database(self.db_path)
+        system = system if system is not None else self.system
+        sample_size = sample_size if sample_size is not None else self.initial_samples
+        z0 = z0 if z0 is not None else self.workload.z0
+        z1 = z1 if z1 is not None else self.workload.z1
+        q = q if q is not None else self.workload.q
+        w = w if w is not None else self.workload.w
+        w = w if w is not None else self.workload.w
+        acqf = acqf if acqf is not None else self.acquisition_function
+        workload = Workload(z0, z1, q, w)
+        print("path", self.db_path)
+        self.run_id = log_new_run(self.conn, system, workload)
+        iterations = num_iterations if num_iterations is not None else self.num_iterations
+        train_x, train_y, best_y = self._generate_initial_data(z0, z1, q, w, system, sample_size)
+        bounds = self.generate_initial_bounds(system)
+        best_designs = []
 
-    def run(self) -> None:
-        self.log.debug("Starting Bayesian Optimization")
-        for i in range(self.num_iterations):
-            new_x, new_y = self._optimize_acquisition_function(
-                self.acquisition_function, self.gp_model, self.train_y
-            )
-            self.train_x = torch.cat([self.train_x, new_x])
-            self.train_y = torch.cat([self.train_y.squeeze(), new_y])
-            self.gp_model.set_train_data(
-                inputs=self.train_x, targets=self.train_y, strict=False
-            )
-            fit_gpytorch_model(self.mll)
-            self._update_best_designs(new_x, new_y)
-            self.log.debug(f"Iteration {i+1}/{self.num_iterations} complete")
-        self._print_best_designs()
-        self._find_analytical_results()
+        for i in range(iterations):
+            new_candidates = self.get_next_points(train_x, train_y, best_y, bounds, acqf, 1)
+            for cand in new_candidates:
+                h, size_ratio, policy_val = cand[0].item(), cand[1].item(), cand[2].item()
+                policy = Policy.Leveling if policy_val < 0.5 else Policy.Tiering
+                new_designs = [LSMDesign(h, np.ceil(size_ratio), policy)]
+
+            for design in new_designs:
+                try:
+                    self.cf.calc_cost(design, system, z0, z1, q, w)
+                except ZeroDivisionError:
+                    print(design, " - Design")
+                    print(system, " - System")
+                    print("Ratios: z0, z1, q, w: ", z0, z1, q, w)
+                    raise
+                except Exception as e:
+                    logging.exception(e)
+            costs = [self.cf.calc_cost(design, system, z0, z1, q, w) for design in new_designs]
+
+            for design, cost in zip(new_designs, costs):
+                log_design_cost(self.conn, self.run_id, design, cost)
+            new_target = torch.tensor(costs).unsqueeze(-1)
+            train_x = torch.cat([train_x, new_candidates])
+            train_y = torch.cat([train_y, new_target])
+            best_y = train_y.min().item()
+            best_designs = self._update_best_designs(best_designs, new_candidates, new_target)
+            self.log.debug(f"Iteration {i + 1}/{iterations} complete")
         self.log.debug("Bayesian Optimization completed")
+        self._print_best_designs(best_designs)
+        self._find_analytical_results(system, z0, z1, q, w)
+        sorted_designs = sorted(best_designs, key=lambda x: x[1])
+        self.conn.close()
+        if sorted_designs:
+            best_design, best_cost = sorted_designs[0]
+            return best_design, best_cost
+        else:
+            return None, None
 
-    def _generate_initial_data(
-        self, system: System, n: int = 30
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def generate_initial_bounds(self, system: System) -> torch.Tensor:
+        h_bounds = torch.tensor([self.bayesian_setting["bounds"]["h_min"], np.floor(system.H)])
+        t_bounds = torch.tensor([int(self.bayesian_setting["bounds"]["T_min"]),
+                                 int(self.bayesian_setting["bounds"]["T_max"])])
+        policy_bounds = torch.tensor([0, 1])
+        bounds = torch.stack([h_bounds, t_bounds, policy_bounds], dim=-1)
+        return bounds
+
+    def get_next_points(self, x: torch.Tensor, y: torch.Tensor, best_y: float, bounds: torch.Tensor,
+                        acquisition_function: str = "ExpectedImprovement", n_points: int = 1) -> torch.Tensor:
+        single_model = MixedSingleTaskGP(x, y, cat_dims=[1, 2], input_transform=Normalize(d=x.shape[1], bounds=bounds),
+                                         outcome_transform=Standardize(m=1))
+        mll = ExactMarginalLogLikelihood(single_model.likelihood, single_model)
+        fit_gpytorch_model(mll)
+        if acquisition_function == "ExpectedImprovement":
+            acqf = ExpectedImprovement(model=single_model, best_f=best_y, maximize=False)
+        elif acquisition_function == "UpperConfidenceBound":
+            beta = self.beta_value
+            acqf = UpperConfidenceBound(model=single_model, beta=beta, maximize=False)
+        elif acquisition_function == "qExpectedImprovement":
+            acqf = qExpectedImprovement(model=single_model, best_f=best_y)
+        else:
+            raise ValueError(f"Unknown acquisition function: {acquisition_function}")
+        fixed_features_list = []
+        for size_ratio in range(2, 33):
+            for pol in range(2):
+                fixed_features_list.append({1: size_ratio, 2: pol})
+
+        candidates, _ = optimize_acqf_mixed(
+            acq_function=acqf,
+            bounds=bounds,
+            q=n_points,
+            num_restarts=self.num_restarts,
+            raw_samples=self.raw_samples,
+            fixed_features_list=fixed_features_list
+        )
+        return candidates
+
+    def _generate_initial_data(self, z0, z1, q, w, system: System, n: int = 30, run_id=None) -> \
+            Tuple[torch.Tensor, torch.Tensor]:
         train_x = []
         train_y = []
+        policy = 0
+        run_id = run_id if run_id is not None else self.run_id
+        lcm_data_generator = LCMDataGenerator()
         for _ in range(n):
-            design = self.lcm_data_generator._sample_design(system)
-            x_values = np.array([design.h, design.T])
-            # cost is negated here
-            cost = -self.cf.calc_cost(
-                design,
-                system,
-                self.workload.z0,
-                self.workload.z1,
-                self.workload.q,
-                self.workload.w,
-            )
+            design = lcm_data_generator._sample_design(system)
+            if design.policy == Policy.Leveling:
+                policy = 0
+            elif design.policy == Policy.Tiering:
+                policy = 1
+            x_values = np.array([design.h, int(design.T), int(policy)])
+            cost = self.cf.calc_cost(design, system, z0, z1, q, w)
+            log_design_cost(self.conn, run_id, LSMDesign(design.h, design.T, policy), cost)
             train_x.append(x_values)
             train_y.append(cost)
         train_x = np.array(train_x)
-        train_x = torch.tensor(train_x, dtype=torch.float64)
+        train_x = torch.tensor(train_x)
         train_y = torch.tensor(train_y, dtype=torch.float64).unsqueeze(-1)
-        return train_x, train_y
+        best_y = train_y.min().item()
+        return train_x, train_y, best_y
 
-    def _scale_and_standardize(
-        self, train_x: torch.Tensor, train_y: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _scale_and_standardize(self, train_x: torch.Tensor, train_y: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         scaled_train_x = self._min_max_scale(train_x)
         standardized_train_y = self._standardize_mean_std(train_y)
-
         return scaled_train_x, standardized_train_y
 
-    def _min_max_scale(self, x: torch.Tensor) -> torch.Tensor:
-        x_min = x.min(0, keepdim=True)[0]
-        x_max = x.max(0, keepdim=True)[0]
-        scaled_x = (x - x_min) / (x_max - x_min)
-        return scaled_x
+    def _min_max_scale(self, x: torch.Tensor, bounds) -> torch.Tensor:
+        continuous_data = x[:, :2]
+        categorical_data = x[:, 2:]
+        scaled_continuous_data = (continuous_data - bounds[:, :2][0]) / (bounds[:, :2][1] - bounds[:, :2][0])
+        scaled_data = torch.cat([scaled_continuous_data, categorical_data], dim=-1)
+        return scaled_data
 
     def _standardize_mean_std(self, x: torch.Tensor) -> torch.Tensor:
-        x_mean = x.mean()
-        x_std = x.std()
-        standardized_x = (x - x_mean) / x_std
-        return standardized_x
+        stddim = -1 if x.dim() < 2 else -2
+        x_std = x.std(dim=stddim, keepdim=True)
+        x_std = x_std.where(x_std >= 1e-9, torch.full_like(x_std, 1.0))
+        return (x - x.mean(dim=stddim, keepdim=True)) / x_std
 
-    def _initialize_model(
-        self, train_x: torch.Tensor, train_y: torch.Tensor, state_dict: dict = None
-    ) -> Tuple[SingleTaskGP, ExactMarginalLogLikelihood]:
-        gp_model = SingleTaskGP(train_x, train_y)
+    def _initialize_model(self, train_x: torch.Tensor, train_y: torch.Tensor, state_dict: dict = None) \
+            -> Tuple[MixedSingleTaskGP, ExactMarginalLogLikelihood]:
+        print("Initial train_x", train_x)
+        gp_model = MixedSingleTaskGP(train_x, train_y, cat_dims=[-1])
         if state_dict is not None:
             gp_model.load_state_dict(state_dict)
 
         mll = ExactMarginalLogLikelihood(gp_model.likelihood, gp_model)
         return mll, gp_model
 
-    def _optimize_acquisition_function(
-        self, acquisition_function: str, model: SingleTaskGP, target: torch.Tensor
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
-        if acquisition_function == "ExpectedImprovement":
-            acqf = ExpectedImprovement(model=model, best_f=target.min())
-        elif acquisition_function == "UpperConfidenceBound":
-            beta = 10.0
-            acqf = UpperConfidenceBound(model=model, beta=beta)
-        elif acquisition_function == "qExpectedImprovement":
-            acqf = qExpectedImprovement(model=model, best_f=target.min())
-        else:
-            raise ValueError(f"Unknown acquisition function: {acquisition_function}")
-        new_x, _ = optimize_acqf(
-            acq_function=acqf,
-            bounds=self.bounds,
-            q=self.q,
-            num_restarts=self.num_restarts,
-            raw_samples=self.raw_samples,
-        )
-        new_designs = [
-            LSMDesign(x[0].item(), np.ceil(x[1].item()), Policy.Leveling) for x in new_x
-        ]
-        # the new cost is also negated here
-        new_y = torch.tensor(
-            [
-                -self.cf.calc_cost(
-                    design,
-                    self.system,
-                    self.workload.z0,
-                    self.workload.z1,
-                    self.workload.q,
-                    self.workload.w,
-                )
-                for design in new_designs
-            ]
-        )
-        return new_x, new_y
-
-    def _update_best_designs(self, new_x: torch.Tensor, new_y: torch.Tensor) -> None:
+    def _update_best_designs(self, best_designs: List[Tuple[LSMDesign, float]], new_x: torch.Tensor, new_y: torch.Tensor) -> List[Tuple[LSMDesign, float]]:
         for x, y in zip(new_x, new_y):
-            self.best_designs.append(
-                (
-                    LSMDesign(x[0].item(), np.ceil(x[1].item()), Policy.Leveling),
-                    y.item(),
-                )
-            )
+            h, size_ratio, policy_continuous = x[0], x[1], x[2]
+            policy = Policy.Leveling if policy_continuous < 0.5 else Policy.Tiering
+            best_designs.append((LSMDesign(h.item(), np.ceil(size_ratio.item()), policy), y.item()))
+        return best_designs
 
-    def _print_best_designs(self) -> None:
-        # self.best_designs.sort(key=lambda x: x[1])
-        print("Best Designs Found:")
-        # for design, cost in self.best_designs[:5]:
-        for design, cost in self.best_designs:
-            print(
-                f"Design: h={design.h}, T={design.T}, Policy={design.policy}, Cost={cost}"
-            )
+    def _print_best_designs(self, best_designs: List[Tuple[LSMDesign, float]]) -> None:
+        sorted_designs = sorted(best_designs, key=lambda x: x[1])
+        print("Best Design Found:")
+        for design, cost in sorted_designs[:1]:
+            print(f"Design: h={design.h}, T={design.T}, Policy={design.policy}, Cost={cost}")
+        with open('best_designs.txt', 'w') as file:
+            file.write("All Best Designs Found:\n")
+            for design, cost in best_designs:
+                file.write(f"Design: h={design.h}, T={design.T}, Policy={design.policy}, Cost={cost}\n")
 
-    def _find_analytical_results(self):
-        solver = ClassicSolver(self.config)
-        nominal_design, nominal_solution = solver.get_nominal_design(
-            system=self.system,
-            z0=self.workload.z0,
-            z1=self.workload.z1,
-            q=self.workload.q,
-            w=self.workload.w,
-        )
-        x = np.array([nominal_design.h, nominal_design.T])
+    def _write_to_csv(self, best_designs: List[Tuple[LSMDesign, float]], system: Optional[System] = None, filename: str = 'best_designs.csv') -> None:
+        sorted_designs = sorted(best_designs, key=lambda x: x[1])[:1]
+        with open(filename, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['Entries per page(E)', 'Range query selectivity(s)', 'Entries per page(B)',
+                             'Total elements(N)', 'max bits per element(H) ', 'bits per element(h)',
+                             'size ratio(T)', 'Policy', 'Cost'])
+
+            for design, cost in sorted_designs:
+                system = system if system is not None else self.system
+                writer.writerow(
+                    [system.E, round(system.s, 2), system.B, system.N, system.H, round(design.h, 2), design.T,
+                     design.policy.name, round(cost, 2)])
+
+    def _find_analytical_results(self, system: System, z0: float, z1: float, q: float, w: float,
+                                 conf: Optional[dict] = None) -> Tuple[LSMDesign, float]:
+        conf = conf if conf is not None else self.config
+        solver = ClassicSolver(conf)
+        nominal_design, nominal_solution = solver.get_nominal_design(system, z0, z1, q, w)
+        x = np.array([[nominal_design.h, nominal_design.T]])
+        train_x = torch.tensor(x)
         policy = nominal_design.policy
-        cost = solver.nominal_objective(
-            x,
-            policy,
-            self.system,
-            self.workload.z0,
-            self.workload.z1,
-            self.workload.q,
-            self.workload.w,
-        )
+        cost = solver.nominal_objective(x[0], policy, system, z0, z1, q, w)
+        train_y = torch.tensor(cost, dtype=torch.float64).unsqueeze(-1)
         print("Cost for the nominal design using analytical solver: ", cost)
         print("Nominal Design suggested by analytical solver: ", nominal_design)
+
+        return nominal_design, cost
 
 
 if __name__ == "__main__":
