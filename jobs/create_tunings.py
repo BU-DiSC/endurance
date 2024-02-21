@@ -27,6 +27,7 @@ class CreateTuningsJob:
         choices = {
             "KCost": Solvers.KLSMSolver(self.config),
             "QCost": Solvers.QLSMSolver(self.config),
+            "YZCost": Solvers.YZLSMSolver(self.config),
             "TierCost": Solvers.ClassicSolver(self.config, policies=[Policy.Tiering]),
             "LevelCost": Solvers.ClassicSolver(self.config, policies=[Policy.Leveling]),
             "TierLevelCost": Solvers.ClassicSolver(self.config)

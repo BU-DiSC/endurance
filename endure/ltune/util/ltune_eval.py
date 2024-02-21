@@ -96,6 +96,8 @@ class LTuneEvalUtil:
             solver = Solver.QLSMSolver(self.config)
         elif self.design_type == "KLSM":
             solver = Solver.KLSMSolver(self.config)
+        elif self.design_type == "YZLSM":
+            solver = Solver.YZLSMSolver(self.config)
         else: # design_type == "Classic"
             solver = Solver.ClassicSolver(self.config)
 
