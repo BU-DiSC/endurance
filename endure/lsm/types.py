@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 import enum
+from typing import Tuple
 
 
 class Policy(enum.Enum):
@@ -40,6 +41,13 @@ class LSMDesign:
     Y: float = 1.0
     Z: float = 1.0
     K: list[float] = field(default_factory=list)
+
+
+@dataclass
+class LSMBounds:
+    max_levels: int = 20
+    bpe: Tuple[float, float] = (1.0, 10.0)
+    size_ratio: Tuple[float, float] = (2, 31)
 
 
 @dataclass
