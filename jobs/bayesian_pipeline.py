@@ -80,8 +80,6 @@ class BayesianPipeline:
         train_x, train_y, best_y = self._generate_initial_data(z0, z1, q, w, system, sample_size)
         bounds = self.generate_initial_bounds(system)
         best_designs = []
-        self._find_analytical_results(system, z0, z1, q, w) # Uncomment this if running this file through endure.py
-
         for i in range(iterations):
             new_candidates = self.get_next_points(train_x, train_y, best_y, bounds, acqf, 1)
             for cand in new_candidates:
