@@ -43,8 +43,8 @@ class QLSMSolver:
         q: float,
         w: float,
     ) -> float:
-        h, t, q = x
-        design = LSMDesign(h=h, T=t, Q=q, policy=Policy.QFixed)
+        h, t, q_val = x
+        design = LSMDesign(h=h, T=t, Q=q_val, policy=Policy.QFixed)
         cost = self.cf.calc_cost(design, system, z0, z1, q, w)
 
         return cost
@@ -80,6 +80,7 @@ class QLSMSolver:
             "method": "SLSQP",
             "bounds": get_bounds(
                 config=self.config,
+                policy=Policy.QFixed,
                 system=system,
                 robust=False,
             ),

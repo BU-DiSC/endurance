@@ -80,6 +80,7 @@ class BayesianPipeline:
         train_x, train_y, best_y = self._generate_initial_data(z0, z1, q, w, system, sample_size)
         bounds = self.generate_initial_bounds(system)
         best_designs = []
+        self._find_analytical_results(system, z0, z1, q, w) # Uncomment this if running this file through endure.py
 
         for i in range(iterations):
             new_candidates = self.get_next_points(train_x, train_y, best_y, bounds, acqf, 1)
@@ -187,7 +188,7 @@ class BayesianPipeline:
                 for q in range(1, size_ratio-1):
                     fixed_features_list.append({1: size_ratio, 2: q})
         elif self.model_type == "YZHybrid":
-            for size_ratio in range(lower_t_bound, upper_t_bound):
+            for size_ratio in range(lower_t_bound, upper_t_bound, 2):
                 for y in range(1, size_ratio-1):
                     for z in range(1, size_ratio-1):
                         fixed_features_list.append({1: size_ratio, 2: y, 3: z})
@@ -301,11 +302,19 @@ class BayesianPipeline:
         elif self.model_type == "YZHybrid":
             solver = YZLSMSolver(conf)
         nominal_design, nominal_solution = solver.get_nominal_design(system, z0, z1, q, w)
-        x = np.array([[nominal_design.h, nominal_design.T]])
-        train_x = torch.tensor(x)
-        policy = nominal_design.policy
-        cost = solver.nominal_objective(x[0], policy, system, z0, z1, q, w)
-        train_y = torch.tensor(cost, dtype=torch.float64).unsqueeze(-1)
+
+        # train_x = torch.tensor(x)
+        if self.model_type == "Classic":
+            x = np.array([[nominal_design.h, nominal_design.T]])
+            policy = nominal_design.policy
+            cost = solver.nominal_objective(x[0], policy, system, z0, z1, q, w)
+        elif self.model_type == "QHybrid":
+            x = np.array([[nominal_design.h, nominal_design.T, nominal_design.Q]])
+            cost = solver.nominal_objective(x[0], system, z0, z1, q, w)
+        elif self.model_type == "YZHybrid":
+            x = np.array([[nominal_design.h, nominal_design.T, nominal_design.Y, nominal_design.Z]])
+            cost = solver.nominal_objective(x[0], system, z0, z1, q, w)
+        # train_y = torch.tensor(cost, dtype=torch.float64).unsqueeze(-1)
         print("Cost for the nominal design using analytical solver: ", cost)
         print("Nominal Design suggested by analytical solver: ", nominal_design)
         return nominal_design, cost
