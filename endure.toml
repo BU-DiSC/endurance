@@ -153,29 +153,33 @@ drop_last = true
 [job.BayesianOptimization]
 # -----------------------------------------------------------------------------
 num_iterations = 15
-num_restarts = 200
-raw_samples = 512
-initial_samples = 30
-max_levels = 16
-# This will take value 0 and 1 where 1 means write each cost and run details into the MySqlLite database
-# and 0 means run details are not stored in the database
-write_to_db = 1
-#by default the databases directory will be created inside the data director. To change this, you need to change ["io"]["data_dir"]
-db_path = "databases"
-# This must be a .db file for code to function. It will create a sqllite database
-db_name = "db_cost.db"
-
+num_restarts = 20
+# value of raw_samples determines how many initial random samples are taken from the search space before starting the optimization process
+raw_samples = 30
+initial_samples = 20
 
 # This is the q value used in BoTorch Acquisition functions.
 # if it is set to a value above 1 sequential processing will stop in acquisition function and batch processing will start
 # note that for batch processing tensor shape will change and will require modification of code.
 # TODO: Add code to handle batch
 batch_size = 1
+max_levels = 16
 
 # Acquisition function options
-#   [ExpectedImprovement, UpperConfidenceBound, qExpectedImprovement]
+# [ExpectedImprovement, UpperConfidenceBound, qExpectedImprovement]
 acquisition_function = "ExpectedImprovement"
 beta_value = 0.3
+# model_type can take values - "Classic", "QHybrid", "YZHybrid", "KHybrid"
+model_type = "YZHybrid"
+
+[job.BayesianOptimization.database]
+# This will take value 0 and 1 where 1 means write each cost and run details into the MySqlLite database
+# and 0 means run details are not stored in the database
+write_to_db = 1
+# by default the databases directory will be created inside the data director. To change this, you need to change ["io"]["data_dir"]
+db_path = "databases"
+# This must be a .db file for code to function. It will create a sqllite database
+db_name = "db_cost.db"
 
 [job.BayesianOptimization.system]
 E = 1024
