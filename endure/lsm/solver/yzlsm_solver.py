@@ -88,6 +88,7 @@ class YZLSMSolver:
             "method": "SLSQP",
             "bounds": get_bounds(
                 config=self.config,
+                policy=Policy.YZHybrid,
                 system=system,
                 robust=False,
             ),
