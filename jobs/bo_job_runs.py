@@ -55,7 +55,6 @@ def compare_designs(n_runs=3, csv_filename='design_comparison.csv'):
             print(f"Iteration {i + 1}/{n_runs} running")
             system = generator._sample_system()
             z0, z1, q, w = generator._sample_workload(4)
-            print(np.floor(system.H))
             bo_design, bo_cost, time = bayesian_optimizer.run(system, z0, z1, q, w)
             analytical_design, analytical_cost = bayesian_optimizer._find_analytical_results(system, z0, z1, q, w)
             writer.writerow([system.E, system.B, system.s, system.H, system.N, z0, z1, q, w,
