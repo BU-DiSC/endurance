@@ -49,16 +49,16 @@ def compare_designs(n_runs=3, csv_filename='design_comparison.csv'):
         writer.writerow(['Entries per page(E)', 'Physical Entries per page(B)', 'Selectivity(s)',
                          'Max bits per element(H)', 'Total elements (N)', 'Empty Reads', 'Non-Empty Reads',
                          'Range Queries', 'Writes', 'BO Design', 'Analytical Design', 'BO Cost',
-                         'Analytical Cost', 'Diff(Analytical-Bayesian)', "Elapsed Time"])
+                         'Analytical Cost', 'Diff(Analytical-Bayesian)'])
 
         for i in range(n_runs):
             print(f"Iteration {i + 1}/{n_runs} running")
             system = generator._sample_system()
             z0, z1, q, w = generator._sample_workload(4)
-            bo_design, bo_cost, time = bayesian_optimizer.run(system, z0, z1, q, w)
+            bo_design, bo_cost = bayesian_optimizer.run(system, z0, z1, q, w)
             analytical_design, analytical_cost = bayesian_optimizer._find_analytical_results(system, z0, z1, q, w)
             writer.writerow([system.E, system.B, system.s, system.H, system.N, z0, z1, q, w,
-                             bo_design, analytical_design, bo_cost, analytical_cost, analytical_cost - bo_cost, time])
+                             bo_design, analytical_design, bo_cost, analytical_cost, analytical_cost - bo_cost])
 
 
 if __name__ == "__main__":

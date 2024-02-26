@@ -103,14 +103,14 @@ class BayesianPipeline:
         t_bounds = torch.tensor([int(self.bayesian_setting["bounds"]["T_min"]),
                                  int(self.bayesian_setting["bounds"]["T_max"])])
         policy_bounds = torch.tensor([0, 1])
-        if self.model_type == "QHybrid":
+        if self.model_type == Policy.QFixed:
             q_bounds = torch.tensor([1, self.bayesian_setting["bounds"]["T_max"] - 1])
             bounds = torch.stack([h_bounds, t_bounds, q_bounds], dim=-1)
-        elif self.model_type == "YZHybrid":
+        elif self.model_type == Policy.YZHybrid:
             y_bounds = torch.tensor([1, self.bayesian_setting["bounds"]["T_max"] - 1])
             z_bounds = torch.tensor([1, self.bayesian_setting["bounds"]["T_max"] - 1])
             bounds = torch.stack([h_bounds, t_bounds, y_bounds, z_bounds], dim=-1)
-        # elif self.model_type == "KHybrid": # TODO add support for KHybrid model
+        # elif self.model_type == Policy.KHybrid: # TODO add support for KHybrid model
         else:
             bounds = torch.stack([h_bounds, t_bounds, policy_bounds], dim=-1)
         return bounds
@@ -184,7 +184,7 @@ class BayesianPipeline:
             single_model = MixedSingleTaskGP(x, y, cat_dims=[1, 2], input_transform=Normalize(d=x.shape[1],
                                                                                               bounds=bounds),
                                              outcome_transform=Standardize(m=1))
-        elif self.model_type == "YZHybrid":
+        elif self.model_type == Policy.YZHybrid:
             single_model = MixedSingleTaskGP(x, y, cat_dims=[1, 2, 3], input_transform=Normalize(d=x.shape[1],
                                                                                                  bounds=bounds),
                                              outcome_transform=Standardize(m=1))
@@ -273,8 +273,6 @@ class BayesianPipeline:
             # TODO: code for KHybrid to be added
             else:
                 h, size_ratio, policy = x[0], x[1], x[2]
-                if(policy.item == 0.0):
-                    print ("0 value for policy!")
                 best_designs.append((LSMDesign(h.item(), np.ceil(size_ratio.item()), policy.item()), y.item()))
         return best_designs
 
