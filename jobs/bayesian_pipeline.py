@@ -31,7 +31,7 @@ def print_best_designs(best_designs: List[Tuple[LSMDesign, float]]) -> None:
     print("Best Design Found:")
     for design, cost in sorted_designs[:1]:
         print(f"Design: h={design.h}, T={design.T}, Policy={design.policy}, Q={design.T}, Y={design.Y},"
-              f" Z={design.Z}, Cost={cost}")
+              f" Z={design.Z}, K={design.K}, Cost={cost}")
     with open('best_designs.txt', 'w') as file:
         file.write("All Best Designs Found:\n")
         for design, cost in best_designs:
@@ -115,9 +115,11 @@ class BayesianPipeline:
             bounds = torch.stack([h_bounds, t_bounds, y_bounds, z_bounds], dim=-1)
         elif self.model_type == Policy.KHybrid:
             initial_bounds = torch.stack([h_bounds, t_bounds], dim=0)
-            k_bounds = torch.tensor([1, self.bayesian_setting["bounds"]["T_max"] - 1])
-            k_bounds_stacked = torch.stack([k_bounds] * self.max_levels, dim=0)
-            bounds = torch.cat([initial_bounds.unsqueeze(0), k_bounds_stacked.unsqueeze(0)], dim=0)
+            k_bounds = torch.tensor([1, self.max_levels - 1])
+            k_bounds_stacked = k_bounds.repeat(self.max_levels, 1)
+            bounds = torch.cat([initial_bounds, k_bounds_stacked], dim=0)
+        #     k_bounds_stacked = torch.stack([k_bounds] * self.max_levels, dim=0)
+        #     bounds = torch.cat([initial_bounds.unsqueeze(0), k_bounds_stacked.unsqueeze(0)], dim=0)
         else:
             bounds = torch.stack([h_bounds, t_bounds, policy_bounds], dim=-1)
         return bounds

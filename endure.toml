@@ -163,8 +163,6 @@ initial_samples = 20
 # note that for batch processing tensor shape will change and will require modification of code.
 # TODO: Add code to handle batch
 batch_size = 1
-max_levels = 16
-
 # Acquisition function options
 # [ExpectedImprovement, UpperConfidenceBound, qExpectedImprovement]
 acquisition_function = "ExpectedImprovement"
