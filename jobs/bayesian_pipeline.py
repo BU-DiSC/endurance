@@ -247,6 +247,7 @@ class BayesianPipeline:
             #     fixed_feature = {1: size_ratio}
             #     fixed_feature.update({i+2: k for i, k in enumerate(k_values)})
             #     fixed_features_list.append(fixed_feature)
+            print("I come till here and get killed")
             for t in range(2, upper_t_bound + 1):
                 param_values = [range(1, upper_t_bound)] * 20
                 for combination in product(*param_values):
