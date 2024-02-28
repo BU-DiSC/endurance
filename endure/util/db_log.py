@@ -33,6 +33,10 @@ def initialize_database(db_path='cost_log.db'):
             Q INTEGER,
             Y INTEGER,
             Z INTEGER,
+            k1 REAL, k2 REAL, k3 REAL, k4 REAL, k5 REAL,
+            k6 REAL, k7 REAL, k8 REAL, k9 REAL, k10 REAL,
+            k11 REAL, k12 REAL, k13 REAL, k14 REAL, k15 REAL,
+            k16 REAL, k17 REAL, k18 REAL, k19 REAL, k20 REAL,
             cost REAL,
             FOREIGN KEY (run_id) REFERENCES runs(run_id)
         );''')
@@ -56,6 +60,17 @@ def initialize_database(db_path='cost_log.db'):
             bayesian_Z INTEGER,
             FOREIGN KEY (run_id) REFERENCES runs(run_id)
         );''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS run_details_k_values (
+            idx INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER,
+            k1 REAL, k2 REAL, k3 REAL, k4 REAL, k5 REAL,
+            k6 REAL, k7 REAL, k8 REAL, k9 REAL, k10 REAL,
+            k11 REAL, k12 REAL, k13 REAL, k14 REAL, k15 REAL,
+            k16 REAL, k17 REAL, k18 REAL, k19 REAL, k20 REAL,
+            FOREIGN KEY (run_id) REFERENCES runs(run_id)
+        );''')
+
     connector.commit()
     return connector
 
@@ -76,9 +91,12 @@ def log_new_run(connector, system, workload, iterations, sample, acqf):
 def log_design_cost(connector, run_id, design, cost):
     cursor = connector.cursor()
     policy = design.policy
-    cursor.execute('INSERT INTO design_costs (run_id, bits_per_element, size_ratio, policy, Q, Y, Z, cost) '
-                   'VALUES (?, ?, ?, ?, ?, ?, ?, ?)', (run_id, design.h, design.T, policy.name, design.Q, design.Y,
-                                                       design.Z, cost))
+    k_values = design.K + [None] * (20 - len(design.K))  # TODO replace this with the max_levels
+    sql_command = ('INSERT INTO design_costs (run_id, bits_per_element, size_ratio, policy, Q, Y, Z, cost, ' +
+                   ', '.join([f'k{i+1}' for i in range(20)]) + ') ' + 'VALUES (?, ?, ?, ?, ?, ?, ?, ?'', ' +
+                   ', '.join(['?']*20) + ')')
+    cursor.execute(sql_command, (run_id, design.h, design.T, policy.name, design.Q, design.Y, design.Z, cost) +
+                   tuple(k_values))
     connector.commit()
 
 
@@ -87,18 +105,20 @@ def log_run_details(connector, run_id, duration, analytical_cost, bayesian_cost,
     analytical_policy = analytical_design.policy
     print(analytical_policy)
     bayesian_policy = bayesian_design.policy
-    if bayesian_policy == 0.0:
-        bo_policy = Policy.Leveling
-    else:
-        bo_policy = Policy.Tiering
     cursor.execute('''
         INSERT INTO run_details (run_id, duration_secs, analytical_cost, bayesian_cost, analytical_h, analytical_T, 
         analytical_policy, analytical_Q, analytical_Y, analytical_Z, bayesian_h, bayesian_T, bayesian_policy, bayesian_Q, 
         bayesian_Y, bayesian_Z) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                    (run_id, duration, analytical_cost, bayesian_cost, analytical_design.h, analytical_design.T,
                     analytical_policy.name, analytical_design.Q, analytical_design.Y, analytical_design.Z,
-                    bayesian_design.h, bayesian_design.T, bo_policy.name, bayesian_design.Q,
+                    bayesian_design.h, bayesian_design.T, bayesian_policy.name, bayesian_design.Q,
                     bayesian_design.Y, bayesian_design.Z))
+    if bayesian_policy == Policy.KHybrid:
+        k_values = bayesian_design.K + [None] * (20 - len(bayesian_design.K))
+        cursor.execute('''
+            INSERT INTO run_details_k_values (run_id, k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12, k13, k14, k15, 
+            k16, k17, k18, k19, k20) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                       (run_id,) + tuple(k_values))
     connector.commit()
 
 

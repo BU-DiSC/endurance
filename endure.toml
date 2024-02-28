@@ -170,7 +170,7 @@ max_levels = 16
 acquisition_function = "ExpectedImprovement"
 beta_value = 0.3
 # model_type can take values - "Classic", "QFixed", "YZHybrid", "KHybrid"
-model_type = "QFixed"
+model_type = "YZHybrid"
 
 [job.BayesianOptimization.database]
 # This will take value 0 and 1 where 1 means write each cost and run details into the MySqlLite database

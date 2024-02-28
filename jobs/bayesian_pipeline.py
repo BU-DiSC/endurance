@@ -5,6 +5,7 @@ import logging
 import csv
 import os
 import time
+from itertools import product
 
 from botorch.models import MixedSingleTaskGP
 from botorch.fit import fit_gpytorch_model
@@ -36,14 +37,16 @@ def print_best_designs(best_designs: List[Tuple[LSMDesign, float]]) -> None:
         for design, cost in best_designs:
             file.write(f"Design: h={design.h}, T={design.T}, Policy={design.policy}, Q={design.T}, "
                        f"Y={design.Y}, Z={design.Z}, Cost={cost}\n")
+
+
 class BayesianPipeline:
     def __init__(self, conf: dict) -> None:
         self.end_time = None
         self.start_time = None
         self.config: dict = conf
         self.bayesian_setting: dict = self.config["job"]["BayesianOptimization"]
-        max_levels = self.config['job']['BayesianOptimization']['max_levels']
-        self.cf: EndureCost = EndureCost(max_levels)
+        self.max_levels = self.config['lsm']['max_levels']
+        self.cf: EndureCost = EndureCost(self.max_levels)
         self.log: logging.Logger = logging.getLogger(self.config["log"]["name"])
 
         self.system: System = System(**self.bayesian_setting["system"])
@@ -110,7 +113,11 @@ class BayesianPipeline:
             y_bounds = torch.tensor([1, self.bayesian_setting["bounds"]["T_max"] - 1])
             z_bounds = torch.tensor([1, self.bayesian_setting["bounds"]["T_max"] - 1])
             bounds = torch.stack([h_bounds, t_bounds, y_bounds, z_bounds], dim=-1)
-        # elif self.model_type == Policy.KHybrid: # TODO add support for KHybrid model
+        elif self.model_type == Policy.KHybrid:
+            initial_bounds = torch.stack([h_bounds, t_bounds], dim=0)
+            k_bounds = torch.tensor([1, self.bayesian_setting["bounds"]["T_max"] - 1])
+            k_bounds_stacked = torch.stack([k_bounds] * self.max_levels, dim=0)
+            bounds = torch.cat([initial_bounds.unsqueeze(0), k_bounds_stacked.unsqueeze(0)], dim=0)
         else:
             bounds = torch.stack([h_bounds, t_bounds, policy_bounds], dim=-1)
         return bounds
@@ -121,7 +128,8 @@ class BayesianPipeline:
         for i in range(self.num_iterations):
             new_candidates = self.get_next_points(train_x, train_y, best_y, bounds, self.acquisition_function, 1)
             new_designs, costs = self.evaluate_new_candidates(new_candidates)
-            train_x, train_y, best_y, best_designs = self.update_training_data(train_x, train_y, new_candidates, costs, best_designs)
+            train_x, train_y, best_y, best_designs = self.update_training_data(train_x, train_y, new_candidates, costs,
+                                                                               best_designs)
             self.log.debug(f"Iteration {i + 1}/{self.num_iterations} complete")
         self.log.debug("Bayesian Optimization completed")
         return best_designs
@@ -143,21 +151,25 @@ class BayesianPipeline:
 
     def create_designs_from_candidates(self, candidates):
         new_designs = []
-        for cand in candidates:
-            h = cand[0].item()
+        for candidate in candidates:
+            h = candidate[0].item()
             if h == self.system.H:
                 h = h - 0.01
             if self.model_type == Policy.QFixed:
-                size_ratio, q_val = cand[1].item(), cand[2].item()
+                size_ratio, q_val = candidate[1].item(), candidate[2].item()
                 policy = Policy.QFixed
                 new_designs = [LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, Q=int(q_val))]
             elif self.model_type == Policy.YZHybrid:
-                size_ratio, y_val, z_val = cand[1].item(), cand[2].item(), cand[3].item()
+                size_ratio, y_val, z_val = candidate[1].item(), candidate[2].item(), candidate[3].item()
                 policy = Policy.YZHybrid
                 new_designs = [LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, Y=int(y_val), Z=int(z_val))]
-                # TODO: Add KHybrid here
+            elif self.model_type == Policy.KHybrid:
+                size_ratio = candidate[1].item()
+                k_values = [cand.item() for cand in candidate[2:]]
+                policy = Policy.KHybrid
+                new_designs.append(LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, K=k_values))
             else:
-                size_ratio, policy_val = cand[1].item(), cand[2].item()
+                size_ratio, policy_val = candidate[1].item(), candidate[2].item()
                 policy = Policy.Leveling if policy_val < 0.5 else Policy.Tiering
                 new_designs = [LSMDesign(h, np.ceil(size_ratio), policy)]
         return new_designs
@@ -188,6 +200,13 @@ class BayesianPipeline:
             single_model = MixedSingleTaskGP(x, y, cat_dims=[1, 2, 3], input_transform=Normalize(d=x.shape[1],
                                                                                                  bounds=bounds),
                                              outcome_transform=Standardize(m=1))
+        elif self.model_type == Policy.KHybrid:
+            cat_dims = list(range(2, self.max_levels + 2))
+            single_model = MixedSingleTaskGP(x, y, cat_dims=cat_dims, input_transform=Normalize(d=x.shape[1],
+                                                                                                bounds=bounds),
+                                             outcome_transform=Standardize(m=1))
+        else:
+            raise ValueError(f"Unsupported model type: {self.model_type}")
         mll = ExactMarginalLogLikelihood(single_model.likelihood, single_model)
         fit_gpytorch_model(mll)
         if acquisition_function == "ExpectedImprovement":
@@ -204,18 +223,24 @@ class BayesianPipeline:
         upper_t_bound = int(np.ceil(t_bounds[1].item()))
         fixed_features_list = []
         if self.model_type == Policy.Classic:
-            for size_ratio in range(lower_t_bound, upper_t_bound):
+            for size_ratio in range(lower_t_bound, upper_t_bound + 1):
                 for pol in range(2):
                     fixed_features_list.append({1: size_ratio, 2: pol})
         elif self.model_type == Policy.QFixed:
-            for size_ratio in range(lower_t_bound, upper_t_bound):
+            for size_ratio in range(lower_t_bound, upper_t_bound + 1):
                 for q in range(1, size_ratio - 1):
                     fixed_features_list.append({1: size_ratio, 2: q})
         elif self.model_type == Policy.YZHybrid:
-            for size_ratio in range(lower_t_bound, upper_t_bound, 2):
+            for size_ratio in range(lower_t_bound, upper_t_bound + 1):
                 for y in range(1, size_ratio - 1):
                     for z in range(1, size_ratio - 1):
                         fixed_features_list.append({1: size_ratio, 2: y, 3: z})
+        elif self.model_type == Policy.KHybrid:
+            k_ranges = [range(1, upper_t_bound) for _ in range(self.max_levels)]
+            for size_ratio, *k_values in product(range(2, upper_t_bound), *k_ranges):
+                fixed_feature = {1: size_ratio}
+                fixed_feature.update({i+2: k for i, k in enumerate(k_values)})
+                fixed_features_list.append(fixed_feature)
         candidates, _ = optimize_acqf_mixed(
             acq_function=acqf,
             bounds=bounds,
@@ -249,8 +274,13 @@ class BayesianPipeline:
                 x_values = np.array([design.h, design.T, design.Q])
             elif self.model_type == Policy.YZHybrid:
                 x_values = np.array([design.h, design.T, design.Y, design.Z])
-            # TODO: add logic for KHybrid
-            cost = self.cf.calc_cost(design, self.system, self.workload.z0, self.workload.z1, self.workload.q, self.workload.w)
+            elif self.model_type == Policy.KHybrid:
+                # To make k an array of constant size = max_levels
+                k_values_padded = design.K + [1] * (self.max_levels - len(design.K))
+                k_values_padded = k_values_padded[:self.max_levels]
+                x_values = np.array([design.h, design.T, ] + k_values_padded)
+            cost = self.cf.calc_cost(design, self.system, self.workload.z0, self.workload.z1,
+                                     self.workload.q, self.workload.w)
             log_design_cost(self.conn, self.run_id, design, cost)
             train_x.append(x_values)
             train_y.append(cost)
@@ -265,15 +295,25 @@ class BayesianPipeline:
         for x, y in zip(new_x, new_y):
             if self.model_type == Policy.QFixed:
                 h, size_ratio, qvalue = x[0], x[1], x[2]
-                best_designs.append((LSMDesign(h.item(), np.ceil(size_ratio.item()), qvalue.item()), y.item()))
+                best_designs.append((LSMDesign(h=h.item(), T=np.ceil(size_ratio.item()), policy=Policy.QFixed,
+                                               Q=qvalue.item()), y.item()))
             elif self.model_type == Policy.YZHybrid:
                 h, size_ratio, yvalue, zvalue = x[0], x[1], x[2], x[3]
                 best_designs.append(
-                    (LSMDesign(h.item(), np.ceil(size_ratio.item()), yvalue.item(), zvalue.item()), y.item()))
-            # TODO: code for KHybrid to be added
+                    (LSMDesign(h=h.item(), T=np.ceil(size_ratio.item()), policy=Policy.YZHybrid, Y=yvalue.item(),
+                               Z=zvalue.item()), y.item()))
+            elif self.model_type == Policy.KHybrid:
+                h, size_ratio = x[0], x[1]
+                k_values = x[2:].tolist()
+                design = LSMDesign(h=h.item(), T=np.ceil(size_ratio.item()), policy=Policy.KHybrid, K=k_values)
+                best_designs.append((design, y.item()))
             else:
                 h, size_ratio, policy = x[0], x[1], x[2]
-                best_designs.append((LSMDesign(h.item(), np.ceil(size_ratio.item()), policy.item()), y.item()))
+                if policy.item() < 0.5:
+                    pol = Policy.Leveling
+                else:
+                    pol = Policy.Tiering
+                best_designs.append((LSMDesign(h=h.item(), T=np.ceil(size_ratio.item()), policy=pol), y.item()))
         return best_designs
 
     def _find_analytical_results(self, system: System, z0: float, z1: float, q: float, w: float,
@@ -285,6 +325,8 @@ class BayesianPipeline:
             solver = QLSMSolver(conf)
         elif self.model_type == Policy.YZHybrid:
             solver = YZLSMSolver(conf)
+        elif self.model_type == Policy.KHybrid:
+            solver = KLSMSolver(conf)
         nominal_design, nominal_solution = solver.get_nominal_design(system, z0, z1, q, w)
 
         if self.model_type == Policy.Classic:
@@ -297,6 +339,10 @@ class BayesianPipeline:
         elif self.model_type == Policy.YZHybrid:
             x = np.array([[nominal_design.h, nominal_design.T, nominal_design.Y, nominal_design.Z]])
             cost = solver.nominal_objective(x[0], system, z0, z1, q, w)
+        elif self.model_type == Policy.KHybrid:
+            k_values = nominal_design.K
+            x = np.array([nominal_design.h, nominal_design.T] + k_values)
+            cost = solver.nominal_objective(x, system, z0, z1, q, w)
         print("Cost for the nominal design using analytical solver: ", cost)
         print("Nominal Design suggested by analytical solver: ", nominal_design)
         return nominal_design, cost
