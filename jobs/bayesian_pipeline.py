@@ -203,6 +203,8 @@ class BayesianPipeline:
                                                                                                  bounds=bounds),
                                              outcome_transform=Standardize(m=1))
         elif self.model_type == Policy.KHybrid:
+            print("Shape of x: ", x.shape[1], " and ", x.shape[0])
+            print("bounds", bounds)
             cat_dims = list(range(2, self.max_levels + 2))
             single_model = MixedSingleTaskGP(x, y, cat_dims=cat_dims, input_transform=Normalize(d=x.shape[1],
                                                                                                 bounds=bounds),
@@ -277,10 +279,13 @@ class BayesianPipeline:
             elif self.model_type == Policy.YZHybrid:
                 x_values = np.array([design.h, design.T, design.Y, design.Z])
             elif self.model_type == Policy.KHybrid:
-                # To make k an array of constant size = max_levels
-                k_values_padded = design.K + [1] * (self.max_levels - len(design.K))
-                k_values_padded = k_values_padded[:self.max_levels]
-                x_values = np.array([design.h, design.T, ] + k_values_padded)
+                k_values_padded = (design.K + [1] * self.max_levels)[:self.max_levels]
+                x_values = np.array([design.h, design.T] + k_values_padded)
+            # elif self.model_type == Policy.KHybrid:
+            #     # To make k an array of constant size = max_levels
+            #     k_values_padded = design.K + [1] * (self.max_levels - len(design.K))
+            #     k_values_padded = k_values_padded[:self.max_levels]
+            #     x_values = np.array([design.h, design.T, ] + k_values_padded)
             cost = self.cf.calc_cost(design, self.system, self.workload.z0, self.workload.z1,
                                      self.workload.q, self.workload.w)
             log_design_cost(self.conn, self.run_id, design, cost)
