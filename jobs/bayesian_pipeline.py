@@ -138,7 +138,8 @@ class BayesianPipeline:
 
     def evaluate_new_candidates(self, new_candidates):
         new_designs = self.create_designs_from_candidates(new_candidates)
-        costs = [self.cf.calc_cost(design, self.system, self.workload.z0, self.workload.z1, self.workload.q, self.workload.w) for design in new_designs]
+        costs = [self.cf.calc_cost(design, self.system, self.workload.z0, self.workload.z1, self.workload.q,
+                                   self.workload.w) for design in new_designs]
         for design, cost in zip(new_designs, costs):
             log_design_cost(self.conn, self.run_id, design, cost)
         return new_designs, costs
@@ -158,9 +159,14 @@ class BayesianPipeline:
             if h == self.system.H:
                 h = h - 0.01
             if self.model_type == Policy.QFixed:
+                # size_ratio, q_val = candidate[1].item(), candidate[2].item()
+                # policy = Policy.QFixed
+                # new_designs = [LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, Q=int(q_val))]
                 size_ratio, q_val = candidate[1].item(), candidate[2].item()
-                policy = Policy.QFixed
-                new_designs = [LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, Q=int(q_val))]
+                policy = Policy.KHybrid
+                k_values = [q_val for _ in range(1, self.max_levels)]
+                print("k_values", k_values)
+                new_designs = [LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, K=k_values)]
             elif self.model_type == Policy.YZHybrid:
                 size_ratio, y_val, z_val = candidate[1].item(), candidate[2].item(), candidate[3].item()
                 policy = Policy.YZHybrid

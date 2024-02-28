@@ -214,7 +214,7 @@ T_max = 31.0
 #   QFixed
 #   YZHybrid
 design = 'KHybrid'
-max_levels = 20
+max_levels = 6
 
 [lsm.size_ratio]
 max = 31
