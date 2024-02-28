@@ -195,6 +195,8 @@ class BayesianPipeline:
     def get_next_points(self, x: torch.Tensor, y: torch.Tensor, best_y: float, bounds: torch.Tensor,
                         acquisition_function: str = "ExpectedImprovement", n_points: int = 1) -> torch.Tensor:
         if self.model_type == Policy.QFixed or self.model_type == Policy.Classic:
+            print("Shape of x: ", x.shape[1], " and ", x.shape[0])
+            print("bounds", bounds)
             single_model = MixedSingleTaskGP(x, y, cat_dims=[1, 2], input_transform=Normalize(d=x.shape[1],
                                                                                               bounds=bounds),
                                              outcome_transform=Standardize(m=1))
