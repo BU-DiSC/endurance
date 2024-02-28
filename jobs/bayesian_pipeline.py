@@ -236,6 +236,7 @@ class BayesianPipeline:
             for size_ratio in range(lower_t_bound, upper_t_bound + 1):
                 for q in range(1, size_ratio - 1):
                     fixed_features_list.append({1: size_ratio, 2: q})
+            print("fixed_feature_list: ", fixed_features_list)
         elif self.model_type == Policy.YZHybrid:
             for size_ratio in range(lower_t_bound, upper_t_bound + 1):
                 for y in range(1, size_ratio - 1):
