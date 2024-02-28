@@ -243,10 +243,17 @@ class BayesianPipeline:
                         fixed_features_list.append({1: size_ratio, 2: y, 3: z})
         elif self.model_type == Policy.KHybrid:
             k_ranges = [range(1, upper_t_bound) for _ in range(self.max_levels)]
-            for size_ratio, *k_values in product(range(2, upper_t_bound), *k_ranges):
-                fixed_feature = {1: size_ratio}
-                fixed_feature.update({i+2: k for i, k in enumerate(k_values)})
-                fixed_features_list.append(fixed_feature)
+            # for size_ratio, *k_values in product(range(2, upper_t_bound), *k_ranges):
+            #     fixed_feature = {1: size_ratio}
+            #     fixed_feature.update({i+2: k for i, k in enumerate(k_values)})
+            #     fixed_features_list.append(fixed_feature)
+            for t in range(2, upper_t_bound + 1):
+                param_values = [range(1, upper_t_bound)] * 20
+                for combination in product(*param_values):
+                    fixed_feature = {1: t}
+                    fixed_feature.update({i + 2: combination[i] for i in range(len(combination))})
+                    fixed_features_list.append(fixed_feature)
+            print("fixed_feature_list: ", fixed_features_list)
         candidates, _ = optimize_acqf_mixed(
             acq_function=acqf,
             bounds=bounds,
