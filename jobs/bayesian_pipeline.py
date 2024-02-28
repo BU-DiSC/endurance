@@ -30,8 +30,12 @@ def print_best_designs(best_designs: List[Tuple[LSMDesign, float]]) -> None:
     sorted_designs = sorted(best_designs, key=lambda x: x[1])
     print("Best Design Found:")
     for design, cost in sorted_designs[:1]:
-        print(f"Design: h={design.h}, T={design.T}, Policy={design.policy}, Q={design.T}, Y={design.Y},"
-              f" Z={design.Z}, K={design.K}, Cost={cost}")
+        if design.policy == Policy.KHybrid:
+            k_values_str = ", ".join(str(k) for k in design.K)
+            print(f"Design: h={design.h}, T={design.T}, Policy={design.policy}, K=[{k_values_str}], Cost={cost}")
+        else:
+            print(f"Design: h={design.h}, T={design.T}, Policy={design.policy}, Q={design.Q}, Y={design.Y},"
+                  f" Z={design.Z}, Cost={cost}")
     with open('best_designs.txt', 'w') as file:
         file.write("All Best Designs Found:\n")
         for design, cost in best_designs:
@@ -116,8 +120,10 @@ class BayesianPipeline:
         elif self.model_type == Policy.KHybrid:
             initial_bounds = torch.stack([h_bounds, t_bounds], dim=0)
             k_bounds = torch.tensor([1, self.max_levels - 1])
-            lower_limits = [self.bayesian_setting["bounds"]["h_min"], self.bayesian_setting["bounds"]["T_min"]] + [1] * 20
-            upper_limits = [np.floor(system.H), self.bayesian_setting["bounds"]["T_max"]] + [self.max_levels - 1] * 20
+            lower_limits = [self.bayesian_setting["bounds"]["h_min"], self.bayesian_setting["bounds"]["T_min"]] +\
+                           [1] * self.max_levels
+            upper_limits = [np.floor(system.H), self.bayesian_setting["bounds"]["T_max"]] + \
+                           [self.max_levels - 1] * self.max_levels
             new_bounds_list = [lower_limits, upper_limits]
             bounds = torch.tensor(new_bounds_list, dtype=torch.float64)
         else:
@@ -176,6 +182,7 @@ class BayesianPipeline:
                 k_values = [cand.item() for cand in candidate[2:]]
                 policy = Policy.KHybrid
                 new_designs.append(LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, K=k_values))
+                print(new_designs)
             else:
                 size_ratio, policy_val = candidate[1].item(), candidate[2].item()
                 policy = Policy.Leveling if policy_val < 0.5 else Policy.Tiering
@@ -249,14 +256,8 @@ class BayesianPipeline:
                     for z in range(1, size_ratio - 1):
                         fixed_features_list.append({1: size_ratio, 2: y, 3: z})
         elif self.model_type == Policy.KHybrid:
-            k_ranges = [range(1, upper_t_bound) for _ in range(self.max_levels)]
-            # for size_ratio, *k_values in product(range(2, upper_t_bound), *k_ranges):
-            #     fixed_feature = {1: size_ratio}
-            #     fixed_feature.update({i+2: k for i, k in enumerate(k_values)})
-            #     fixed_features_list.append(fixed_feature)
-            print("I come till here and get killed")
             for t in range(2, upper_t_bound + 1):
-                param_values = [range(1, upper_t_bound)] * 20
+                param_values = [range(1, upper_t_bound)] * self.max_levels
                 for combination in product(*param_values):
                     fixed_feature = {1: t}
                     fixed_feature.update({i + 2: combination[i] for i in range(len(combination))})

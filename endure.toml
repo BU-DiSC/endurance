@@ -153,9 +153,9 @@ drop_last = true
 [job.BayesianOptimization]
 # -----------------------------------------------------------------------------
 num_iterations = 15
-num_restarts = 20
+num_restarts = 20 # TODO set it to 2
 # value of raw_samples determines how many initial random samples are taken from the search space before starting the optimization process
-raw_samples = 30
+raw_samples = 30 # TODO set it to 3
 initial_samples = 20
 
 # This is the q value used in BoTorch Acquisition functions.
