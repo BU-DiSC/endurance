@@ -116,13 +116,10 @@ class BayesianPipeline:
         elif self.model_type == Policy.KHybrid:
             initial_bounds = torch.stack([h_bounds, t_bounds], dim=0)
             k_bounds = torch.tensor([1, self.max_levels - 1])
-            # k_bounds_stacked = k_bounds.repeat(self.max_levels, 1)
-            # bounds = torch.cat([initial_bounds, k_bounds_stacked], dim=0)
-
-            new_bounds_list = [h_bounds, t_bounds] + [k_bounds] * 20
-            bounds = torch.tensor(new_bounds_list, dtype=torch.float64).transpose(0, 1)
-        #     k_bounds_stacked = torch.stack([k_bounds] * self.max_levels, dim=0)
-        #     bounds = torch.cat([initial_bounds.unsqueeze(0), k_bounds_stacked.unsqueeze(0)], dim=0)
+            lower_limits = [self.bayesian_setting["bounds"]["h_min"], self.bayesian_setting["bounds"]["T_min"]] + [1] * 20
+            upper_limits = [np.floor(system.H), self.bayesian_setting["bounds"]["T_max"]] + [self.max_levels - 1] * 20
+            new_bounds_list = [lower_limits, upper_limits]
+            bounds = torch.tensor(new_bounds_list, dtype=torch.float64)
         else:
             bounds = torch.stack([h_bounds, t_bounds, policy_bounds], dim=-1)
         return bounds
