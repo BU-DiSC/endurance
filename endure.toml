@@ -168,7 +168,7 @@ batch_size = 1
 acquisition_function = "ExpectedImprovement"
 beta_value = 0.3
 # model_type can take values - "Classic", "QFixed", "YZHybrid", "KHybrid"
-model_type = "YZHybrid"
+model_type = "KHybrid"
 
 [job.BayesianOptimization.database]
 # This will take value 0 and 1 where 1 means write each cost and run details into the MySqlLite database
@@ -214,7 +214,7 @@ T_max = 31.0
 #   QFixed
 #   YZHybrid
 design = 'KHybrid'
-max_levels = 6
+max_levels = 4
 
 [lsm.size_ratio]
 max = 31
