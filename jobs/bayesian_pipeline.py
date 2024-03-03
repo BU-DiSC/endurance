@@ -77,6 +77,7 @@ class BayesianPipeline:
         self.db_path = os.path.join(self.output_dir, self.bayesian_setting["database"]["db_name"])
         model_type_str = self.bayesian_setting.get('model_type', 'Classic')
         self.model_type = STR_POLICY_DICT.get(model_type_str, Policy.Classic)
+        self.num_k_values = self.bayesian_setting["num_k_values"]
 
     def run(self, system: Optional[System] = None, z0: Optional[float] = None, z1: Optional[float] = None,
             q: Optional[float] = None, w: Optional[float] = None, num_iterations: Optional[int] = None,
@@ -118,12 +119,10 @@ class BayesianPipeline:
             z_bounds = torch.tensor([1, self.bayesian_setting["bounds"]["T_max"] - 1])
             bounds = torch.stack([h_bounds, t_bounds, y_bounds, z_bounds], dim=-1)
         elif self.model_type == Policy.KHybrid:
-            initial_bounds = torch.stack([h_bounds, t_bounds], dim=0)
-            k_bounds = torch.tensor([1, self.max_levels - 1])
             lower_limits = [self.bayesian_setting["bounds"]["h_min"], self.bayesian_setting["bounds"]["T_min"]] +\
-                           [1] * self.max_levels
+                           [1] * self.num_k_values
             upper_limits = [np.floor(system.H), self.bayesian_setting["bounds"]["T_max"]] + \
-                           [self.max_levels - 1] * self.max_levels
+                           [self.bayesian_setting["bounds"]["T_max"] - 1] * self.num_k_values
             new_bounds_list = [lower_limits, upper_limits]
             bounds = torch.tensor(new_bounds_list, dtype=torch.float64)
         else:
@@ -165,7 +164,7 @@ class BayesianPipeline:
                         fixed_features_list.append({1: size_ratio, 2: y, 3: z})
         elif self.model_type == Policy.KHybrid:
             for t in range(2, upper_t_bound + 1):
-                param_values = [range(1, upper_t_bound)] * self.max_levels
+                param_values = [range(1, upper_t_bound)] * self.num_k_values
                 for combination in product(*param_values):
                     fixed_feature = {1: t}
                     fixed_feature.update({i + 2: combination[i] for i in range(len(combination))})
@@ -174,10 +173,12 @@ class BayesianPipeline:
 
     def evaluate_new_candidates(self, new_candidates):
         new_designs = self.create_designs_from_candidates(new_candidates)
+
         costs = [self.cf.calc_cost(design, self.system, self.workload.z0, self.workload.z1, self.workload.q,
                                    self.workload.w) for design in new_designs]
         for design, cost in zip(new_designs, costs):
             log_design_cost(self.conn, self.run_id, design, cost)
+
         return new_designs, costs
 
     def update_training_data(self, train_x, train_y, new_candidates, costs, best_designs):
@@ -194,7 +195,7 @@ class BayesianPipeline:
 
         return new_designs
 
-    def generate_new_designs_helper(self, candidate):
+    def _generate_new_designs_helper(self, candidate):
         new_designs = []
         h = candidate[0].item()
         if h == self.system.H:
@@ -214,8 +215,14 @@ class BayesianPipeline:
             new_designs = [LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, Y=int(y_val), Z=int(z_val))]
         elif self.model_type == Policy.KHybrid:
             size_ratio = candidate[1].item()
+            # k_values = [cand.item() for cand in candidate[2:]]
+            # policy = Policy.KHybrid
+            # new_designs.append(LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, K=k_values))
+            # print(new_designs)
             k_values = [cand.item() for cand in candidate[2:]]
             policy = Policy.KHybrid
+            if len(k_values) < self.max_levels:
+                k_values += [1] * (self.max_levels - len(k_values))
             new_designs.append(LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, K=k_values))
             print(new_designs)
         else:
@@ -244,8 +251,6 @@ class BayesianPipeline:
     def get_next_points(self, x: torch.Tensor, y: torch.Tensor, best_y: float, bounds: torch.Tensor,
                         fixed_features_list: List, acquisition_function: str = "ExpectedImprovement", n_points: int = 1, ) -> torch.Tensor:
         if self.model_type == Policy.QFixed or self.model_type == Policy.Classic:
-            print("Shape of x: ", x.shape[1], " and ", x.shape[0])
-            print("bounds", bounds)
             single_model = MixedSingleTaskGP(x, y, cat_dims=[1, 2], input_transform=Normalize(d=x.shape[1],
                                                                                               bounds=bounds),
                                              outcome_transform=Standardize(m=1))
@@ -254,9 +259,11 @@ class BayesianPipeline:
                                                                                                  bounds=bounds),
                                              outcome_transform=Standardize(m=1))
         elif self.model_type == Policy.KHybrid:
-            print("Shape of x: ", x.shape[1], " and ", x.shape[0])
-            print("bounds", bounds)
-            cat_dims = list(range(2, self.max_levels + 2))
+            # the self.num_k_values represents the number of categorical values the model
+            # is predicting out of the self.max_levels. The +2 is because this is the list of indices
+            # and the first 2 indices represent the 'h' value and then the 'T'value. So everything from index 1
+            # till the size of num_k_values + 2 is a categorical value
+            cat_dims = list(range(1, self.num_k_values + 2))
             single_model = MixedSingleTaskGP(x, y, cat_dims=cat_dims, input_transform=Normalize(d=x.shape[1],
                                                                                                 bounds=bounds),
                                              outcome_transform=Standardize(m=1))
@@ -307,7 +314,9 @@ class BayesianPipeline:
             elif self.model_type == Policy.YZHybrid:
                 x_values = np.array([design.h, design.T, design.Y, design.Z])
             elif self.model_type == Policy.KHybrid:
-                k_values_padded = (design.K + [1] * self.max_levels)[:self.max_levels]
+                print("Length of K")
+                print(len(design.K))
+                k_values_padded = (design.K + [1] * self.num_k_values)[:self.num_k_values]
                 x_values = np.array([design.h, design.T] + k_values_padded)
                 print(x_values)
             # elif self.model_type == Policy.KHybrid:
@@ -315,6 +324,8 @@ class BayesianPipeline:
             #     k_values_padded = design.K + [1] * (self.max_levels - len(design.K))
             #     k_values_padded = k_values_padded[:self.max_levels]
             #     x_values = np.array([design.h, design.T, ] + k_values_padded)
+            print("design", design)
+            print("xvalues", x_values)
             cost = self.cf.calc_cost(design, self.system, self.workload.z0, self.workload.z1,
                                      self.workload.q, self.workload.w)
             log_design_cost(self.conn, self.run_id, design, cost)
