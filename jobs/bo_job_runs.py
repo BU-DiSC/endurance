@@ -42,7 +42,7 @@ def to_cuda(obj, seen=None):
         print("CUDA not available")
 
 
-def compare_designs(n_runs=3, csv_filename='design_comparison.csv'):
+def compare_designs(n_runs=100, csv_filename='yz_design_comparison.csv'):
     """Compare Bayesian and analytical designs."""
     with open(csv_filename, mode='w', newline='') as file:
         writer = csv.writer(file)
