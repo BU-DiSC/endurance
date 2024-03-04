@@ -156,7 +156,6 @@ class BayesianPipeline:
             for size_ratio in range(lower_t_bound, upper_t_bound + 1):
                 for q in range(1, size_ratio - 1):
                     fixed_features_list.append({1: size_ratio, 2: q})
-            print("fixed_feature_list: ", fixed_features_list)
         elif self.model_type == Policy.YZHybrid:
             for size_ratio in range(lower_t_bound, upper_t_bound + 1):
                 for y in range(1, size_ratio - 1):
@@ -192,7 +191,6 @@ class BayesianPipeline:
     def create_designs_from_candidates(self, candidates):
         for candidate in candidates:
             new_designs = self._generate_new_designs_helper(candidate)
-
         return new_designs
 
     def _generate_new_designs_helper(self, candidate):
@@ -201,13 +199,13 @@ class BayesianPipeline:
         if h == self.system.H:
             h = h - 0.01
         if self.model_type == Policy.QFixed:
-            # size_ratio, q_val = candidate[1].item(), candidate[2].item()
-            # policy = Policy.QFixed
-            # new_designs = [LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, Q=int(q_val))]
             size_ratio, q_val = candidate[1].item(), candidate[2].item()
-            policy = Policy.KHybrid
-            k_values = [q_val for _ in range(1, self.max_levels)]
-            print("k_values", k_values)
+            policy = Policy.QFixed
+            new_designs = [LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, Q=int(q_val))]
+            # Uncomment the following lines of code if you want the q value to be the same
+            # through all levels and behave like KLSM
+            # policy = Policy.KHybrid
+            # k_values = [q_val for _ in range(1, self.max_levels)]
             new_designs = [LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, K=k_values)]
         elif self.model_type == Policy.YZHybrid:
             size_ratio, y_val, z_val = candidate[1].item(), candidate[2].item(), candidate[3].item()
@@ -215,16 +213,11 @@ class BayesianPipeline:
             new_designs = [LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, Y=int(y_val), Z=int(z_val))]
         elif self.model_type == Policy.KHybrid:
             size_ratio = candidate[1].item()
-            # k_values = [cand.item() for cand in candidate[2:]]
-            # policy = Policy.KHybrid
-            # new_designs.append(LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, K=k_values))
-            # print(new_designs)
             k_values = [cand.item() for cand in candidate[2:]]
             policy = Policy.KHybrid
             if len(k_values) < self.max_levels:
                 k_values += [1] * (self.max_levels - len(k_values))
             new_designs.append(LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, K=k_values))
-            print(new_designs)
         else:
             size_ratio, policy_val = candidate[1].item(), candidate[2].item()
             policy = Policy.Leveling if policy_val < 0.5 else Policy.Tiering
@@ -234,7 +227,6 @@ class BayesianPipeline:
 
     def finalize_optimization(self, best_designs):
         elapsed_time = time.time() - self.start_time
-        print_best_designs(best_designs)
         sorted_designs = sorted(best_designs, key=lambda x: x[1])
         analaytical_design, analytical_cost = self._find_analytical_results(self.system,
                                                                             self.workload.z0, self.workload.z1,
@@ -314,18 +306,8 @@ class BayesianPipeline:
             elif self.model_type == Policy.YZHybrid:
                 x_values = np.array([design.h, design.T, design.Y, design.Z])
             elif self.model_type == Policy.KHybrid:
-                print("Length of K")
-                print(len(design.K))
                 k_values_padded = (design.K + [1] * self.num_k_values)[:self.num_k_values]
                 x_values = np.array([design.h, design.T] + k_values_padded)
-                print(x_values)
-            # elif self.model_type == Policy.KHybrid:
-            #     # To make k an array of constant size = max_levels
-            #     k_values_padded = design.K + [1] * (self.max_levels - len(design.K))
-            #     k_values_padded = k_values_padded[:self.max_levels]
-            #     x_values = np.array([design.h, design.T, ] + k_values_padded)
-            print("design", design)
-            print("xvalues", x_values)
             cost = self.cf.calc_cost(design, self.system, self.workload.z0, self.workload.z1,
                                      self.workload.q, self.workload.w)
             log_design_cost(self.conn, self.run_id, design, cost)
