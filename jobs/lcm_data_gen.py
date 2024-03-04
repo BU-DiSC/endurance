@@ -9,7 +9,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from endure.data.io import Reader
-from endure.lsm.types import Policy
+from endure.lsm.types import Policy, LSMBounds
 import endure.lcm.data.generator as Generators
 
 
@@ -26,16 +26,17 @@ class LCMDataGenJob:
     def _choose_generator(self) -> Generators.LCMDataGenerator:
         choice = self.setting["generator"]
         max_levels = self.config["lsm"]["max_levels"]
+        bounds = LSMBounds()
         generators = {
             "TierCost": Generators.ClassicGenerator(
-                policies=[Policy.Tiering], max_levels=max_levels
+                bounds, policies=[Policy.Tiering], max_levels=max_levels
             ),
             "LevelCost": Generators.ClassicGenerator(
-                policies=[Policy.Leveling], max_levels=max_levels
+                bounds, policies=[Policy.Leveling], max_levels=max_levels
             ),
-            "QCost": Generators.QCostGenerator(max_levels=max_levels),
-            "KHybridCost": Generators.KHybridGenerator(max_levels=max_levels),
-            "ClassicCost": Generators.ClassicGenerator(max_levels=max_levels),
+            "QCost": Generators.QCostGenerator(bounds, max_levels=max_levels),
+            "KHybridCost": Generators.KHybridGenerator(bounds, max_levels=max_levels),
+            "ClassicCost": Generators.ClassicGenerator(bounds, max_levels=max_levels),
         }
         generator = generators.get(choice, None)
         if generator is None:

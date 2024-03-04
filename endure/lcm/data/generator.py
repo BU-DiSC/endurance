@@ -5,7 +5,7 @@ from itertools import combinations_with_replacement
 
 import numpy as np
 
-from endure.lsm.types import LSMDesign, System, Policy
+from endure.lsm.types import LSMDesign, System, Policy, LSMBounds
 from endure.lsm.cost import EndureCost
 from endure.lcm.data.input_features import (
     kWORKLOAD_HEADER,
@@ -17,30 +17,24 @@ from endure.lcm.data.input_features import (
 class LCMDataGenerator:
     def __init__(
         self,
-        bits_per_elem_range: Tuple[int, int] = (1, 10),
-        size_ratio_range: Tuple[int, int] = (2, 31),
-        page_sizes: List[int] = [4, 8, 16],
-        entry_sizes: List[int] = [1024, 2048, 4096, 8192],
-        memory_budget_range: Tuple[float, float] = (5.0, 20.0),
-        selectivity_range: Tuple[float, float] = (1e-7, 1e-9),
-        elements_range: Tuple[int, int] = (100000000, 1000000000),
-        max_levels: int = 16,
+        bounds: LSMBounds,
         precision: int = 3,
     ) -> None:
         self._header = None
         self.precision = precision
 
-        self.bits_per_elem_min = bits_per_elem_range[0]
-        self.bits_per_elem_max = bits_per_elem_range[1]
-        self.size_ratio_min = size_ratio_range[0]
-        self.size_ratio_max = size_ratio_range[1]
-        self.entry_sizes = entry_sizes
-        self.memory_budget_range = memory_budget_range
-        self.page_sizes = page_sizes
-        self.selectivity_range = selectivity_range
-        self.elements_range = elements_range
-        self.max_levels = max_levels
-        self.cf = EndureCost(max_levels=max_levels)
+        self.bounds = bounds
+        self.bits_per_elem_min = bounds.bits_per_elem_range[0]
+        self.bits_per_elem_max = bounds.bits_per_elem_range[1]
+        self.size_ratio_min = bounds.size_ratio_range[0]
+        self.size_ratio_max = bounds.size_ratio_range[1]
+        self.entry_sizes = bounds.entry_sizes
+        self.memory_budget_range = bounds.memory_budget_range
+        self.page_sizes = bounds.page_sizes
+        self.selectivity_range = bounds.selectivity_range
+        self.elements_range = bounds.elements_range
+        self.max_levels = bounds.max_considered_levels
+        self.cf = EndureCost(max_levels=bounds.max_considered_levels)
 
         self.header = []
 
@@ -142,10 +136,11 @@ class LCMDataGenerator:
 class ClassicGenerator(LCMDataGenerator):
     def __init__(
         self,
+        bounds: LSMBounds,
         policies: List[Policy] = [Policy.Tiering, Policy.Leveling],
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(bounds, **kwargs)
         self.policies = policies
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
@@ -195,8 +190,8 @@ class ClassicGenerator(LCMDataGenerator):
 
 
 class KHybridGenerator(LCMDataGenerator):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, bounds: LSMBounds, **kwargs):
+        super().__init__(bounds, **kwargs)
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
         system_header = self._gen_system_header()
@@ -251,8 +246,8 @@ class KHybridGenerator(LCMDataGenerator):
 
 
 class QCostGenerator(LCMDataGenerator):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, bounds: LSMBounds, **kwargs):
+        super().__init__(bounds, **kwargs)
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
         system_header = self._gen_system_header()
@@ -301,8 +296,8 @@ class QCostGenerator(LCMDataGenerator):
 
 
 class YZCostGenerator(LCMDataGenerator):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, bounds: LSMBounds, **kwargs):
+        super().__init__(bounds, **kwargs)
         cost_header = self._gen_cost_header()
         workload_header = self._gen_workload_header()
         system_header = self._gen_system_header()
