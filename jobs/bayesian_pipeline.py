@@ -2,7 +2,6 @@ import torch
 import numpy as np
 from typing import List, Optional, Tuple
 import logging
-import csv
 import os
 import time
 from itertools import product
@@ -17,13 +16,13 @@ from botorch.models.transforms import Normalize, Standardize
 
 from endure.lsm.cost import EndureCost
 from endure.data.io import Reader
-from endure.lsm.types import LSMDesign, System, Policy, Workload, STR_POLICY_DICT
+from endure.lsm.types import LSMDesign, System, Policy, Workload, LSMBounds, STR_POLICY_DICT
 from endure.lcm.data.generator import ClassicGenerator, QCostGenerator, YZCostGenerator, KHybridGenerator
 from endure.lsm.solver.classic_solver import ClassicSolver
 from endure.lsm.solver.qlsm_solver import QLSMSolver
 from endure.lsm.solver.yzlsm_solver import YZLSMSolver
 from endure.lsm.solver.klsm_solver import KLSMSolver
-from endure.util.db_log import initialize_database, log_new_run, log_design_cost, log_run_details
+from jobs.infra.db_log import initialize_database, log_new_run, log_design_cost, log_run_details
 
 
 def print_best_designs(best_designs: List[Tuple[LSMDesign, float]]) -> None:
@@ -49,18 +48,13 @@ class BayesianPipeline:
         self.start_time = None
         self.config: dict = conf
         self.bayesian_setting: dict = self.config["job"]["BayesianOptimization"]
-        self.max_levels = self.config['lsm']['max_levels']
+        self.bounds = LSMBounds()
+        self.max_levels = self.bounds.max_considered_levels
         self.cf: EndureCost = EndureCost(self.max_levels)
-        self.log: logging.Logger = logging.getLogger(self.config["log"]["name"])
+        # self.log: logging.Logger = logging.getLogger(self.config["log"]["name"])
 
         self.system: System = System(**self.bayesian_setting["system"])
         self.workload: Workload = Workload(**self.bayesian_setting["workload"])
-        self.h_bounds: torch.Tensor = torch.tensor([self.bayesian_setting["bounds"]["h_min"],
-                                                    self.bayesian_setting["system"]["H"]])
-        self.T_bounds: torch.Tensor = torch.tensor([self.bayesian_setting["bounds"]["T_min"],
-                                                    self.bayesian_setting["bounds"]["T_max"]])
-        self.policy_bounds: torch.Tensor = torch.tensor([0.0, 1.0])
-        self.bounds: torch.Tensor = torch.stack([self.h_bounds, self.T_bounds, self.policy_bounds], dim=-1)
         self.initial_samples: int = self.bayesian_setting["initial_samples"]
         self.acquisition_function: str = self.bayesian_setting["acquisition_function"]
         self.q: int = self.bayesian_setting["batch_size"]
@@ -72,57 +66,52 @@ class BayesianPipeline:
         self.run_id: int = 0
         self.write_to_db = self.bayesian_setting["database"]["write_to_db"]
         self.output_dir = os.path.join(
-            self.config["io"]["data_dir"], self.bayesian_setting["database"]["db_path"]
+            self.bayesian_setting["database"]["data_dir"], self.bayesian_setting["database"]["db_path"]
         )
         self.db_path = os.path.join(self.output_dir, self.bayesian_setting["database"]["db_name"])
         model_type_str = self.bayesian_setting.get('model_type', 'Classic')
         self.model_type = STR_POLICY_DICT.get(model_type_str, Policy.Classic)
         self.num_k_values = self.bayesian_setting["num_k_values"]
 
-    def run(self, system: Optional[System] = None, z0: Optional[float] = None, z1: Optional[float] = None,
-            q: Optional[float] = None, w: Optional[float] = None, num_iterations: Optional[int] = None,
+    def run(self, system: Optional[System] = None, workload: Optional[Workload] = None, num_iterations: Optional[int] = None,
             sample_size: Optional[int] = None, acqf: Optional[str] = None) -> Tuple[Optional[LSMDesign], Optional[float]]:
         self.start_time = time.time()
-        self.initialize_environment(system, z0, z1, q, w, num_iterations, sample_size, acqf)
+        self.initialize_environment(system, workload, num_iterations, sample_size, acqf)
         train_x, train_y, best_y = self._generate_initial_data(self.initial_samples)
         best_designs = self.optimization_loop(train_x, train_y, best_y)
         best_design, best_cost, elapsed_time = self.finalize_optimization(best_designs)
         return best_design, best_cost
 
-    def initialize_environment(self, system: Optional[System], z0: Optional[float], z1: Optional[float],
-                               q: Optional[float], w: Optional[float], num_iterations: Optional[int],
+    def initialize_environment(self, system: Optional[System], workload: Optional[Workload], num_iterations: Optional[int],
                                sample_size: Optional[int], acqf: Optional[str]):
         os.makedirs(self.output_dir, exist_ok=True)
         self.conn = initialize_database(self.db_path)
         self.system = system if system is not None else self.system
         self.initial_samples = sample_size if sample_size is not None else self.initial_samples
-        z0 = z0 if z0 is not None else self.workload.z0
-        z1 = z1 if z1 is not None else self.workload.z1
-        q = q if q is not None else self.workload.q
-        w = w if w is not None else self.workload.w
-        self.workload = Workload(z0, z1, q, w)
+        self.workload = workload if workload is not None else self.workload
         self.acquisition_function = acqf if acqf is not None else self.acquisition_function
         self.num_iterations = num_iterations if num_iterations is not None else self.num_iterations
         self.run_id = log_new_run(self.conn, self.system, self.workload, self.num_iterations,
                                   self.initial_samples, self.acquisition_function)
 
     def generate_initial_bounds(self, system: System) -> torch.Tensor:
-        h_bounds = torch.tensor([self.bayesian_setting["bounds"]["h_min"], np.floor(system.H)])
-        t_bounds = torch.tensor([int(self.bayesian_setting["bounds"]["T_min"]),
-                                 int(self.bayesian_setting["bounds"]["T_max"])])
+        h_bounds = torch.tensor([self.bounds.bits_per_elem_range[0], min(np.floor(system.H)
+                                                                         , self.bounds.bits_per_elem_range[1])])
+        t_bounds = torch.tensor([self.bounds.size_ratio_range[0], self.bounds.size_ratio_range[1]])
         policy_bounds = torch.tensor([0, 1])
         if self.model_type == Policy.QFixed:
-            q_bounds = torch.tensor([1, self.bayesian_setting["bounds"]["T_max"] - 1])
+            q_bounds = torch.tensor([1, self.bounds.size_ratio_range[1] - 1])
             bounds = torch.stack([h_bounds, t_bounds, q_bounds], dim=-1)
         elif self.model_type == Policy.YZHybrid:
-            y_bounds = torch.tensor([1, self.bayesian_setting["bounds"]["T_max"] - 1])
-            z_bounds = torch.tensor([1, self.bayesian_setting["bounds"]["T_max"] - 1])
+            y_bounds = torch.tensor([1, self.bounds.size_ratio_range[1] - 1])
+            z_bounds = torch.tensor([1, self.bounds.size_ratio_range[1] - 1])
             bounds = torch.stack([h_bounds, t_bounds, y_bounds, z_bounds], dim=-1)
         elif self.model_type == Policy.KHybrid:
-            lower_limits = [self.bayesian_setting["bounds"]["h_min"], self.bayesian_setting["bounds"]["T_min"]] +\
+            lower_limits = [self.bounds.bits_per_elem_range[0], self.bounds.size_ratio_range[0]] +\
                            [1] * self.num_k_values
-            upper_limits = [np.floor(system.H), self.bayesian_setting["bounds"]["T_max"]] + \
-                           [self.bayesian_setting["bounds"]["T_max"] - 1] * self.num_k_values
+            upper_limits = [min(np.floor(system.H), self.bounds.bits_per_elem_range[1]),
+                            self.bounds.size_ratio_range[1]] + \
+                           [self.bounds.size_ratio_range[1] - 1] * self.num_k_values
             new_bounds_list = [lower_limits, upper_limits]
             bounds = torch.tensor(new_bounds_list, dtype=torch.float64)
         else:
@@ -139,8 +128,8 @@ class BayesianPipeline:
             new_designs, costs = self.evaluate_new_candidates(new_candidates)
             train_x, train_y, best_y, best_designs = self.update_training_data(train_x, train_y, new_candidates, costs,
                                                                                best_designs)
-            self.log.debug(f"Iteration {i + 1}/{self.num_iterations} complete")
-        self.log.debug("Bayesian Optimization completed")
+        #     self.log.debug(f"Iteration {i + 1}/{self.num_iterations} complete")
+        # self.log.debug("Bayesian Optimization completed")
         return best_designs
 
     def _initialize_feature_list(self, bounds):
@@ -290,7 +279,7 @@ class BayesianPipeline:
         elif self.model_type == Policy.YZHybrid:
             generator = YZCostGenerator()
         elif self.model_type == Policy.KHybrid:
-            generator = KHybridGenerator()
+            generator = KHybridGenerator(self.bounds)
         else:
             generator = ClassicGenerator()
         for _ in range(n):

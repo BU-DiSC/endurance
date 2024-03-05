@@ -5,7 +5,7 @@ import toml
 import numpy as np
 import torch
 
-sys.path.append(os.path.join(sys.path[0], '../'))
+sys.path.append(os.path.join(sys.path[0], '../../'))
 
 from endure.lcm.data.generator import LCMDataGenerator
 from endure.data.io import Reader
@@ -54,8 +54,8 @@ def compare_designs(n_runs=100, csv_filename='yz_design_comparison.csv'):
         for i in range(n_runs):
             print(f"Iteration {i + 1}/{n_runs} running")
             system = generator._sample_system()
-            z0, z1, q, w = generator._sample_workload(4)
-            bo_design, bo_cost = bayesian_optimizer.run(system, z0, z1, q, w)
+            workload = generator._sample_workload(4)
+            bo_design, bo_cost = bayesian_optimizer.run(system, workload)
             analytical_design, analytical_cost = bayesian_optimizer._find_analytical_results(system, z0, z1, q, w)
             writer.writerow([system.E, system.B, system.s, system.H, system.N, z0, z1, q, w,
                              bo_design, analytical_design, bo_cost, analytical_cost, analytical_cost - bo_cost])
@@ -63,7 +63,7 @@ def compare_designs(n_runs=100, csv_filename='yz_design_comparison.csv'):
 
 if __name__ == "__main__":
     file_dir = os.path.dirname(__file__)
-    config_path = os.path.join(file_dir, "../endure.toml")
+    config_path = os.path.join(file_dir, "../../endure.toml")
     with open(config_path) as fid:
         config = toml.load(fid)
     bayesian_optimizer = BayesianPipeline(config)
