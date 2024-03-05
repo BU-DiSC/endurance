@@ -2,15 +2,13 @@ import sys
 import os
 import csv
 import toml
-import numpy as np
 import torch
 
-sys.path.append(os.path.join(sys.path[0], '../'))
+sys.path.append(os.path.join(sys.path[0], '../../'))
 
+from endure.lsm.types import LSMBounds, Workload
 from endure.lcm.data.generator import LCMDataGenerator
-from endure.data.io import Reader
 from jobs.bayesian_pipeline import BayesianPipeline
-from endure.lsm.solver.classic_solver import ClassicSolver
 from endure.lsm.cost import EndureCost
 
 
@@ -55,25 +53,24 @@ def compare_designs(n_runs=100, csv_filename='yz_design_comparison.csv'):
             print(f"Iteration {i + 1}/{n_runs} running")
             system = generator._sample_system()
             z0, z1, q, w = generator._sample_workload(4)
-            bo_design, bo_cost = bayesian_optimizer.run(system, z0, z1, q, w)
-            analytical_design, analytical_cost = bayesian_optimizer._find_analytical_results(system, z0, z1, q, w)
-            writer.writerow([system.E, system.B, system.s, system.H, system.N, z0, z1, q, w,
+            bo_design, bo_cost = bayesian_optimizer.run(system, Workload(z0, z1, q, w))
+            analytical_design, analytical_cost = bayesian_optimizer._find_analytical_results(system, workload.z0,
+                                                                                             workload.z1, workload.q, workload.w)
+            writer.writerow([system.E, system.B, system.s, system.H, system.N, workload.z0, workload.z1, workload.q, workload.w,
                              bo_design, analytical_design, bo_cost, analytical_cost, analytical_cost - bo_cost])
 
 
 if __name__ == "__main__":
     file_dir = os.path.dirname(__file__)
-    config_path = os.path.join(file_dir, "../endure.toml")
+    config_path = os.path.join(file_dir, "BayesianBaseline.toml")
     with open(config_path) as fid:
         config = toml.load(fid)
     bayesian_optimizer = BayesianPipeline(config)
-    generator = LCMDataGenerator()
-    solver = ClassicSolver(config)
+    bounds = LSMBounds()
+    generator = LCMDataGenerator(bounds)
     cf = EndureCost(config)
 
     to_cuda(bayesian_optimizer)
     to_cuda(generator)
-    to_cuda(solver)
     to_cuda(cf)
-
-    compare_designs()
+    compare_designs(config["job"]["BayesianOptimization"]["multi_jobs_number"], config["job"]["BayesianOptimization"]["multi_job_file"])
