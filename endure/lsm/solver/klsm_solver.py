@@ -4,15 +4,15 @@ import numpy as np
 import scipy.optimize as SciOpt
 
 from endure.lsm.cost import EndureCost
-from endure.lsm.types import LSMDesign, Policy, System
+from endure.lsm.types import LSMDesign, Policy, System, LSMBounds
 from .util import kl_div_con, get_bounds
 from .util import H_DEFAULT, T_DEFAULT, LAMBDA_DEFAULT, ETA_DEFAULT, K_DEFAULT
 
 
 class KLSMSolver:
-    def __init__(self, config: dict[str, Any]):
-        self.config = config
-        self.cf = EndureCost(config["lsm"]["max_levels"])
+    def __init__(self, bounds: LSMBounds):
+        self.bounds = bounds
+        self.cf = EndureCost(bounds.max_considered_levels)
 
     def robust_objective(
         self,
@@ -82,12 +82,12 @@ class KLSMSolver:
         minimizer_kwargs: dict = {},
         callback_fn: Optional[Callable] = None,
     ) -> Tuple[LSMDesign, SciOpt.OptimizeResult]:
-        max_levels = self.config["lsm"]["max_levels"]
+        max_levels = self.bounds.max_considered_levels
 
         default_kwargs = {
             "method": "SLSQP",
             "bounds": get_bounds(
-                config=self.config,
+                bounds=self.bounds,
                 policy=Policy.KHybrid,
                 system=system,
                 robust=False,
