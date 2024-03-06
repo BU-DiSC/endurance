@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-import csv
 import logging
 import multiprocessing as mp
 import os
+from typing import Any
 
 from tqdm import tqdm
 import pyarrow as pa
@@ -18,68 +18,47 @@ class LCMDataGenJob:
         self.log = logging.getLogger(config["log"]["name"])
         self.log.info("Running Data Generator Job")
         self.config = config
-        self.setting = config["job"]["LCMDataGen"]
-        self.output_dir = os.path.join(
-            self.config["io"]["data_dir"], self.setting["dir"]
-        )
+
+    def create_bounds(self) -> LSMBounds:
+        return LSMBounds(**self.config["bounds"])
 
     def _choose_generator(self) -> Generators.LCMDataGenerator:
-        choice = self.setting["generator"]
-        max_levels = self.config["lsm"]["max_levels"]
-        bounds = LSMBounds()
+        design_enum = getattr(Policy, self.config["generator"])
+        bounds = self.create_bounds()
+        self.log.info(f"{bounds=}")
         generators = {
-            "TierCost": Generators.ClassicGenerator(
-                bounds, policies=[Policy.Tiering], max_levels=max_levels
-            ),
-            "LevelCost": Generators.ClassicGenerator(
-                bounds, policies=[Policy.Leveling], max_levels=max_levels
-            ),
-            "QCost": Generators.QCostGenerator(bounds, max_levels=max_levels),
-            "KHybridCost": Generators.KHybridGenerator(bounds, max_levels=max_levels),
-            "ClassicCost": Generators.ClassicGenerator(bounds, max_levels=max_levels),
+            Policy.Tiering: Generators.ClassicGenerator,
+            Policy.Leveling: Generators.ClassicGenerator,
+            Policy.Classic: Generators.ClassicGenerator,
+            Policy.QFixed: Generators.QCostGenerator,
+            Policy.KHybrid: Generators.KHybridGenerator,
         }
-        generator = generators.get(choice, None)
+        generator = generators.get(design_enum, None)
         if generator is None:
             raise TypeError("Invalid generator choice")
 
+        gen_kwargs: dict[str, Any] = {
+            "bounds": bounds,
+        }
+        if design_enum in [Policy.Tiering, Policy.Leveling]:
+            gen_kwargs["policies"] = [design_enum]
+        elif design_enum == Policy.Classic:
+            gen_kwargs["policies"] = [Policy.Tiering, Policy.Leveling]
+        generator = generator(**gen_kwargs)
+
         return generator
-
-    def generate_csv_file(self, generator, idx: int, pos: int) -> int:
-        fname_prefix = self.setting["file_prefix"]
-        fname = f"{fname_prefix}_{idx:04}.csv"
-        fpath = os.path.join(self.output_dir, fname)
-        if os.path.exists(fpath) and (not self.setting["overwrite_if_exists"]):
-            self.log.info(f"{fpath} exists, exiting.")
-            return -1
-
-        samples = range(int(self.setting["samples"]))
-        header = generator.generate_header()
-        with open(fpath, "w") as fid:
-            writer = csv.writer(fid)
-            writer.writerow(header)
-            for _ in tqdm(
-                samples,
-                desc=fname,
-                position=pos,
-                ncols=80,
-                disable=self.config["log"]["disable_tqdm"],
-            ):
-                row = generator.generate_row()
-                writer.writerow(row)
-
-        return idx
 
     def generate_parquet_file(
         self, generator: Generators.LCMDataGenerator, idx: int, pos: int
     ) -> int:
-        fname_prefix = self.setting["file_prefix"]
+        fname_prefix = self.config["file_prefix"]
         fname = f"{fname_prefix}_{idx:04}.parquet"
-        fpath = os.path.join(self.output_dir, fname)
-        if os.path.exists(fpath) and (not self.setting["overwrite_if_exists"]):
+        fpath = os.path.join(self.config["dir"], fname)
+        if os.path.exists(fpath) and (not self.config["overwrite_if_exists"]):
             self.log.info(f"{fpath} exists, exiting.")
             return -1
 
-        samples = range(int(self.setting["samples"]))
+        samples = range(int(self.config["samples"]))
         table = []
         for _ in tqdm(
             samples,
@@ -97,13 +76,8 @@ class LCMDataGenJob:
     def generate_file_single_thread(self) -> None:
         generator = self._choose_generator()
 
-        if self.setting["format"] == "parquet":
-            file_gen = self.generate_parquet_file
-        else:  # format == 'csv'
-            file_gen = self.generate_csv_file
-
-        for idx in range(self.setting["num_files"]):
-            file_gen(generator, idx, 0)
+        for idx in range(self.config["num_files"]):
+            self.generate_parquet_file(generator, idx, 0)
 
     def generate_file(self, idx: int) -> int:
         pos = 0
@@ -111,25 +85,22 @@ class LCMDataGenJob:
             pos = mp.current_process()._identity[0] - 1
         generator = self._choose_generator()
 
-        if self.setting["format"] == "parquet":
-            self.generate_parquet_file(generator, idx, pos)
-        else:  # format == 'csv'
-            self.generate_csv_file(generator, idx, pos)
+        self.generate_parquet_file(generator, idx, pos)
 
         return idx
 
     def run(self) -> None:
-        os.makedirs(self.output_dir, exist_ok=True)
-        self.log.info(f"Writing all files to {self.output_dir}")
+        os.makedirs(self.config["dir"], exist_ok=True)
+        self.log.info(f"Writing all files to {self.config['dir']}")
 
-        self.log.debug(f"Using {self.setting['generator']}")
-        inputs = list(range(0, self.setting["num_files"]))
-        threads = self.setting["num_workers"]
+        self.log.debug(f"Using {self.config['generator']}")
+        inputs = list(range(0, self.config["num_files"]))
+        threads = self.config["num_workers"]
         if threads == -1:
             threads = mp.cpu_count()
-        if threads > self.setting["num_files"]:
+        if threads > self.config["num_files"]:
             self.log.info("Num threads > num files, scaling down")
-            threads = self.setting["num_files"]
+            threads = self.config["num_files"]
         self.log.debug(f"Using {threads=}")
 
         if threads == 1:
@@ -144,7 +115,7 @@ class LCMDataGenJob:
 
 
 if __name__ == "__main__":
-    config = Reader.read_config("endure.toml")
+    config = Reader.read_config("jobs/config/LCMDataGen.toml")
 
     logging.basicConfig(
         format=config["log"]["format"], datefmt=config["log"]["datefmt"]

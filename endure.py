@@ -35,22 +35,13 @@ class EndureDriver:
         }
 
         jobs_list = self.config["job"]["to_run"]
-
-        # for job_name in jobs_list:
-        #     job = jobs.get(job_name, None)
-        #     if job is None:
-        #         self.log.warn(f"No job associated with {job_name}")
-        #         continue
-        #     job = job(config)
-        #     job.run()
-
         for job_name in jobs_list:
             job = jobs.get(job_name)
             if job is None:
                 driver.log.warn(f"No job associated with {job_name}")
                 continue
 
-            conf_path = os.path.join("jobs", "infra", f"{job_name}.toml")
+            conf_path = os.path.join("jobs", "config", f"{job_name}.toml")
             with open(conf_path) as jobfid:
                 job_config = toml.load(jobfid)
 

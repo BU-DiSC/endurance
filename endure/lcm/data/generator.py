@@ -1,6 +1,5 @@
-import logging
 import random
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from itertools import combinations_with_replacement
 
 import numpy as np
