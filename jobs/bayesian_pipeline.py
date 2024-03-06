@@ -97,6 +97,7 @@ class BayesianPipeline:
     def generate_initial_bounds(self, system: System) -> torch.Tensor:
         h_bounds = torch.tensor([self.bounds.bits_per_elem_range[0], min(np.floor(system.H)
                                                                          , self.bounds.bits_per_elem_range[1])], dtype=torch.float)
+
         t_bounds = torch.tensor([self.bounds.size_ratio_range[0], self.bounds.size_ratio_range[1]])
         policy_bounds = torch.tensor([0, 1])
         if self.model_type == Policy.QFixed:
