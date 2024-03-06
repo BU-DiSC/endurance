@@ -4,14 +4,14 @@ import numpy as np
 import scipy.optimize as SciOpt
 
 from endure.lsm.cost import EndureCost
-from endure.lsm.types import LSMDesign, Policy, System
+from endure.lsm.types import LSMDesign, Policy, System, LSMBounds
 from .util import kl_div_con, get_bounds
 from .util import H_DEFAULT, T_DEFAULT, LAMBDA_DEFAULT, ETA_DEFAULT, Q_DEFAULT
 
 class QLSMSolver:
-    def __init__(self, config: dict[str, Any]):
-        self.config = config
-        self.cf = EndureCost(config["lsm"]["max_levels"])
+    def __init__(self, bounds:LSMBounds):
+        self.bounds = bounds
+        self.cf = EndureCost(bounds.max_considered_levels)
 
     def robust_objective(
         self,
@@ -23,7 +23,7 @@ class QLSMSolver:
         q: float,
         w: float,
     ) -> float:
-        h, t, q, lamb, eta = x
+        h, t, q_val, lamb, eta = x
         design = LSMDesign(h=h, T=t, Q=q, policy=Policy.QFixed)
         query_cost = 0
         query_cost += z0 * kl_div_con((self.cf.Z0(design, system) - eta) / lamb)
@@ -79,7 +79,7 @@ class QLSMSolver:
         default_kwargs = {
             "method": "SLSQP",
             "bounds": get_bounds(
-                config=self.config,
+                bounds=self.bounds,
                 policy=Policy.QFixed,
                 system=system,
                 robust=False,

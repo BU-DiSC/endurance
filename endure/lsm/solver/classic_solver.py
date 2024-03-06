@@ -4,7 +4,7 @@ import numpy as np
 import scipy.optimize as SciOpt
 
 from endure.lsm.cost import EndureCost
-from endure.lsm.types import LSMDesign, Policy, System
+from endure.lsm.types import LSMDesign, Policy, System, LSMBounds
 from .util import kl_div_con
 from .util import get_bounds
 
@@ -17,11 +17,11 @@ ETA_DEFAULT = 1
 class ClassicSolver:
     def __init__(
         self,
-        config: dict[str, Any],
+        bounds: LSMBounds,
         policies: Optional[List[Policy]] = None
     ):
-        self.config = config
-        self.cf = EndureCost(config["lsm"]["max_levels"])
+        self.bounds = bounds
+        self.cf = EndureCost(bounds.max_considered_levels)
         if policies is None:
             policies = [Policy.Tiering, Policy.Leveling]
         self.policies = policies
@@ -83,7 +83,7 @@ class ClassicSolver:
         default_kwargs = {
             "method": "SLSQP",
             "bounds": get_bounds(
-                config=self.config,
+                bounds=self.bounds,
                 system=system,
                 robust=True,
             ),
@@ -125,7 +125,7 @@ class ClassicSolver:
         default_kwargs = {
             "method": "SLSQP",
             "bounds": get_bounds(
-                config=self.config,
+                bounds=self.bounds,
                 system=system,
                 robust=False,
             ),

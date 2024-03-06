@@ -96,7 +96,7 @@ class BayesianPipeline:
 
     def generate_initial_bounds(self, system: System) -> torch.Tensor:
         h_bounds = torch.tensor([self.bounds.bits_per_elem_range[0], min(np.floor(system.H)
-                                                                         , self.bounds.bits_per_elem_range[1])])
+                                                                         , self.bounds.bits_per_elem_range[1])], dtype=torch.float)
         t_bounds = torch.tensor([self.bounds.size_ratio_range[0], self.bounds.size_ratio_range[1]])
         policy_bounds = torch.tensor([0, 1])
         if self.model_type == Policy.QFixed:
@@ -194,7 +194,7 @@ class BayesianPipeline:
             # Uncomment the following lines of code if you want the q value to be the same
             # through all levels and behave like KLSM
             # policy = Policy.KHybrid
-            # k_values = [q_val for _ in range(1, self.max_levels)]
+            k_values = [q_val for _ in range(1, self.max_levels)]
             new_designs = [LSMDesign(h=h, T=np.ceil(size_ratio), policy=policy, K=k_values)]
         elif self.model_type == Policy.YZHybrid:
             size_ratio, y_val, z_val = candidate[1].item(), candidate[2].item(), candidate[3].item()
@@ -275,13 +275,13 @@ class BayesianPipeline:
         train_x = []
         train_y = []
         if self.model_type == Policy.QFixed:
-            generator = QCostGenerator()
+            generator = QCostGenerator(self.bounds)
         elif self.model_type == Policy.YZHybrid:
-            generator = YZCostGenerator()
+            generator = YZCostGenerator(self.bounds)
         elif self.model_type == Policy.KHybrid:
             generator = KHybridGenerator(self.bounds)
         else:
-            generator = ClassicGenerator()
+            generator = ClassicGenerator(self.bounds)
         for _ in range(n):
             design = generator._sample_design(self.system)
             if self.model_type == Policy.Classic:
