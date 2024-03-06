@@ -217,9 +217,7 @@ class BayesianPipeline:
     def finalize_optimization(self, best_designs):
         elapsed_time = time.time() - self.start_time
         sorted_designs = sorted(best_designs, key=lambda x: x[1])
-        analaytical_design, analytical_cost = self._find_analytical_results(self.system,
-                                                                            self.workload.z0, self.workload.z1,
-                                                                            self.workload.q, self.workload.w)
+        analaytical_design, analytical_cost = self._find_analytical_results(self.system, self.workload)
         best_design, best_cost = sorted_designs[0][0], sorted_designs[0][1]
         log_run_details(self.conn, self.run_id, elapsed_time, analytical_cost, best_cost, analaytical_design,
                         best_design)
@@ -334,17 +332,17 @@ class BayesianPipeline:
                 best_designs.append((LSMDesign(h=h.item(), T=np.ceil(size_ratio.item()), policy=pol), y.item()))
         return best_designs
 
-    def _find_analytical_results(self, system: System, z0: float, z1: float, q: float, w: float,
-                                 conf: Optional[dict] = None) -> Tuple[LSMDesign, float]:
-        conf = conf if conf is not None else self.config
+    def _find_analytical_results(self, system: System, workload: Workload, bounds: Optional[LSMBounds] = None) -> Tuple[LSMDesign, float]:
+        bounds = bounds if bounds is not None else self.bounds
         if self.model_type == Policy.Classic:
-            solver = ClassicSolver(conf)
+            solver = ClassicSolver(bounds)
         elif self.model_type == Policy.QFixed:
-            solver = QLSMSolver(conf)
+            solver = QLSMSolver(bounds)
         elif self.model_type == Policy.YZHybrid:
-            solver = YZLSMSolver(conf)
+            solver = YZLSMSolver(bounds)
         elif self.model_type == Policy.KHybrid:
-            solver = KLSMSolver(conf)
+            solver = KLSMSolver(bounds)
+        z0, z1, q, w = workload.z0, workload.z1, workload.q, workload.w
         nominal_design, nominal_solution = solver.get_nominal_design(system, z0, z1, q, w)
 
         if self.model_type == Policy.Classic:
