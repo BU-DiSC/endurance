@@ -19,7 +19,7 @@ file_prefix = "kcost"
 generator = "KHybrid"
 
 # Parallel workers, -1 issues all cores to be used
-num_workers = -1
+num_workers = 1
 
 # Number of total files to generate
 num_files = 2
@@ -47,7 +47,7 @@ disable_tqdm = false
 #   Bounds for data creation
 # =============================================================================
 [bounds]
-max_levels = 20                             # Max number of levels to consider
+max_considered_levels = 20                  # Max number of levels to consider
 size_ratio_range = [2, 31]                  # low, high of size ratios to consider
 page_sizes = [4, 8, 16]                     # KB pages
 entry_sizes = [1024, 2048, 4096, 8192]      # bits

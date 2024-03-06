@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import csv
 import logging
 import multiprocessing as mp
 import os
@@ -21,11 +20,12 @@ class LCMDataGenJob:
         self.config = config
 
     def create_bounds(self) -> LSMBounds:
-        return LSMBounds(*self.config["bounds"])
+        return LSMBounds(**self.config["bounds"])
 
     def _choose_generator(self) -> Generators.LCMDataGenerator:
         design_enum = getattr(Policy, self.config["generator"])
         bounds = self.create_bounds()
+        self.log.info(f"{bounds=}")
         generators = {
             Policy.Tiering: Generators.ClassicGenerator,
             Policy.Leveling: Generators.ClassicGenerator,
@@ -37,7 +37,9 @@ class LCMDataGenJob:
         if generator is None:
             raise TypeError("Invalid generator choice")
 
-        gen_kwargs: dict[str, Any] = {"bounds": bounds,}
+        gen_kwargs: dict[str, Any] = {
+            "bounds": bounds,
+        }
         if design_enum in [Policy.Tiering, Policy.Leveling]:
             gen_kwargs["policies"] = [design_enum]
         elif design_enum == Policy.Classic:
@@ -45,31 +47,6 @@ class LCMDataGenJob:
         generator = generator(**gen_kwargs)
 
         return generator
-
-    def generate_csv_file(self, generator, idx: int, pos: int) -> int:
-        fname_prefix = self.config["file_prefix"]
-        fname = f"{fname_prefix}_{idx:04}.csv"
-        fpath = os.path.join(self.config["dir"], fname)
-        if os.path.exists(fpath) and (not self.config["overwrite_if_exists"]):
-            self.log.info(f"{fpath} exists, exiting.")
-            return -1
-
-        samples = range(int(self.config["samples"]))
-        header = generator.generate_header()
-        with open(fpath, "w") as fid:
-            writer = csv.writer(fid)
-            writer.writerow(header)
-            for _ in tqdm(
-                samples,
-                desc=fname,
-                position=pos,
-                ncols=80,
-                disable=self.config["log"]["disable_tqdm"],
-            ):
-                row = generator.generate_row()
-                writer.writerow(row)
-
-        return idx
 
     def generate_parquet_file(
         self, generator: Generators.LCMDataGenerator, idx: int, pos: int
@@ -99,13 +76,8 @@ class LCMDataGenJob:
     def generate_file_single_thread(self) -> None:
         generator = self._choose_generator()
 
-        if self.config["format"] == "parquet":
-            file_gen = self.generate_parquet_file
-        else:  # format == 'csv'
-            file_gen = self.generate_csv_file
-
         for idx in range(self.config["num_files"]):
-            file_gen(generator, idx, 0)
+            self.generate_parquet_file(generator, idx, 0)
 
     def generate_file(self, idx: int) -> int:
         pos = 0
@@ -113,10 +85,7 @@ class LCMDataGenJob:
             pos = mp.current_process()._identity[0] - 1
         generator = self._choose_generator()
 
-        if self.config["format"] == "parquet":
-            self.generate_parquet_file(generator, idx, pos)
-        else:  # format == 'csv'
-            self.generate_csv_file(generator, idx, pos)
+        self.generate_parquet_file(generator, idx, pos)
 
         return idx
 
@@ -146,7 +115,7 @@ class LCMDataGenJob:
 
 
 if __name__ == "__main__":
-    config = Reader.read_config("endure.toml")
+    config = Reader.read_config("jobs/config/LCMDataGen.toml")
 
     logging.basicConfig(
         format=config["log"]["format"], datefmt=config["log"]["datefmt"]
