@@ -12,8 +12,8 @@ from jobs.bayesian_pipeline import BayesianPipeline
 
 
 class EndureDriver:
-    def __init__(self, config):
-        self.config = config
+    def __init__(self, conf):
+        self.config = conf
 
         logging.basicConfig(
             format=config["log"]["format"], datefmt=config["log"]["datefmt"]
@@ -33,20 +33,14 @@ class EndureDriver:
             "LTuneTrain": LTuneTrainJob,
             "BayesianBaseline": BayesianPipeline,
         }
-
         jobs_list = self.config["job"]["to_run"]
         for job_name in jobs_list:
-            job = jobs.get(job_name)
+            job = jobs.get(job_name, None)
             if job is None:
-                driver.log.warn(f"No job associated with {job_name}")
+                self.log.warn(f"No job associated with {job_name}")
                 continue
-
-            conf_path = os.path.join("jobs", "config", f"{job_name}.toml")
-            with open(conf_path) as jobfid:
-                job_config = toml.load(jobfid)
-
-            job_instance = job(job_config)
-            job_instance.run()
+            job = job(config)
+            job.run()
 
         self.log.info("All jobs finished, exiting")
 
