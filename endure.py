@@ -33,7 +33,7 @@ class EndureDriver:
             "LTuneTrain": LTuneTrainJob,
             "BayesianBaseline": BayesianPipeline,
         }
-        jobs_list = self.config["job"]["to_run"]
+        jobs_list = self.config["app"]["run"]
         for job_name in jobs_list:
             job = jobs.get(job_name, None)
             if job is None:

@@ -1,4 +1,3 @@
-import logging
 from typing import Optional, Any
 
 import torch.optim as Opt
@@ -6,8 +5,7 @@ import torch.optim as Opt
 
 class LRSchedulerBuilder:
     def __init__(self, config: dict[str, Any]):
-        self.log = logging.getLogger(config["log"]["name"])
-        self._config = config
+        self.scheduler_kwargs = config
 
     def _build_cosine_anneal(
         self,
@@ -15,7 +13,7 @@ class LRSchedulerBuilder:
     ) -> Opt.lr_scheduler.CosineAnnealingLR:
         return Opt.lr_scheduler.CosineAnnealingLR(
             optimizer,
-            **self._config["train"]["scheduler"]["CosineAnnealingLR"],
+            **self.scheduler_kwargs["CosineAnnealingLR"]
         )
 
     def _build_exponential(
@@ -24,13 +22,11 @@ class LRSchedulerBuilder:
     ) -> Opt.lr_scheduler.ExponentialLR:
         return Opt.lr_scheduler.ExponentialLR(
             optimizer,
-            **self._config["train"]["scheduler"]["Exponential"],
+            **self.scheduler_kwargs["Exponential"],
         )
 
     def build_scheduler(
-        self,
-        optimizer: Opt.Optimizer,
-        scheduler_choice: str = "Constant",
+        self, optimizer: Opt.Optimizer, scheduler_choice: str = "Constant"
     ) -> Optional[Opt.lr_scheduler._LRScheduler]:
         schedules = {
             "CosineAnnealing": self._build_cosine_anneal,
@@ -38,11 +34,8 @@ class LRSchedulerBuilder:
             "Constant": "Constant",
             "None": "Constant",
         }
-        schedule_builder = schedules.get(scheduler_choice, None)
-        if schedule_builder is None:
-            self.log.warn("Invalid scheduler, defaulting to Constant")
-            return None
-        if schedule_builder == "Constant":  # Constant/None case
+        schedule_builder = schedules.get(scheduler_choice, "Constant")
+        if schedule_builder == "Constant":
             return None
         scheduler = schedule_builder(optimizer)
 

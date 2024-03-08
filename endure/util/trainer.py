@@ -19,7 +19,7 @@ class Trainer:
         test_data: Iterable[Union[DataLoader, Dataset]],
         scheduler: Optional[torch.optim.lr_scheduler._LRScheduler] = None,
         max_epochs: int = 10,
-        base_dir: str = "./",
+        model_dir: str = "./",
         use_gpu_if_avail: bool = False,
         model_train_kwargs: dict[str, Any] = {},
         model_test_kwargs: dict[str, Any] = {},
@@ -36,9 +36,9 @@ class Trainer:
         self.train_len = self.test_len = 0
         self.scheduler = scheduler
         self.max_epochs = max_epochs
-        self.base_dir = base_dir
-        self.use_gpu_if_avail = use_gpu_if_avail
-        self.checkpoint_dir = os.path.join(self.base_dir, "checkpoints")
+        self.model_dir = model_dir
+        self.use_gpu = use_gpu_if_avail
+        self.checkpoint_dir = os.path.join(self.model_dir, "checkpoints")
         self.no_checkpoint = no_checkpoint
         self.disable_tqdm = disable_tqdm
 
@@ -49,7 +49,7 @@ class Trainer:
         self.train_callback = train_callback
 
     def _check_device(self) -> torch.device:
-        if self.use_gpu_if_avail and torch.cuda.is_available():
+        if self.use_gpu and torch.cuda.is_available():
             device = torch.device("cuda")
         else:
             device = torch.device("cpu")
@@ -158,7 +158,7 @@ class Trainer:
         return
 
     def _save_model(self, name: str) -> None:
-        save_path = os.path.join(self.base_dir, name)
+        save_path = os.path.join(self.model_dir, name)
         torch.save(self.model.state_dict(), save_path)
 
         return
@@ -166,13 +166,13 @@ class Trainer:
     def run(self) -> None:
         os.makedirs(self.checkpoint_dir, exist_ok=True)
 
-        with open(os.path.join(self.base_dir, "losses.csv"), "w") as fid:
+        with open(os.path.join(self.model_dir, "losses.csv"), "w") as fid:
             loss_csv_write = csv.writer(fid)
             loss_csv_write.writerow(["epoch", "train_loss", "test_loss"])
 
         self.log.info("Initial test with random network")
         loss_min = self._validation_loop()
-        with open(os.path.join(self.base_dir, "losses.csv"), "a") as fid:
+        with open(os.path.join(self.model_dir, "losses.csv"), "a") as fid:
             write = csv.writer(fid)
             write.writerow([0, loss_min, loss_min])
         self.log.info(f"Initial Loss: {loss_min}")
@@ -189,7 +189,7 @@ class Trainer:
                 loss_min = curr_loss
                 self.log.info("New minmum loss, saving...")
                 self._save_model("best.model")
-            with open(os.path.join(self.base_dir, "losses.csv"), "a") as fid:
+            with open(os.path.join(self.model_dir, "losses.csv"), "a") as fid:
                 write = csv.writer(fid)
                 write.writerow([epoch + 1, train_loss, curr_loss])
 

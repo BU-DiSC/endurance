@@ -18,13 +18,15 @@ class LCMDataGenJob:
         self.log = logging.getLogger(config["log"]["name"])
         self.log.info("Running Data Generator Job")
         self.config = config
+        self.job_config = config["job"]["LCMDataGen"]
 
     def create_bounds(self) -> LSMBounds:
-        return LSMBounds(**self.config["bounds"])
+        return LSMBounds(**self.config["lsm"]["bounds"])
 
     def _choose_generator(self) -> Generators.LCMDataGenerator:
-        design_enum = getattr(Policy, self.config["generator"])
+        design_enum = getattr(Policy, self.config["lsm"]["design"])
         bounds = self.create_bounds()
+        self.log.info(f"Generator: {design_enum.name}")
         self.log.info(f"{bounds=}")
         generators = {
             Policy.Tiering: Generators.ClassicGenerator,
@@ -51,14 +53,16 @@ class LCMDataGenJob:
     def generate_parquet_file(
         self, generator: Generators.LCMDataGenerator, idx: int, pos: int
     ) -> int:
-        fname_prefix = self.config["file_prefix"]
+        fname_prefix = self.job_config["file_prefix"]
         fname = f"{fname_prefix}_{idx:04}.parquet"
-        fpath = os.path.join(self.config["dir"], fname)
-        if os.path.exists(fpath) and (not self.config["overwrite_if_exists"]):
+        fpath = os.path.join(
+            self.config["io"]["data_dir"], self.job_config["dir"], fname
+        )
+        if os.path.exists(fpath) and (not self.job_config["overwrite_if_exists"]):
             self.log.info(f"{fpath} exists, exiting.")
             return -1
 
-        samples = range(int(self.config["samples"]))
+        samples = range(int(self.job_config["samples"]))
         table = []
         for _ in tqdm(
             samples,
@@ -76,7 +80,7 @@ class LCMDataGenJob:
     def generate_file_single_thread(self) -> None:
         generator = self._choose_generator()
 
-        for idx in range(self.config["num_files"]):
+        for idx in range(self.job_config["num_files"]):
             self.generate_parquet_file(generator, idx, 0)
 
     def generate_file(self, idx: int) -> int:
@@ -90,17 +94,17 @@ class LCMDataGenJob:
         return idx
 
     def run(self) -> None:
-        os.makedirs(self.config["dir"], exist_ok=True)
-        self.log.info(f"Writing all files to {self.config['dir']}")
+        data_dir = os.path.join(self.config["io"]["data_dir"], self.job_config["dir"])
+        os.makedirs(data_dir, exist_ok=True)
+        self.log.info(f"Writing all files to {data_dir}")
 
-        self.log.debug(f"Using {self.config['generator']}")
-        inputs = list(range(0, self.config["num_files"]))
-        threads = self.config["num_workers"]
+        inputs = list(range(0, self.job_config["num_files"]))
+        threads = self.job_config["num_workers"]
         if threads == -1:
             threads = mp.cpu_count()
-        if threads > self.config["num_files"]:
+        if threads > self.job_config["num_files"]:
             self.log.info("Num threads > num files, scaling down")
-            threads = self.config["num_files"]
+            threads = self.job_config["num_files"]
         self.log.debug(f"Using {threads=}")
 
         if threads == 1:
@@ -115,7 +119,7 @@ class LCMDataGenJob:
 
 
 if __name__ == "__main__":
-    config = Reader.read_config("jobs/config/LCMDataGen.toml")
+    config = Reader.read_config("endure.toml")
 
     logging.basicConfig(
         format=config["log"]["format"], datefmt=config["log"]["datefmt"]
@@ -123,5 +127,5 @@ if __name__ == "__main__":
     log = logging.getLogger(config["log"]["name"])
     log.setLevel(config["log"]["level"])
 
-    a = LCMDataGenJob(config)
-    a.run()
+    job = LCMDataGenJob(config)
+    job.run()

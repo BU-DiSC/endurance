@@ -182,7 +182,7 @@ class LTuneTrainJob:
             scheduler=scheduler,
             max_epochs=self._setting["max_epochs"],
             use_gpu_if_avail=self._setting["use_gpu_if_avail"],
-            base_dir=model_base_dir,
+            model_dir=model_base_dir,
             model_train_kwargs=self._config["ltune"]["model"]["train_kwargs"],
             model_test_kwargs=self._config["ltune"]["model"]["test_kwargs"],
             disable_tqdm=disable_tqdm,

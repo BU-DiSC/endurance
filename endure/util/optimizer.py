@@ -1,4 +1,3 @@
-import logging
 from typing import Any
 import torch.optim as Opt
 
@@ -7,26 +6,16 @@ from torch.nn import Module
 
 class OptimizerBuilder:
     def __init__(self, config: dict[str, Any]):
-        self.log = logging.getLogger(config["log"]["name"])
-        self._config = config
+        self.opt_kwargs = config
 
     def _build_adam(self, model: Module) -> Opt.Adam:
-        return Opt.Adam(
-            model.parameters(),
-            lr=self._config["train"]["optimizer"]["Adam"]["lr"],
-        )
+        return Opt.Adam(model.parameters(), **self.opt_kwargs["Adam"])
 
     def _build_adagrad(self, model: Module) -> Opt.Adagrad:
-        return Opt.Adagrad(
-            model.parameters(),
-            lr=self._config["train"]["optimizer"]["Adagrad"]["lr"],
-        )
+        return Opt.Adagrad(model.parameters(), **self.opt_kwargs["Adagrad"])
 
     def _build_sgd(self, model: Module) -> Opt.SGD:
-        return Opt.SGD(
-            model.parameters(),
-            lr=self._config["train"]["optimizer"]["SGD"]["lr"],
-        )
+        return Opt.SGD(model.parameters(), **self.opt_kwargs["SGD"])
 
     def build_optimizer(
         self,
@@ -41,8 +30,7 @@ class OptimizerBuilder:
 
         opt_builder = optimizers.get(optimizer_choice, None)
         if opt_builder is None:
-            self.log.warn("Invalid optimizer choice, defaulting to SGD")
-            return self._build_sgd(model)
+            raise KeyError
         optimizer = opt_builder(model)
 
         return optimizer
