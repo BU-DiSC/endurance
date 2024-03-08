@@ -1,7 +1,11 @@
 # =============================================================================
 # ENDURE Configuration File
-#   Every job will contain it's own HEADER <Job Title> with settings appropiate
-#   for the job.
+#   Following subsections are available
+#   APP
+#   LOGGER - output setting
+#   IO - base directory for IO
+#   JOB - all job specific settings
+#   LSM - Log structured merge tree assumptions and settings
 #
 # HEADER APP
 #   Logic of app including jobs list to run
@@ -56,10 +60,7 @@ overwrite_if_exists = true
 # -----------------------------------------------------------------------------
 max_epochs = 5
 save_dir = "models/lcm/kcost"
-
-# Model selection, picking "Auto" will give automatically select the model
-# associated with the LSM design in the configuration file
-model = "Auto"
+no_checkpoint = false
 
 # Different loss functions to train via
 #   MSE - Mean squared error
@@ -71,21 +72,15 @@ model = "Auto"
 loss_fn = "MSE"
 
 # Supported optimizers
-#   SGD - Stochastic gradient descent
-#   Adam
-#   Adagrad
+#   [SGD, Adam, Adagrad]
 optimizer = "Adam"
 
 # Learning rate schedulers
 #   [CosineAnnealing, Exponential, Constant, None]
 lr_scheduler = "Constant"
 
-# Stop checkpointing to improve training
-no_checkpoint = false
-
 [job.LCMTrain.train]
 dir = "train-data/kcost-t30"
-format = "parquet"
 batch_size = 32
 shuffle = true
 num_workers = 2
@@ -93,7 +88,6 @@ drop_last = true
 
 [job.LCMTrain.test]
 dir = "test-data/kcost-t30"
-format = "parquet"
 batch_size = 1024
 shuffle = false
 num_workers = 4
@@ -102,7 +96,6 @@ drop_last = true
 # -----------------------------------------------------------------------------
 [job.LTuneDataGen]
 # -----------------------------------------------------------------------------
-format = "parquet"
 dir = "test-data/ltune/std"
 file_prefix = "wl"
 num_workers = 4  # -1 forces all cores to be used
@@ -119,10 +112,11 @@ save_dir = "models/ltune/klsm"
 # Learned cost model is our loss, input full path to checkpoint or model file
 loss_fn_path = "models/lcm/kcost"
 
-# Check train.optimizer for available options
+# Optimizer settings in header.optimizer
+#   [SGD, Adam, Adagrad]
 optimizer = "Adam"
 
-# Learning rate schedulers
+# Learning rate schedulers, settings in header.scheduler
 #   [CosineAnnealing, Exponential, Constant, None]
 lr_scheduler = "Constant"
 
