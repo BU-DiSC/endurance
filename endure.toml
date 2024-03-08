@@ -13,9 +13,8 @@
 [app]
 name = "ENDURE"
 run = [
-    # "LCMDataGen",
+    # "DataGen",
     # "LCMTrain",
-    # "LTuneDataGen",
     # "LTuneTrain",
     # "BayesianBaseline"
 ]
@@ -46,14 +45,15 @@ data_dir = "/data"
 use_gpu_if_avail = false
 
 # -----------------------------------------------------------------------------
-[job.LCMDataGen]
+[job.DataGen]
 # -----------------------------------------------------------------------------
-dir = "test-data/kcost-t30"
-file_prefix = "kcost"
-num_workers = -1 # -1 forces all cores to be used
-num_files = 2
-samples = 1024  # per file sample
-overwrite_if_exists = true
+dir = "ltune/test/std"
+generator = "LTuner"            # Select between data for tuner (LTuner) or LCM
+file_prefix = "kcost"           # all files named file_prefix_000X.parquet
+num_workers = -1                # -1 forces all cores to be used
+num_files = 2                   # number of files to generate
+samples = 1024                  # per file sample
+overwrite_if_exists = true      # if files exist overwrite with new data
 
 # -----------------------------------------------------------------------------
 [job.LCMTrain]
@@ -92,16 +92,6 @@ batch_size = 1024
 shuffle = false
 num_workers = 4
 drop_last = true
-
-# -----------------------------------------------------------------------------
-[job.LTuneDataGen]
-# -----------------------------------------------------------------------------
-dir = "test-data/ltune/std"
-file_prefix = "wl"
-num_workers = 4  # -1 forces all cores to be used
-num_files = 2
-samples = 1024  # per file sample
-overwrite_if_exists = true
 
 # -----------------------------------------------------------------------------
 [job.LTuneTrain]
