@@ -51,7 +51,7 @@ class BayesianPipeline:
         self.bounds = LSMBounds()
         self.max_levels = self.bounds.max_considered_levels
         self.cf: EndureCost = EndureCost(self.max_levels)
-        # self.log: logging.Logger = logging.getLogger(self.config["log"]["name"])
+        self.log: logging.Logger = logging.getLogger(self.config["log"]["name"])
 
         self.system: System = System(**self.bayesian_setting["system"])
         self.workload: Workload = Workload(**self.bayesian_setting["workload"])
@@ -129,8 +129,8 @@ class BayesianPipeline:
             new_designs, costs = self.evaluate_new_candidates(new_candidates)
             train_x, train_y, best_y, best_designs = self.update_training_data(train_x, train_y, new_candidates, costs,
                                                                                best_designs)
-        #     self.log.debug(f"Iteration {i + 1}/{self.num_iterations} complete")
-        # self.log.debug("Bayesian Optimization completed")
+            self.log.debug(f"Iteration {i + 1}/{self.num_iterations} complete")
+        self.log.debug("Bayesian Optimization completed")
         return best_designs
 
     def _initialize_feature_list(self, bounds):
