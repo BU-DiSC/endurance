@@ -8,7 +8,7 @@ from typing import Any, Callable, Optional
 import torch.optim as Opt
 from torch.utils.data import DataLoader
 
-from endure.lsm.types import STR_POLICY_DICT
+from endure.lsm.types import LSMBounds, Policy
 from endure.ltune.data.dataset import LTuneDataSet
 from endure.ltune.loss import LearnedCostModelLoss
 from endure.ltune.model.builder import LTuneModelBuilder
@@ -19,70 +19,66 @@ from endure.util.trainer import Trainer
 
 class LTuneTrainJob:
     def __init__(self, config: dict[str, Any]) -> None:
-        self._config = config
-        self._setting = config["job"]["LTuneTrain"]
-        self.log = logging.getLogger(self._config["log"]["name"])
+        self.log = logging.getLogger(self.config["log"]["name"])
         self.log.info("Running Training Job")
+        self.use_gpu = config["job"]["use_gpu_if_avail"]
+        self.save_dir = os.path.join(
+            config["io"]["data_dir"],
+            config["job"]["LTuneTrain"]["save_dir"],
+        )
+        self.design = getattr(Policy, config["lsm"]["design"])
+        self.bounds = LSMBounds(**config["lsm"]["bounds"])
+        self.opt_builder = OptimizerBuilder(config["optimizer"])
+        self.schedule_builder = LRSchedulerBuilder(config["scheduler"])
+        self.model_builder = LTuneModelBuilder(
+            size_ratio_range=self.bounds.size_ratio_range,
+            max_levels=self.bounds.max_considered_levels,
+            **config["ltune"]["model"],
+        )
 
-        policy = STR_POLICY_DICT.get(self._config["lsm"]["design"], None)
-        if policy is None:
-            raise TypeError(f"Invalid LSM Design")
-        self.policy = policy
+        self.config = config
+        self.jconfig = config["job"]["LTuneTrain"]
 
     def _build_loss_fn(self) -> torch.nn.Module:
-        model = LearnedCostModelLoss(self._config, self._setting["loss_fn_path"])
-        if self._setting["use_gpu_if_avail"] and torch.cuda.is_available():
+        model = LearnedCostModelLoss(self.config, self.jconfig["loss_fn_path"])
+        if self.jconfig["use_gpu_if_avail"] and torch.cuda.is_available():
             model.to("cuda")
 
         return model
 
     def _build_model(self) -> torch.nn.Module:
-        size_ratio_min = self._config["lsm"]["size_ratio"]["min"]
-        size_ratio_max = self._config["lsm"]["size_ratio"]["max"]
-        builder = LTuneModelBuilder(
-            hidden_width=self._config["ltune"]["model"]["hidden_width"],
-            hidden_length=self._config["ltune"]["model"]["hidden_length"],
-            dropout=self._config["ltune"]["model"]["dropout"],
-            norm_layer=self._config["ltune"]["model"]["norm_layer"],
-            categorical_mode=self._config["ltune"]["model"]["categorical_mode"],
-            size_ratio_range=(size_ratio_min, size_ratio_max),
-            max_levels=self._config["lsm"]["max_levels"],
-        )
-        model = builder.build_model(self.policy)
-        if self._setting["use_gpu_if_avail"] and torch.cuda.is_available():
+        model = self.model_builder.build_model(self.design)
+        if self.use_gpu and torch.cuda.is_available():
             model.to("cuda")
 
         return model
 
-    def _build_optimizer(self, model) -> Opt.Optimizer:
-        builder = OptimizerBuilder(self._config)
-        choice = self._setting["optimizer"]
+    def _build_optimizer(self, model: torch.nn.Module) -> Opt.Optimizer:
+        choice = self.jconfig["optimizer"]
 
-        return builder.build_optimizer(choice, model)
+        return self.opt_builder.build_optimizer(choice, model)
 
     def _build_scheduler(
         self, optimizer: Opt.Optimizer
     ) -> Optional[Opt.lr_scheduler._LRScheduler]:
-        builder = LRSchedulerBuilder(self._config)
-        choice = self._setting["lr_scheduler"]
+        choice = self.jconfig["lr_scheduler"]
 
-        return builder.build_scheduler(optimizer, choice)
+        return self.schedule_builder.build_scheduler(optimizer, choice)
 
     def _build_train(self) -> DataLoader:
         train_dir = os.path.join(
-            self._config["io"]["data_dir"],
-            self._setting["train"]["dir"],
+            self.config["io"]["data_dir"],
+            self.jconfig["train"]["dir"],
         )
         train_data = LTuneDataSet(
             folder=train_dir,
-            shuffle=self._setting["train"]["shuffle"],
-            format=self._setting["train"]["format"],
+            shuffle=self.jconfig["train"]["shuffle"],
         )
         train = DataLoader(
             train_data,
-            batch_size=self._setting["train"]["batch_size"],
-            drop_last=self._setting["train"]["drop_last"],
-            num_workers=self._setting["train"]["num_workers"],
+            batch_size=self.jconfig["train"]["batch_size"],
+            drop_last=self.jconfig["train"]["drop_last"],
+            num_workers=self.jconfig["train"]["num_workers"],
             pin_memory=True,
             prefetch_factor=10,
         )
@@ -91,39 +87,33 @@ class LTuneTrainJob:
 
     def _build_test(self) -> DataLoader:
         test_dir = os.path.join(
-            self._config["io"]["data_dir"],
-            self._setting["test"]["dir"],
+            self.config["io"]["data_dir"],
+            self.jconfig["test"]["dir"],
         )
         test_data = LTuneDataSet(
             folder=test_dir,
-            shuffle=self._setting["test"]["shuffle"],
-            format=self._setting["test"]["format"],
+            shuffle=self.jconfig["test"]["shuffle"],
         )
         test = DataLoader(
             test_data,
-            batch_size=self._setting["test"]["batch_size"],
-            drop_last=self._setting["test"]["drop_last"],
-            num_workers=self._setting["test"]["num_workers"],
+            batch_size=self.jconfig["test"]["batch_size"],
+            drop_last=self.jconfig["test"]["drop_last"],
+            num_workers=self.jconfig["test"]["num_workers"],
         )
 
         return test
 
-    def _make_save_dir(self) -> Optional[str]:
-        self.log.info(f'Saving model in: {self._setting["save_dir"]}')
-        save_dir = os.path.join(
-            self._config["io"]["data_dir"],
-            self._setting["save_dir"],
-        )
+    def _make_save_dir(self) -> bool:
+        self.log.info(f"Saving model in: {self.save_dir}")
         try:
-            os.makedirs(save_dir, exist_ok=False)
+            os.makedirs(self.save_dir, exist_ok=False)
         except FileExistsError:
-            return None
+            return False
 
-        # dump configuration file
-        with open(os.path.join(save_dir, "endure.toml"), "w") as fid:
-            toml.dump(self._config, fid)
+        with open(os.path.join(self.save_dir, "endure.toml"), "w") as fid:
+            toml.dump(self.config, fid)
 
-        return save_dir
+        return True
 
     @staticmethod
     def gumbel_temp_schedule(
@@ -150,16 +140,16 @@ class LTuneTrainJob:
         return
 
     def get_train_callback(self) -> Optional[Callable[[dict], None]]:
-        if not self._config["lsm"]["design"] == "KLSM":
+        if not self.design == Policy.KHybrid:
             return None
-        if self._config["ltune"]["model"]["categorical_mode"] == "reinmax":
+        if self.config["ltune"]["model"]["categorical_mode"] == "reinmax":
             return lambda train_kwargs: self.reinmax_temp_schedule(train_kwargs)
-
+        # default train_callback will be gumbel softmax
         return lambda train_kwargs: self.gumbel_temp_schedule(train_kwargs)
 
     def run(self) -> Optional[Trainer]:
-        model_base_dir = self._make_save_dir()
-        if model_base_dir is None:
+        dir_success = self._make_save_dir()
+        if not dir_success:
             self.log.info("Model directory already exists, exiting...")
             return None
 
@@ -169,7 +159,7 @@ class LTuneTrainJob:
         train_data = self._build_train()
         test_data = self._build_test()
         loss_fn = self._build_loss_fn()
-        disable_tqdm = self._config["log"]["disable_tqdm"]
+        disable_tqdm = self.config["log"]["disable_tqdm"]
         callback = self.get_train_callback()
 
         trainer = Trainer(
@@ -180,14 +170,14 @@ class LTuneTrainJob:
             train_data=train_data,
             test_data=test_data,
             scheduler=scheduler,
-            max_epochs=self._setting["max_epochs"],
-            use_gpu_if_avail=self._setting["use_gpu_if_avail"],
-            model_dir=model_base_dir,
-            model_train_kwargs=self._config["ltune"]["model"]["train_kwargs"],
-            model_test_kwargs=self._config["ltune"]["model"]["test_kwargs"],
+            max_epochs=self.jconfig["max_epochs"],
+            use_gpu_if_avail=self.use_gpu,
+            model_dir=self.save_dir,
+            model_train_kwargs=self.config["ltune"]["model"]["train_kwargs"],
+            model_test_kwargs=self.config["ltune"]["model"]["test_kwargs"],
             disable_tqdm=disable_tqdm,
-            no_checkpoint=self._config["job"]["LTuneTrain"]["no_checkpoint"],
-            train_callback=callback
+            no_checkpoint=self.jconfig["no_checkpoint"],
+            train_callback=callback,
         )
         trainer.run()
 
@@ -198,13 +188,11 @@ if __name__ == "__main__":
     from endure.data.io import Reader
 
     config = Reader.read_config("endure.toml")
-
     logging.basicConfig(
         format=config["log"]["format"], datefmt=config["log"]["datefmt"]
     )
-
     log = logging.getLogger(config["log"]["name"])
     log.setLevel(config["log"]["level"])
 
-    a = LTuneTrainJob(config)
-    a.run()
+    job = LTuneTrainJob(config)
+    job.run()
