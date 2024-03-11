@@ -2,25 +2,23 @@ from typing import List, Tuple, Union
 
 import numpy as np
 
-from endure.lsm.types import System
+from endure.lsm.types import LSMBounds, System
 from endure.ltune.data.input_features import kSYSTEM_HEADER, kWORKLOAD_HEADER
 
 
 class LTuneDataGenerator:
     def __init__(
         self,
-        page_sizes: List[int] = [4, 8, 16],
-        entry_sizes: List[int] = [1024, 2048, 4096, 8192],
-        memory_budget_range: Tuple[float, float] = (5.0, 20.0),
-        selectivity_range: Tuple[float, float] = (1e-7, 1e-9),
-        elements_range: Tuple[int, int] = (100000000, 1000000000),
+        bounds: LSMBounds,
         precision: int = 3,
     ) -> None:
-        self.entry_sizes = entry_sizes
-        self.memory_budget_range = memory_budget_range
-        self.page_sizes = page_sizes
-        self.selectivity_range = selectivity_range
-        self.elements_range = elements_range
+        self.entry_sizes = bounds.entry_sizes
+        self.memory_budget_range = bounds.memory_budget_range
+        self.page_sizes = bounds.page_sizes
+        self.selectivity_range = bounds.selectivity_range
+        self.elements_range = bounds.elements_range
+
+        self.bounds = bounds
         self.precision = precision
 
     def _sample_workload(self, dimensions: int) -> list:

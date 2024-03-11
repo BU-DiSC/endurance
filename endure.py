@@ -4,9 +4,8 @@ import os
 import toml
 import sys
 
-from jobs.lcm_data_gen import LCMDataGenJob
 from jobs.lcm_train import LCMTrainJob
-from jobs.ltune_data_gen import LTuneDataGenJob
+from jobs.data_gen import DataGenJob
 from jobs.ltune_train import LTuneTrainJob
 from jobs.bayesian_pipeline import BayesianPipeline
 
@@ -27,9 +26,8 @@ class EndureDriver:
         self.log.info(f'Staring app {self.config["app"]["name"]}')
 
         jobs = {
-            "LCMDataGen": LCMDataGenJob,
+            "DataGen": DataGenJob,
             "LCMTrain": LCMTrainJob,
-            "LTuneDataGen": LTuneDataGenJob,
             "LTuneTrain": LTuneTrainJob,
             "BayesianBaseline": BayesianPipeline,
         }
