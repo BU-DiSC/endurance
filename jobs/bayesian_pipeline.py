@@ -67,23 +67,18 @@ class BayesianPipeline:
         self.bounds: LSMBounds = LSMBounds(**config["lsm"]["bounds"])
         self.cf: EndureCost = EndureCost(self.bounds.max_considered_levels)
 
-        self.system: System = System(**jconfig["system"])
-        self.workload: Workload = Workload(**jconfig["workload"])
+        self.system: System = System(**config["lsm"]["system"])
+        self.workload: Workload = Workload(**config["lsm"]["workload"])
         self.initial_samples: int = jconfig["initial_samples"]
         self.acquisition_function: str = jconfig["acquisition_function"]
-        self.q: int = jconfig["batch_size"]
         self.num_restarts: int = jconfig["num_restarts"]
-        self.raw_samples: int = jconfig["raw_samples"]
         self.num_iterations: int = jconfig["num_iterations"]
-        self.beta_value: float = jconfig["beta_value"]
-        self.write_to_db = jconfig["database"]["write_to_db"]
         self.output_dir = os.path.join(
             jconfig["database"]["data_dir"],
             jconfig["database"]["db_path"],
         )
         self.db_path = os.path.join(self.output_dir, jconfig["database"]["db_name"])
-        model_type_str = jconfig.get("model_type", "Classic")
-        self.model_type = getattr(Policy, model_type_str)
+        self.model_type = getattr(Policy, config["lsm"]["design"])
         self.num_k_values = jconfig["num_k_values"]
 
         self.config: dict = config
@@ -96,7 +91,7 @@ class BayesianPipeline:
         num_iterations: Optional[int] = None,
         sample_size: Optional[int] = None,
         acqf: Optional[str] = None,
-    ) -> Tuple[Optional[LSMDesign], Optional[float]]:
+    ) -> Tuple[LSMDesign, float]:
         self.start_time = time.time()
         self.initialize_environment(system, workload, num_iterations, sample_size, acqf)
         train_x, train_y, best_y = self._generate_initial_data(self.initial_samples)
@@ -171,13 +166,18 @@ class BayesianPipeline:
         return bounds
 
     def optimization_loop(
-        self, train_x: torch.Tensor, train_y: torch.Tensor, best_y: Number
-    ) -> List[Tuple[LSMDesign, Number]]:
+        self,
+        train_x: torch.Tensor,
+        train_y: torch.Tensor,
+        best_y: Number,
+    ) -> list[tuple[LSMDesign, Number]]:
         bounds = self.generate_initial_bounds(self.system)
         fixed_feature_list = self._initialize_feature_list(bounds)
         best_designs = []
+        self.log.debug(f"{best_y=}")
 
-        for i in range(self.num_iterations):
+        epochs = self.num_iterations
+        for i in range(epochs):
             new_candidates = self.get_next_points(
                 train_x,
                 train_y,
@@ -187,11 +187,12 @@ class BayesianPipeline:
                 self.acquisition_function,
                 1,
             )
+            self.log.debug(f"[it {i + 1}/{epochs}] {new_candidates=}")
             _, costs = self.evaluate_new_candidates(new_candidates)
             train_x, train_y, best_y, best_designs = self.update_training_data(
                 train_x, train_y, new_candidates, costs, best_designs
             )
-            self.log.debug(f"Iteration {i + 1}/{self.num_iterations} complete")
+            self.log.debug(f"[it {i + 1}/{epochs}] {costs=}")
         self.log.debug("Bayesian Optimization completed")
 
         return best_designs
@@ -339,10 +340,7 @@ class BayesianPipeline:
         )
         self.conn.close()
 
-        if sorted_designs:
-            return best_design, best_cost, elapsed_time
-
-        return None, None, elapsed_time
+        return best_design, best_cost, elapsed_time
 
     def get_next_points(
         self,
@@ -371,10 +369,11 @@ class BayesianPipeline:
                 outcome_transform=Standardize(m=1),
             )
         elif self.model_type == Policy.KHybrid:
-            # the self.num_k_values represents the number of categorical values the model
-            # is predicting out of the self.max_levels. The +2 is because this is the list of indices
-            # and the first 2 indices represent the 'h' value and then the 'T'value. So everything from index 1
-            # till the size of num_k_values + 2 is a categorical value
+            # the self.num_k_values represents the number of categorical values
+            # the model is predicting out of the self.max_levels. The +2 is
+            # because this is the list of indices and the first 2 indices
+            # represent the 'h' value and then the 'T'value. So everything from
+            # index 1 till the size of num_k_values + 2 is a categorical value
             cat_dims = list(range(1, self.num_k_values + 2))
             single_model = MixedSingleTaskGP(
                 x,
@@ -392,7 +391,7 @@ class BayesianPipeline:
                 model=single_model, best_f=best_y, maximize=False
             )
         elif acquisition_function == "UpperConfidenceBound":
-            beta = self.beta_value
+            beta = self.jconfig["beta_value"]
             acqf = UpperConfidenceBound(model=single_model, beta=beta, maximize=False)
         elif acquisition_function == "qExpectedImprovement":
             acqf = qExpectedImprovement(model=single_model, best_f=-best_y)
@@ -404,7 +403,7 @@ class BayesianPipeline:
             bounds=bounds,
             q=n_points,
             num_restarts=self.num_restarts,
-            raw_samples=self.raw_samples,
+            raw_samples=self.jconfig["raw_samples"],
             fixed_features_list=fixed_features_list,
         )
         return candidates
