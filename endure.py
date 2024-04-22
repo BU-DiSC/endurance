@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 import logging
 import os
-import toml
 import sys
+import toml
+from typing import Any
 
 from jobs.lcm_train import LCMTrainJob
 from jobs.data_gen import DataGenJob
@@ -11,13 +12,13 @@ from jobs.bayesian_pipeline import BayesianPipeline
 
 
 class EndureDriver:
-    def __init__(self, conf):
-        self.config = conf
+    def __init__(self, config: dict[str, Any]) -> None:
+        self.config = config
 
         logging.basicConfig(
             format=config["log"]["format"], datefmt=config["log"]["datefmt"]
         )
-        self.log = logging.getLogger(config["log"]["name"])
+        self.log: logging.Logger = logging.getLogger(config["log"]["name"])
         self.log.setLevel(logging.getLevelName(config["log"]["level"]))
         log_level = logging.getLevelName(self.log.getEffectiveLevel())
         self.log.debug(f"Log level: {log_level}")
@@ -38,7 +39,7 @@ class EndureDriver:
                 self.log.warn(f"No job associated with {job_name}")
                 continue
             job = job(config)
-            job.run()
+            _ = job.run()
 
         self.log.info("All jobs finished, exiting")
 
