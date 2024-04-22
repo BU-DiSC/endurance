@@ -95,18 +95,18 @@ use_gpu_if_avail = false
 # -----------------------------------------------------------------------------
 [job.DataGen]
 # -----------------------------------------------------------------------------
-dir = "lcm/test/std"
+dir = "lcm/train/std"
 generator = "LTuner"            # Select between data for tuner (LTuner) or LCM
 file_prefix = "tuner"           # all files named file_prefix_000X.parquet
 num_workers = -1                # -1 forces all cores to be used
-num_files = 2                   # number of files to generate
-samples = 1024                  # per file sample
+num_files = 8                   # number of files to generate
+samples = 1048576               # per file sample
 overwrite_if_exists = true      # if files exist overwrite with new data
 
 # -----------------------------------------------------------------------------
 [job.LCMTrain]
 # -----------------------------------------------------------------------------
-max_epochs = 5
+max_epochs = 50
 save_dir = "models/lcm/kcost"
 no_checkpoint = false
 
@@ -129,14 +129,14 @@ lr_scheduler = "Constant"
 
 [job.LCMTrain.train]
 dir = "train-data/kcost-t30"
-batch_size = 32
+batch_size = 1024
 shuffle = true
 num_workers = 2
 drop_last = true
 
 [job.LCMTrain.test]
 dir = "test-data/kcost-t30"
-batch_size = 1024
+batch_size = 4096
 shuffle = false
 num_workers = 4
 drop_last = true
@@ -144,7 +144,7 @@ drop_last = true
 # -----------------------------------------------------------------------------
 [job.LTuneTrain]
 # -----------------------------------------------------------------------------
-max_epochs = 5
+max_epochs = 50
 save_dir = "models/ltune/klsm"
 
 # Learned cost model is our loss, input full path to checkpoint or model file
@@ -162,14 +162,14 @@ no_checkpoint = false
 
 [job.LTuneTrain.train]
 dir = "train-data/ltune/std"
-batch_size = 2
+batch_size = 1024
 shuffle = true
 num_workers = 1
 drop_last = true
 
 [job.LTuneTrain.test]
 dir = "test-data/ltune/std"
-batch_size = 2
+batch_size = 4096
 shuffle = false
 num_workers = 1
 drop_last = true
