@@ -21,7 +21,7 @@ from endure.util.optimizer import OptimizerBuilder
 
 
 def build_train(cfg, lsm_design: Policy) -> LCMDataSet:
-    train_dir = os.path.join(
+    train_dir: str = os.path.join(
         cfg["io"]["data_dir"],
         cfg["job"]["LCMTrain"]["train"]["dir"],
     )

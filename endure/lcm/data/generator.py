@@ -1,5 +1,5 @@
 import random
-from typing import List, Optional
+from typing import List, Optional, Type
 from itertools import combinations_with_replacement
 
 import numpy as np
@@ -188,6 +188,18 @@ class ClassicGenerator(LCMDataGenerator):
         return line
 
 
+class TieringGenerator(ClassicGenerator):
+    def __init__(self, bounds: LSMBounds, **kwargs):
+        super().__init__(bounds, **kwargs)
+        self.policies = [Policy.Tiering]
+
+
+class LevelingGenerator(ClassicGenerator):
+    def __init__(self, bounds: LSMBounds, **kwargs):
+        super().__init__(bounds, **kwargs)
+        self.policies = [Policy.Leveling]
+
+
 class KHybridGenerator(LCMDataGenerator):
     def __init__(self, bounds: LSMBounds, **kwargs):
         super().__init__(bounds, **kwargs)
@@ -344,3 +356,19 @@ class YZCostGenerator(LCMDataGenerator):
             design.Z,
         ]
         return line
+
+
+def get_generator(choice: Policy) -> Type[LCMDataGenerator]:
+    choices = {
+        Policy.Tiering: TieringGenerator,
+        Policy.Leveling: LevelingGenerator,
+        Policy.Classic: ClassicGenerator,
+        Policy.QFixed: QCostGenerator,
+        Policy.YZHybrid: YZCostGenerator,
+        Policy.KHybrid: KHybridGenerator,
+    }
+    generator = choices.get(choice, None)
+    if generator is None:
+        raise KeyError
+
+    return generator

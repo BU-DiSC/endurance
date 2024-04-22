@@ -58,7 +58,7 @@ data_dir = "/data"
 #   QFixed - Levels 1 -> L = Q
 #   YZHybrid - Levels 1 -> (L-1) = Q, Level L = Z
 #   KHybrid - Each level has own K_i decision
-design = 'KHybrid'
+design = 'QFixed'
 
 [lsm.bounds]
 max_considered_levels = 20                  # Max number of levels to consider
@@ -71,12 +71,19 @@ elements_range = [100000000, 1000000000]    # element range
 
 # Default system values if not generating random systems
 [lsm.system]
-E = 8192        # size of a single entry in bits
-s = 2e-7        # range query selectivity, 1 implies the full key range per query
-B = 4           # number of physical entries per page
-N = 1000000000  # total number of key-val pairs for LSM tree
-H = 10          # total memory budget in bits per element
-phi = 1         # read/write asymmetry coefficient, 1 implies w/r cost the same
+E = 1024           # size of a single entry in bits
+s = 1.905581e-8    # range query selectivity, 1 implies the full key range per query
+B = 64.0           # number of physical entries per page
+N = 522365629      # total number of key-val pairs for LSM tree
+H = 5.705814       # total memory budget in bits per element
+phi = 1.0          # read/write asymmetry coefficient, 1 implies w/r cost the same
+
+# Default workload if not generating from random distribution
+[lsm.workload]
+z0 = 0.063
+z1 = 0.190
+q = 0.545
+w = 0.202
 
 # =============================================================================
 # HEADER JOB
@@ -191,8 +198,6 @@ batch_size = 1
 # [ExpectedImprovement, UpperConfidenceBound, qExpectedImprovement]
 acquisition_function = "ExpectedImprovement"
 beta_value = 0.3
-# model_type can take values - "Classic", "QFixed", "YZHybrid", "KHybrid"
-model_type = "KHybrid"
 # determines how many workloads do we want to test using the bayesian pipeline
 multi_jobs_number = 100
 multi_job_file = "design_comparison.csv"
@@ -206,20 +211,6 @@ write_to_db = 1
 db_path = "yz_databases"
 # This must be a .db file for code to function. It will create a sqllite database
 db_name = "yz_db_cost.db"
-
-[job.BayesianOptimization.system]
-E = 1024
-s = 1.905581e-8
-B = 64.0
-N = 522365629
-H = 5.705814
-phi = 1.0
-
-[job.BayesianOptimization.workload]
-z0 = 0.063
-z1 = 0.190
-q = 0.545
-w = 0.202
 
 # =============================================================================
 # HEADER LCM
