@@ -60,7 +60,6 @@ class LearnedCostModelBuilder:
             "embedding_size": self.embedding_size,
             "hidden_length": self.hidden_length,
             "hidden_width": self.hidden_width,
-            "decision_dim": self.decision_dim,
             "dropout_percentage": self.dropout,
             "norm_layer": self.norm_layer,
         }
@@ -74,7 +73,7 @@ class LearnedCostModelBuilder:
 
         if model_class is KapModel:
             args["max_levels"] = self.max_levels
-
+            args["decision_dim"] = self.decision_dim
         model = model_class(**args)
 
         return model
