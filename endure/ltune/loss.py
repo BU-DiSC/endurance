@@ -13,40 +13,39 @@ class LearnedCostModelLoss(torch.nn.Module):
     def __init__(self, config: dict[str, Any], model_path: str):
         super().__init__()
         self.penalty_factor = config["ltune"]["penalty_factor"]
+        # TODO: We will need a way for this to be user definable or something
+        # that isn't just straight hardcoded into this loss function
+        # Note that this is the index for H - the total available memory that
+        # could be split between buffer and bloom filters
         self.mem_budget_idx = 7
         self.bounds: LSMBounds = LSMBounds(**config["lsm"]["bounds"])
-        # self.mem_budget_idx = config["ltune"]["input_features"].index("H")
 
         lcm_cfg = toml.load(
             os.path.join(config["io"]["data_dir"], model_path, "endure.toml")
         )
-        lcm_size_ratio_min = config["lsm"]["bounds"]["size_ratio_range"][0]
-       # lcm_size_ratio_min = lcm_cfg["lsm"]["size_ratio"]["min"]
-       # lcm_size_ratio_max = lcm_cfg["lsm"]["size_ratio"]["max"]
-        lcm_size_ratio_max = config["lsm"]["bounds"]["size_ratio_range"][1]
+        lcm_model = getattr(Policy, lcm_cfg["lsm"]["design"])
+        lcm_bounds: LSMBounds = LSMBounds(**lcm_cfg["lsm"]["bounds"])
         self.lcm_builder = LearnedCostModelBuilder(
-            size_ratio_range=(lcm_size_ratio_min, lcm_size_ratio_max),
-            max_levels=self.bounds.max_considered_levels,
+            size_ratio_range=(
+                lcm_bounds.size_ratio_range[0],
+                lcm_bounds.size_ratio_range[1],
+            ),
+            max_levels=lcm_bounds.max_considered_levels,
             **lcm_cfg["lcm"]["model"],
         )
-        lcm_model = getattr(Policy, lcm_cfg["lsm"]["design"])
         self.model = self.lcm_builder.build_model(lcm_model)
 
         data = torch.load(
             os.path.join(config["io"]["data_dir"], model_path, "best.model")
         )
         status = self.model.load_state_dict(data)
-        #self.k_penalty: bool = config["ltune"]["k_penalty"] and (
-        #    config["lsm"]["design"] == "KLSM"
-        #)
-        cfg_size_ratio_min = config["lsm"]["bounds"]["size_ratio_range"][0]
-        cfg_size_ratio_max = config["lsm"]["bounds"]["size_ratio_range"][1]
-        self.capacity_range = cfg_size_ratio_max - cfg_size_ratio_min + 1
+        self.capacity_range = (
+            self.bounds.size_ratio_range[1] - self.bounds.size_ratio_range[0] + 1
+        )
         self.num_levels = self.bounds.max_considered_levels
 
-        assert cfg_size_ratio_min == lcm_size_ratio_min
-        assert cfg_size_ratio_max == lcm_size_ratio_max
-        #assert lcm_cfg["lsm"]["max_levels"] == self.bounds.max_considered_levels
+        assert self.bounds.size_ratio_range == lcm_bounds.size_ratio_range
+        assert self.bounds.max_considered_levels == lcm_bounds.max_considered_levels
         assert len(status.missing_keys) == 0
         assert len(status.unexpected_keys) == 0
         self.model.eval()
@@ -123,6 +122,5 @@ class LearnedCostModelLoss(torch.nn.Module):
         out = out.sum(dim=-1)
         out = out + penalty
         out = out.mean()
-        # out = out + self.l1_penalty_klsm(categorical_feats[:, self.capacity_range:])
 
         return out

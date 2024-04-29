@@ -1,6 +1,5 @@
 import torch
-import logging
-from typing import Any, Optional, Tuple, Type
+from typing import Tuple
 from torch import nn
 from endure.lsm.types import Policy
 
@@ -54,7 +53,7 @@ class LTuneModelBuilder:
 
         model_class = self._models.get(policy, None)
         if model_class is None:
-            raise NotImplementedError(f"Tuner for LSM Design not implemented.")
+            raise NotImplementedError("Tuner for LSM Design not implemented.")
 
         if model_class is KapLSMTuner:
             kwargs["num_kap"] = self.max_levels
