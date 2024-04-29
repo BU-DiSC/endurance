@@ -19,7 +19,7 @@ from endure.util.trainer import Trainer
 
 class LTuneTrainJob:
     def __init__(self, config: dict[str, Any]) -> None:
-        self.log = logging.getLogger(self.config["log"]["name"])
+        self.log = logging.getLogger(config["log"]["name"])
         self.log.info("Running Training Job")
         self.use_gpu = config["job"]["use_gpu_if_avail"]
         self.save_dir = os.path.join(
@@ -41,7 +41,7 @@ class LTuneTrainJob:
 
     def _build_loss_fn(self) -> torch.nn.Module:
         model = LearnedCostModelLoss(self.config, self.jconfig["loss_fn_path"])
-        if self.jconfig["use_gpu_if_avail"] and torch.cuda.is_available():
+        if self.use_gpu  and torch.cuda.is_available():
             model.to("cuda")
 
         return model
@@ -173,8 +173,8 @@ class LTuneTrainJob:
             max_epochs=self.jconfig["max_epochs"],
             use_gpu_if_avail=self.use_gpu,
             model_dir=self.save_dir,
-            model_train_kwargs=self.config["ltune"]["model"]["train_kwargs"],
-            model_test_kwargs=self.config["ltune"]["model"]["test_kwargs"],
+            model_train_kwargs=self.config["ltune"]["train_kwargs"],
+            model_test_kwargs=self.config["ltune"]["test_kwargs"],
             disable_tqdm=disable_tqdm,
             no_checkpoint=self.jconfig["no_checkpoint"],
             train_callback=callback,

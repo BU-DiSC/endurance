@@ -6,7 +6,7 @@ import torch
 
 from endure.lcm.util import eval_lcm_impl
 from endure.lsm.cost import EndureCost
-from endure.lsm.types import LSMDesign, System, Policy, STR_POLICY_DICT
+from endure.lsm.types import LSMBounds, LSMDesign, System, Policy, STR_POLICY_DICT
 from endure.ltune.data.generator import LTuneDataGenerator
 from endure.ltune.loss import LearnedCostModelLoss
 import endure.lsm.solver as Solver
@@ -20,15 +20,16 @@ class LTuneEvalUtil:
         design_type: str = "Level",
     ) -> None:
         self.policy = STR_POLICY_DICT.get(design_type, Policy.KHybrid)
-        self.gen = LTuneDataGenerator()
+        self.bounds = LSMBounds()
+        self.gen = LTuneDataGenerator(self.bounds)
         self.loss = LearnedCostModelLoss(
             config,
             config["job"]["LTuneTrain"]["loss_fn_path"]
         )
-        self.max_t = config["lsm"]["size_ratio"]["max"]
-        self.min_t = config["lsm"]["size_ratio"]["min"]
+        self.max_t = self.bounds.size_ratio_range[1]
+        self.min_t = self.bounds.size_ratio_range[0]
         self.model = model
-        self.cf = EndureCost(config["lsm"]["max_levels"])
+        self.cf = EndureCost(self.bounds.max_considered_levels)
         self.config = config
         self.design_type = design_type
 
