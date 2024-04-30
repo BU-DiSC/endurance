@@ -23,10 +23,12 @@ kCOST_HEADER = [
 ]
 
 kINPUT_FEATS_DICT = {
-    Policy.Tiering: kSYSTEM_HEADER + kWORKLOAD_HEADER + ["h", "T"],
-    Policy.Leveling: kSYSTEM_HEADER + kWORKLOAD_HEADER + ["h", "T"],
-    Policy.Classic: kSYSTEM_HEADER + kWORKLOAD_HEADER + ["h", "policy", "T"],
-    Policy.QFixed: kSYSTEM_HEADER + kWORKLOAD_HEADER + ["h", "T", "Q"],
-    Policy.YZHybrid: kSYSTEM_HEADER + kWORKLOAD_HEADER + ["h", "T", "Y", "Z"],
-    Policy.KHybrid: kSYSTEM_HEADER + kWORKLOAD_HEADER + ["h", "T", "K"],
+    Policy.Tiering: kWORKLOAD_HEADER + kSYSTEM_HEADER + ["h", "T"],
+    Policy.Leveling: kWORKLOAD_HEADER + kSYSTEM_HEADER + ["h", "T"],
+    Policy.Classic: kWORKLOAD_HEADER + kSYSTEM_HEADER + ["h", "policy", "T"],
+    Policy.QFixed: kWORKLOAD_HEADER + kSYSTEM_HEADER + ["h", "T", "Q"],
+    Policy.YZHybrid: kWORKLOAD_HEADER + kSYSTEM_HEADER + ["h", "T", "Y", "Z"],
+    Policy.KHybrid: kWORKLOAD_HEADER + kSYSTEM_HEADER + ["h", "T", "K"],
 }
+
+kOUTPUT_FEATS = ["z0_cost", "z1_cost", "q_cost", "w_cost"]
