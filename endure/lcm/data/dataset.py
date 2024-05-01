@@ -8,14 +8,12 @@ import torch
 from torch import Tensor
 import torch.utils.data
 
-from endure.lcm.data.input_features import kINPUT_FEATS_DICT
+from endure.lcm.data.input_features import kINPUT_FEATS_DICT, kOUTPUT_FEATS
 from endure.lsm.types import LSMBounds, Policy
 from endure.lcm.util import one_hot_lcm, one_hot_lcm_classic
 
 
 class LCMDataSet(torch.utils.data.IterableDataset):
-    kOUTPUT_FEATS = ["z0_cost", "z1_cost", "q_cost", "w_cost"]
-
     def __init__(
         self,
         folder: str,
@@ -35,7 +33,7 @@ class LCMDataSet(torch.utils.data.IterableDataset):
         self.design = lsm_design
 
     def _get_output_cols(self):
-        return self.kOUTPUT_FEATS
+        return kOUTPUT_FEATS
 
     def _get_input_cols(self) -> list[str]:
         feats: list[str] = kINPUT_FEATS_DICT[self.design]

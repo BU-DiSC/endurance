@@ -16,6 +16,7 @@ class QModel(nn.Module):
         hidden_length: int = 1,
         hidden_width: int = 32,
         dropout_percentage: float = 0,
+        decision_dim: int = 64,
         norm_layer: Optional[Callable[..., nn.Module]] = None
     ) -> None:
         super().__init__()
@@ -34,10 +35,16 @@ class QModel(nn.Module):
             hidden.append(nn.Linear(hidden_width, hidden_width))
             hidden.append(nn.ReLU(inplace=True))
         self.hidden = nn.Sequential(*hidden)
-        self.out_layer = nn.Linear(hidden_width, OUT_WIDTH)
+        self.out_layer = nn.Linear(hidden_width, decision_dim)
+        split_head_width = int(decision_dim / 4)
+        self.z0 = nn.Linear(split_head_width, 1)
+        self.z1 = nn.Linear(split_head_width, 1)
+        self.q = nn.Linear(split_head_width, 1)
+        self.w = nn.Linear(split_head_width, 1)
 
         self.capacity_range = capacity_range
         self.num_feats = num_feats
+        self.decision_dim = decision_dim
 
         for module in self.modules():
             if isinstance(module, nn.Linear):
@@ -76,6 +83,12 @@ class QModel(nn.Module):
         out = self.dropout(out)
         out = self.hidden(out)
         out = self.out_layer(out)
+        head_dim = int(self.decision_dim / 4)
+        z0 = self.z0(out[:, 0:head_dim])
+        z1 = self.z1(out[:, head_dim : 2 * head_dim])
+        q = self.q(out[:, 2 * head_dim : 3 * head_dim])
+        w = self.w(out[:, 3 * head_dim : 4 * head_dim])
+        out = torch.cat([z0, z1, q, w], dim=-1)
 
         return out
 

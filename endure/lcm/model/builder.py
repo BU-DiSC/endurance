@@ -60,14 +60,14 @@ class LearnedCostModelBuilder:
             "embedding_size": self.embedding_size,
             "hidden_length": self.hidden_length,
             "hidden_width": self.hidden_width,
-            "decision_dim": self.decision_dim,
             "dropout_percentage": self.dropout,
+            "decision_dim": self.decision_dim,
             "norm_layer": self.norm_layer,
         }
 
         model_class = self._models.get(policy, None)
         if model_class is None:
-            raise NotImplementedError(f"Model for policy not implemented")
+            raise NotImplementedError("Model for policy not implemented")
 
         if model_class is ClassicModel:
             args["policy_embedding_size"] = self.policy_embedding_size

@@ -14,11 +14,12 @@ class LCMEvalUtil:
         model: torch.nn.Module,
         generator: LCMDataGenerator,
     ) -> None:
-        self.model = model
-        self.gen = generator
+        self.cf = EndureCost(max_levels=max_levels)
+
         self.min_t = min_size_ratio
         self.max_t = max_size_ratio
-        self.cf = EndureCost(max_levels=max_levels)
+        self.model = model
+        self.gen = generator
 
     def eval_lcm(
         self,

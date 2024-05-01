@@ -27,12 +27,8 @@ class DataGenJob:
 
         self.config = config
         self.jconfig = config["job"]["DataGen"]
-        if self.jconfig["generator"] == "LTuner":
-            self.log.info("Generating data for Learned Tuner")
-        elif self.jconfig["generator"] == "LCM":
-            self.log.info("Generating data for Learned Cost Models")
-        else:
-            self.log.critical("Invalid generator type")
+        if self.jconfig["generator"] not in ["LTuner", "LCM"]:
+            self.log.critical(f"Invalid generator type: {self.jconfig['generator']}")
             raise KeyError
 
     def create_bounds(self) -> LSMBounds:
@@ -42,8 +38,6 @@ class DataGenJob:
         if self.jconfig["generator"] == "LTuner":
             return LTuneDataGenerator(self.bounds)
 
-        self.log.info(f"Generator: {self.design.name}")
-        self.log.info(f"{self.bounds=}")
         generators = {
             Policy.Tiering: Generators.ClassicGenerator,
             Policy.Leveling: Generators.ClassicGenerator,
