@@ -100,7 +100,7 @@ class LCMTrainJob:
             lsm_design=self.design,
             bounds=self.bounds,
             shuffle=self.jconfig["test"]["shuffle"],
-            test=True,
+            one_hot_transform=True,
         )
         test = DataLoader(
             test_data,

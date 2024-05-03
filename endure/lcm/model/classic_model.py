@@ -5,7 +5,6 @@ from torch import nn
 import torch
 import torch.nn.functional as F
 
-OUT_WIDTH = 4
 
 class ClassicModel(nn.Module):
     def __init__(
@@ -18,7 +17,7 @@ class ClassicModel(nn.Module):
         dropout_percentage: float = 0,
         policy_embedding_size: int = 1,
         decision_dim: int = 64,
-        norm_layer: Optional[Callable[..., nn.Module]] = None
+        norm_layer: Optional[Callable[..., nn.Module]] = None,
     ) -> None:
         super().__init__()
         width = (num_feats - 2) + embedding_size + policy_embedding_size
@@ -64,7 +63,7 @@ class ClassicModel(nn.Module):
             policy = F.one_hot(policy, num_classes=2)
         else:
             policy = x[:, policy_boundary : policy_boundary + 2]
-            size_ratio = x[:, t_boundary : policy_boundary]
+            size_ratio = x[:, t_boundary:policy_boundary]
 
         return (feats, size_ratio, policy)
 
@@ -90,7 +89,6 @@ class ClassicModel(nn.Module):
         q = self.q(out[:, 2 * head_dim : 3 * head_dim])
         w = self.w(out[:, 3 * head_dim : 4 * head_dim])
         out = torch.cat([z0, z1, q, w], dim=-1)
-
 
         return out
 

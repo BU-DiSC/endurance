@@ -1,14 +1,15 @@
 import glob
-import numpy as np
 import os
+
+import numpy as np
 import pyarrow.parquet as pa
 import torch
-import torch.utils.data
+from torch.utils.data import IterableDataset
 
 from endure.ltune.data.input_features import kINPUT_FEATS
 
 
-class LTuneDataSet(torch.utils.data.IterableDataset):
+class LTuneDataSet(IterableDataset):
     def __init__(
         self,
         folder: str,

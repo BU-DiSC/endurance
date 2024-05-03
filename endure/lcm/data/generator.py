@@ -7,8 +7,7 @@ import numpy as np
 from endure.lsm.types import LSMDesign, System, Policy, LSMBounds
 from endure.lsm.cost import EndureCost
 from endure.lcm.data.input_features import (
-    kWORKLOAD_HEADER,
-    kSYSTEM_HEADER,
+    kINPUT_FEATS_DICT,
     kCOST_HEADER,
 )
 
@@ -107,12 +106,6 @@ class LCMDataGenerator:
 
         return (system.B, system.s, system.E, system.H, system.N, design.h, design.T)
 
-    def _gen_system_header(self) -> list:
-        return kSYSTEM_HEADER
-
-    def _gen_workload_header(self) -> list:
-        return kWORKLOAD_HEADER
-
     def _gen_cost_header(self) -> list:
         return kCOST_HEADER
 
@@ -140,12 +133,12 @@ class ClassicGenerator(LCMDataGenerator):
         **kwargs,
     ):
         super().__init__(bounds, **kwargs)
-        self.policies = policies
         cost_header = self._gen_cost_header()
-        workload_header = self._gen_workload_header()
-        system_header = self._gen_system_header()
-        decision = ["policy", "h", "T"]
-        self.header = cost_header + workload_header + system_header + decision
+        if len(policies) > 1:
+            self.header = cost_header + kINPUT_FEATS_DICT.get(Policy.Classic, [])
+        else:
+            self.header = cost_header + kINPUT_FEATS_DICT.get(policies[0], [])
+        self.policies = policies
 
     def _sample_design(
         self,
@@ -204,11 +197,11 @@ class KHybridGenerator(LCMDataGenerator):
     def __init__(self, bounds: LSMBounds, **kwargs):
         super().__init__(bounds, **kwargs)
         cost_header = self._gen_cost_header()
-        workload_header = self._gen_workload_header()
-        system_header = self._gen_system_header()
-        decision = ["h", "T"]
-        self.header = cost_header + workload_header + system_header + decision
-        self.header += [f"K_{i}" for i in range(self.max_levels)]
+        header = cost_header + kINPUT_FEATS_DICT[Policy.KHybrid]
+        last = header.pop()
+        assert last == "K_val"
+        header += [f"K_{i}" for i in range(self.max_levels)]
+        self.header = header
 
     def _sample_design(self, system: System) -> LSMDesign:
         design = super()._sample_design(system)
@@ -260,10 +253,7 @@ class QCostGenerator(LCMDataGenerator):
     def __init__(self, bounds: LSMBounds, **kwargs):
         super().__init__(bounds, **kwargs)
         cost_header = self._gen_cost_header()
-        workload_header = self._gen_workload_header()
-        system_header = self._gen_system_header()
-        decision = ["h", "T", "Q"]
-        self.header = cost_header + workload_header + system_header + decision
+        self.header = cost_header + kINPUT_FEATS_DICT[Policy.QFixed]
 
     def _sample_q(self, max_size_ratio: int) -> int:
         return np.random.randint(
@@ -310,10 +300,7 @@ class YZCostGenerator(LCMDataGenerator):
     def __init__(self, bounds: LSMBounds, **kwargs):
         super().__init__(bounds, **kwargs)
         cost_header = self._gen_cost_header()
-        workload_header = self._gen_workload_header()
-        system_header = self._gen_system_header()
-        decision = ["h", "T", "Y", "Z"]
-        self.header = cost_header + workload_header + system_header + decision
+        self.header = cost_header + kINPUT_FEATS_DICT[Policy.YZHybrid]
 
     def _sample_capacity(self, max_size_ratio: int) -> int:
         return np.random.randint(

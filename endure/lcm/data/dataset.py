@@ -6,20 +6,20 @@ import pandas as pd
 import pyarrow.parquet as pa
 import torch
 from torch import Tensor
-import torch.utils.data
+from torch.utils.data import IterableDataset
 
 from endure.lcm.data.input_features import kINPUT_FEATS_DICT, kOUTPUT_FEATS
 from endure.lsm.types import LSMBounds, Policy
 from endure.lcm.util import one_hot_lcm, one_hot_lcm_classic
 
 
-class LCMDataSet(torch.utils.data.IterableDataset):
+class LCMDataSet(IterableDataset):
     def __init__(
         self,
         folder: str,
         lsm_design: Policy,
         bounds: LSMBounds,
-        test: bool = False,
+        one_hot_transform: bool = False,
         shuffle: bool = False,
     ) -> None:
         self._fnames: list[str] = glob.glob(os.path.join(folder, "*.parquet"))
@@ -28,7 +28,7 @@ class LCMDataSet(torch.utils.data.IterableDataset):
         self.min_size_ratio, self.max_size_ratio = bounds.size_ratio_range
         self.categories = self.max_size_ratio - self.min_size_ratio + 1
         # When in testing mode we transform input features to one hot encoded
-        self.test_mode = test
+        self.one_hot_transform = one_hot_transform
         self.bounds = bounds
         self.design = lsm_design
 
@@ -37,7 +37,7 @@ class LCMDataSet(torch.utils.data.IterableDataset):
 
     def _get_input_cols(self) -> list[str]:
         feats: list[str] = kINPUT_FEATS_DICT[self.design]
-        if "K" in feats:
+        if "K_val" in feats:
             k_cols = [f"K_{i}" for i in range(self.max_levels)]
             feats = list(filter(lambda x: x != "K", feats))
             feats = feats + k_cols
@@ -50,7 +50,7 @@ class LCMDataSet(torch.utils.data.IterableDataset):
 
         return df
 
-    def _transform_test_data(self, data: Tensor) -> Tensor:
+    def _one_hot_transform(self, data: Tensor) -> Tensor:
         num_feat = len(self._get_input_cols())
         if self.design == Policy.Classic:
             return one_hot_lcm_classic(data, self.categories)
@@ -66,12 +66,12 @@ class LCMDataSet(torch.utils.data.IterableDataset):
             raise TypeError("Incompatible LSM design")
 
     def _sanitize_df(self, df: pd.DataFrame) -> pd.DataFrame:
-        df["T"] = df["T"] - self.min_size_ratio
+        df["T_val"] = df["T_val"] - self.min_size_ratio
         if self.design == Policy.QFixed:
-            df["Q"] -= self.min_size_ratio - 1
+            df["Q_val"] -= self.min_size_ratio - 1
         elif self.design == Policy.YZHybrid:
-            df["Y"] -= self.min_size_ratio - 1
-            df["Z"] -= self.min_size_ratio - 1
+            df["Y_val"] -= self.min_size_ratio - 1
+            df["Z_val"] -= self.min_size_ratio - 1
         elif self.design == Policy.KHybrid:
             for i in range(self.max_levels):
                 df[f"K_{i}"] -= self.min_size_ratio - 1
@@ -100,6 +100,6 @@ class LCMDataSet(torch.utils.data.IterableDataset):
                 np.random.shuffle(indices)
             for idx in indices:
                 label, input = labels[idx], inputs[idx]
-                if self.test_mode:
-                    input = self._transform_test_data(inputs[idx])
+                if self.one_hot_transform:
+                    input = self._one_hot_transform(inputs[idx])
                 yield label, input

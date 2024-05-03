@@ -5,17 +5,17 @@ from torch.nn import Module
 
 
 class OptimizerBuilder:
-    def __init__(self, config: dict[str, Any]):
-        self.opt_kwargs = config
+    def __init__(self, optimizer_config: dict[str, Any]):
+        self.optimizer_config = optimizer_config
 
     def _build_adam(self, model: Module) -> Opt.Adam:
-        return Opt.Adam(model.parameters(), **self.opt_kwargs["Adam"])
+        return Opt.Adam(model.parameters(), **self.optimizer_config["Adam"])
 
     def _build_adagrad(self, model: Module) -> Opt.Adagrad:
-        return Opt.Adagrad(model.parameters(), **self.opt_kwargs["Adagrad"])
+        return Opt.Adagrad(model.parameters(), **self.optimizer_config["Adagrad"])
 
     def _build_sgd(self, model: Module) -> Opt.SGD:
-        return Opt.SGD(model.parameters(), **self.opt_kwargs["SGD"])
+        return Opt.SGD(model.parameters(), **self.optimizer_config["SGD"])
 
     def build_optimizer(
         self,
@@ -28,9 +28,9 @@ class OptimizerBuilder:
             "SGD": self._build_sgd,
         }
 
-        opt_builder = optimizers.get(optimizer_choice, None)
-        if opt_builder is None:
+        optimizer_class = optimizers.get(optimizer_choice, None)
+        if optimizer_class is None:
             raise KeyError
-        optimizer = opt_builder(model)
+        optimizer = optimizer_class(model)
 
         return optimizer
