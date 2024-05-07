@@ -23,7 +23,8 @@ run = [
     # "DataGen",
     # "LCMTrain",
     # "LTuneTrain",
-    # "BayesianBaseline"
+    # "BayesianPipelineBoTorch",
+    # "BayesianPipelineMLOS"
 ]
 
 # =============================================================================
@@ -212,6 +213,11 @@ db_path = "yz_databases"
 # This must be a .db file for code to function. It will create a sqllite database
 db_name = "yz_db_cost.db"
 
+[job.BayesianOptimization.mlos]
+#values can be Flaml, Smac, Random
+optimizer = "Smac"
+num_runs = 1000
+iteration = 50
 # =============================================================================
 # HEADER LCM
 #   Add configurations related to learned cost models
