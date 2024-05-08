@@ -13,11 +13,6 @@ from endure.lsm.types import LSMDesign, System, Policy, Workload, LSMBounds
 from endure.data.io import Reader
 
 
-def debug_data_lengths(**kwargs):
-    for name, lst in kwargs.items():
-        print(f"{name}: Length = {len(lst)}")
-
-
 def export_to_csv(mlos_costs, analytical_costs, mlos_designs, analytical_designs, systems, workloads) -> None:
     data = {
         "MLOS_Costs": mlos_costs,
@@ -27,15 +22,6 @@ def export_to_csv(mlos_costs, analytical_costs, mlos_designs, analytical_designs
         **{f"System_{attr}": [getattr(s, attr) for s in systems] for attr in vars(System())},
         **{f"Workload_{attr}": [getattr(w, attr) for w in workloads] for attr in vars(Workload())}
     }
-
-    debug_data_lengths(
-        MLOS_Costs=mlos_costs,
-        Analytical_Costs=analytical_costs,
-        MLOS_Designs=[d for mlos_design in mlos_designs for d in vars(LSMDesign())],
-        Analytical_Designs=[d for analytical_design in analytical_designs for d in vars(LSMDesign())],
-        Systems=[s for system in systems for s in vars(System())],
-        Workloads=[w for workload in workloads for w in vars(Workload())]
-    )
     df = pd.DataFrame(data)
     df.to_csv("output_results.csv", index=False)
 
@@ -73,6 +59,8 @@ class BayesianPipelineMlos:
         analytical_designs = []
         systems = []
         workloads = []
+        input_space = define_config_space(self.num_k_values, self.bounds)
+        optimizer = self.select_optimizer(self.optimizer, input_space)
         for i in range(self.n_runs):
             print(f"Iteration {i + 1}/{self.n_runs} running")
             system = self.generator._sample_system()
@@ -80,8 +68,6 @@ class BayesianPipelineMlos:
             z0, z1, q, w = self.generator._sample_workload(4)
             workload = Workload(z0=z0, z1=z1, q=q, w=w)
             workloads.append(workload)
-            input_space = define_config_space(self.num_k_values, self.bounds)
-            optimizer = self.select_optimizer(self.optimizer, input_space)
             best_observation = self.run_optimization_loop(self.num_iterations, optimizer, system, workload)
             best_design = self.interpret_optimizer_result(best_observation)
             mlos_cost = self.target_function(best_design, system, workload)
