@@ -61,8 +61,6 @@ class BayesianPipelineMlos:
         )
         self.cf: EndureCost = EndureCost(self.bounds.max_considered_levels)
         self.num_k_values = self.conf["job"]["BayesianOptimization"]["num_k_values"]
-        print(self.bounds)
-        print(type(self.bounds))
         self.generator = KHybridGenerator(self.bounds)
         self.optimizer = self.conf["job"]["BayesianOptimization"]["mlos"]["optimizer"]
         self.n_runs = self.conf["job"]["BayesianOptimization"]["mlos"]["num_runs"]
@@ -82,7 +80,7 @@ class BayesianPipelineMlos:
             z0, z1, q, w = self.generator._sample_workload(4)
             workload = Workload(z0=z0, z1=z1, q=q, w=w)
             workloads.append(workload)
-            input_space = define_config_space(self.num_k_values, system, self.bounds)
+            input_space = define_config_space(self.num_k_values, self.bounds)
             optimizer = self.select_optimizer(self.optimizer, input_space)
             best_observation = self.run_optimization_loop(self.num_iterations, optimizer, system, workload)
             best_design = self.interpret_optimizer_result(best_observation)
@@ -137,13 +135,12 @@ class BayesianPipelineMlos:
         return optimizer
 
 
-def define_config_space(num_k_values: int, system: System, bounds: LSMBounds) -> CS.ConfigurationSpace:
+def define_config_space(num_k_values: int, bounds: LSMBounds) -> CS.ConfigurationSpace:
     input_space = CS.ConfigurationSpace(seed=1234)
     # input_space.add_hyperparameter(CS.CategoricalHyperparameter
     # ("policy", ["Tiering", "Leveling", "Classic", "KHybrid", "QFixed", "YZHybrid"]))
     input_space.add_hyperparameter(CS.UniformFloatHyperparameter(name='h', lower=bounds.bits_per_elem_range[0],
-                                                                 upper=min(np.floor(system.H),
-                                                                           bounds.bits_per_elem_range[1])))
+                                                                 upper=bounds.bits_per_elem_range[1]))
     input_space.add_hyperparameter(CS.UniformIntegerHyperparameter(name='t', lower=bounds.size_ratio_range[0],
                                                                    upper=bounds.size_ratio_range[1]))
     for i in range(num_k_values):
