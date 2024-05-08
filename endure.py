@@ -8,7 +8,8 @@ from typing import Any
 from jobs.lcm_train import LCMTrainJob
 from jobs.data_gen import DataGenJob
 from jobs.ltune_train import LTuneTrainJob
-from jobs.bayesian_pipeline import BayesianPipeline
+from jobs.botorch_bo import BayesianPipeline
+from jobs.mlos_bo import BayesianPipelineMlos
 
 
 class EndureDriver:
@@ -30,7 +31,8 @@ class EndureDriver:
             "DataGen": DataGenJob,
             "LCMTrain": LCMTrainJob,
             "LTuneTrain": LTuneTrainJob,
-            "BayesianBaseline": BayesianPipeline,
+            "BayesianPipelineBoTorch": BayesianPipeline,
+            "BayesianPipelineMLOS": BayesianPipelineMlos,
         }
         jobs_list = self.config["app"]["run"]
         for job_name in jobs_list:
