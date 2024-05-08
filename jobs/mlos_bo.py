@@ -13,6 +13,11 @@ from endure.lsm.types import LSMDesign, System, Policy, Workload, LSMBounds
 from endure.data.io import Reader
 
 
+def debug_data_lengths(**kwargs):
+    for name, lst in kwargs.items():
+        print(f"{name}: Length = {len(lst)}")
+
+
 def export_to_csv(mlos_costs, analytical_costs, mlos_designs, analytical_designs, systems, workloads) -> None:
     data = {
         "MLOS_Costs": mlos_costs,
@@ -23,6 +28,14 @@ def export_to_csv(mlos_costs, analytical_costs, mlos_designs, analytical_designs
         **{f"Workload_{attr}": [getattr(w, attr) for w in workloads] for attr in vars(Workload())}
     }
 
+    debug_data_lengths(
+        MLOS_Costs=mlos_costs,
+        Analytical_Costs=analytical_costs,
+        MLOS_Designs=[d for mlos_design in mlos_designs for d in vars(LSMDesign())],
+        Analytical_Designs=[d for analytical_design in analytical_designs for d in vars(LSMDesign())],
+        Systems=[s for system in systems for s in vars(System())],
+        Workloads=[w for workload in workloads for w in vars(Workload())]
+    )
     df = pd.DataFrame(data)
     df.to_csv("output_results.csv", index=False)
 
@@ -79,7 +92,7 @@ class BayesianPipelineMlos:
             design_analytical, cost_analytical = find_analytical_results(system, workload, self.bounds)
             analytical_costs.append(cost_analytical)
             analytical_designs.append(design_analytical)
-            export_to_csv(mlos_costs, analytical_costs, mlos_designs, analytical_designs, systems, workloads)
+        export_to_csv(mlos_costs, analytical_costs, mlos_designs, analytical_designs, systems, workloads)
         return mlos_costs, analytical_costs, mlos_designs, analytical_designs, systems, workloads
 
     def interpret_optimizer_result(self, observation) -> LSMDesign:
