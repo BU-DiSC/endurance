@@ -6,7 +6,7 @@ import torch
 
 from endure.lcm.util import eval_lcm_impl
 from endure.lsm.cost import EndureCost
-from endure.lsm.types import LSMBounds, LSMDesign, System, Policy, STR_POLICY_DICT
+from endure.lsm.types import LSMBounds, LSMDesign, System, Policy
 from endure.ltune.data.generator import LTuneDataGenerator
 from endure.ltune.loss import LearnedCostModelLoss
 import endure.lsm.solver as Solver
@@ -17,9 +17,8 @@ class LTuneEvalUtil:
         self,
         config: dict[str, Any],
         model: torch.nn.Module,
-        design_type: str = "Level",
+        design_type: Policy,
     ) -> None:
-        self.policy = STR_POLICY_DICT.get(design_type, Policy.KHybrid)
         self.bounds = LSMBounds()
         self.gen = LTuneDataGenerator(self.bounds)
         self.loss = LearnedCostModelLoss(
@@ -93,14 +92,14 @@ class LTuneEvalUtil:
         w: float,
         **kwargs,
     ) -> Tuple[LSMDesign, SciOpt.OptimizeResult]:
-        if self.design_type == "QLSM":
-            solver = Solver.QLSMSolver(self.config)
-        elif self.design_type == "KLSM":
-            solver = Solver.KLSMSolver(self.config)
-        elif self.design_type == "YZLSM":
-            solver = Solver.YZLSMSolver(self.config)
-        else: # design_type == "Classic"
-            solver = Solver.ClassicSolver(self.config)
+        if self.design_type == Policy.QFixed:
+            solver = Solver.QLSMSolver(self.bounds)
+        elif self.design_type == Policy.KHybrid:
+            solver = Solver.KLSMSolver(self.bounds)
+        elif self.design_type == Policy.YZHybrid:
+            solver = Solver.YZLSMSolver(self.bounds)
+        else: # design_type == Policy.Classic 
+            solver = Solver.ClassicSolver(self.bounds)
 
         design, sol = solver.get_nominal_design(
             system,
@@ -114,11 +113,11 @@ class LTuneEvalUtil:
         return design, sol
 
     def convert_ltune_output(self, output: Tensor):
-        if self.design_type == "QLSM":
+        if self.design_type == Policy.QFixed:
             design = self._qlsm_convert(output)
-        elif self.design_type == "KLSM":
+        elif self.design_type == Policy.KHybrid:
             design = self._klsm_convert(output)
-        else:
+        else: # self.design_type == Policy.Classic
             design = self._classic_convert(output)
 
         return design
