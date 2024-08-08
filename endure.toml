@@ -25,6 +25,7 @@ run = [
     # "LTuneTrain",
     # "BayesianPipelineBoTorch",
     # "BayesianPipelineMLOS"
+    "ExperimentMLOS",
 ]
 
 # =============================================================================
