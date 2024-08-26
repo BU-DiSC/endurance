@@ -307,3 +307,113 @@ delta = 10
 
 [loss.MSE]
 reduction = 'mean'
+
+
+# =============================================================================
+# HEADER WORKLOADS
+#     List of representative workloads used for testing suite
+# =============================================================================
+[[workloads]]
+id = 0
+z0 = 0.25
+z1 = 0.25
+q  = 0.25
+w  = 0.25
+
+[[workloads]]
+id = 1
+z0 = 0.97
+z1 = 0.01
+q = 0.01
+w = 0.01
+
+[[workloads]]
+id = 2
+z0 = 0.01
+z1 = 0.97
+q = 0.01
+w = 0.01
+
+[[workloads]]
+id = 3
+z0 = 0.01
+z1 = 0.01
+q = 0.97
+w = 0.01
+
+[[workloads]]
+id = 4
+z0 = 0.01
+z1 = 0.01
+q = 0.01
+w = 0.97
+
+[[workloads]]
+id = 5
+z0 = 0.49
+z1 = 0.49
+q = 0.01
+w = 0.01
+
+[[workloads]]
+id = 6
+z0 = 0.49
+z1 = 0.01
+q = 0.49
+w = 0.01
+
+[[workloads]]
+id = 7
+z0 = 0.49
+z1 = 0.01
+q = 0.01
+w = 0.49
+
+[[workloads]]
+id = 8
+z0 = 0.01
+z1 = 0.49
+q = 0.49
+w = 0.01
+
+[[workloads]]
+id = 9
+z0 = 0.01
+z1 = 0.49
+q = 0.01
+w = 0.49
+
+[[workloads]]
+id = 10
+z0 = 0.01
+z1 = 0.01
+q = 0.49
+w = 0.49
+
+[[workloads]]
+id = 11
+z0 = 0.33
+z1 = 0.33
+q = 0.33
+w = 0.01
+
+[[workloads]]
+id = 12
+z0 = 0.33
+z1 = 0.33
+q = 0.01
+w = 0.33
+
+[[workloads]]
+id = 13
+z0 = 0.33
+z1 = 0.01
+q = 0.33
+w = 0.33
+
+[[workloads]]
+id = 14
+z0 = 0.01
+z1 = 0.33
+q = 0.33
+w = 0.33
