@@ -33,7 +33,7 @@ class LTuneEvalUtil:
         self.design_type = design_type
 
     def calc_size_ratio_range(self) -> int:
-        return self.max_t - self.min_t + 1
+        return self.max_t - self.min_t
 
     def eval_lcm(
         self,
@@ -74,12 +74,13 @@ class LTuneEvalUtil:
         q: float,
         w: float,
         temp=1e-2,
-        hard=False,
+        hard=True,
     ) -> Tensor:
         x = torch.Tensor([z0, z1, q, w, system.B, system.s,
                           system.E, system.H, system.N])
         x = x.view(1, -1)
-        out = self.model(x, temp=temp, hard=hard)
+        with torch.no_grad():
+            out = self.model(x, temp=temp, hard=hard)
 
         return out
 

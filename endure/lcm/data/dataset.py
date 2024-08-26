@@ -26,7 +26,7 @@ class LCMDataSet(torch.utils.data.IterableDataset):
         self._shuffle: bool = shuffle
         self.max_levels = bounds.max_considered_levels
         self.min_size_ratio, self.max_size_ratio = bounds.size_ratio_range
-        self.categories = self.max_size_ratio - self.min_size_ratio + 1
+        self.categories = self.max_size_ratio - self.min_size_ratio
         # When in testing mode we transform input features to one hot encoded
         self.test_mode = test
         self.bounds = bounds
