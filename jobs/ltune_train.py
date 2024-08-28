@@ -120,28 +120,26 @@ class LTuneTrainJob:
         train_kwargs: dict,
         decay_rate: float = 0.95,
         floor: float = 0.01,
-    ) -> None:
+    ) -> dict:
         train_kwargs["temp"] *= decay_rate
         if train_kwargs["temp"] < floor:
             train_kwargs["temp"] = floor
 
-        return
+        return train_kwargs
 
     @staticmethod
     def reinmax_temp_schedule(
         train_kwargs: dict,
         decay_rate: float = 0.9,
         floor: float = 1,
-    ) -> None:
+    ) -> dict:
         train_kwargs["temp"] *= decay_rate
         if train_kwargs["temp"] < floor:
             train_kwargs["temp"] = floor
 
-        return
+        return train_kwargs
 
-    def get_train_callback(self) -> Optional[Callable[[dict], None]]:
-        if not self.design == Policy.KHybrid:
-            return None
+    def get_train_callback(self) -> Optional[Callable[[dict], dict]]:
         if self.config["ltune"]["model"]["categorical_mode"] == "reinmax":
             return lambda train_kwargs: self.reinmax_temp_schedule(train_kwargs)
         # default train_callback will be gumbel softmax

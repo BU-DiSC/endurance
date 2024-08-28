@@ -21,7 +21,7 @@ class EndureDriver:
             format=config["log"]["format"], datefmt=config["log"]["datefmt"]
         )
         self.log: logging.Logger = logging.getLogger(config["log"]["name"])
-        self.log.setLevel(logging.getLevelName(config["log"]["level"]))
+        self.log.setLevel(getattr(logging, config["log"]["level"]))
         log_level = logging.getLevelName(self.log.getEffectiveLevel())
         self.log.debug(f"Log level: {log_level}")
 
@@ -40,7 +40,7 @@ class EndureDriver:
         for job_name in jobs_list:
             job = jobs.get(job_name, None)
             if job is None:
-                self.log.warn(f"No job associated with {job_name}")
+                self.log.warning(f"No job associated with {job_name}")
                 continue
             job = job(config)
             _ = job.run()

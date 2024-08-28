@@ -9,8 +9,8 @@ from endure.lsm.cost import EndureCost
 from endure.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
 from mlos_core.optimizers import SmacOptimizer
 
-NUM_SAMPLES = 100
-NUM_ROUNDS = 20
+NUM_ROUNDS = 100
+NUM_TRIALS = 10
 
 
 class ExperimentMLOS:
@@ -64,7 +64,8 @@ class ExperimentMLOS:
 
     def _train_model(
         self,
-        workload_id: int,
+        wl_id: int,
+        trial: int,
         workload: Workload,
         system: System,
         num_rounds: int = NUM_ROUNDS,
@@ -81,20 +82,26 @@ class ExperimentMLOS:
             optimizer.register(
                 configs=suggestion, scores=pd.DataFrame([{"cost": cost}])
             )
-            self.log.info(f"Round {round}: Cost: {cost}")
-            self.db.log_round(workload_id, round, design, cost)
+            self.log.info(f"[ID {wl_id}][Trial {trial}][Round {round}] Cost: {cost}")
+            self.db.log_round(wl_id, trial, round, design, cost)
 
         return
 
     def run(self) -> None:
-        for _ in range(NUM_SAMPLES):
-            workload = Workload(*self.gen._sample_workload(4))
-            system = self.gen._sample_system()
+        system = System()
+        for rep_wl in self.config["workloads"]:
+            workload = Workload(
+                z0=rep_wl["z0"],
+                z1=rep_wl["z1"],
+                q=rep_wl["q"],
+                w=rep_wl["w"],
+            )
             row_id = self.db.log_workload(workload, system)
             self.log.info(f"Workload: {workload}")
             self.log.info(f"System: {system}")
-            self.log.info(f"Environment ID: {row_id}")
-            self._train_model(row_id, workload, system)
+            for trial in range(NUM_TRIALS):
+                self.log.info(f"(Workload ID, Trial): ({row_id}, {trial})")
+                self._train_model(row_id, trial, workload, system)
 
         return
 
@@ -127,6 +134,7 @@ class MLOSDatabase:
             CREATE TABLE IF NOT EXISTS tunings (
                 idx INTEGER PRIMARY KEY AUTOINCREMENT,
                 env_id INTEGER,
+                trial INTEGER,
                 round INTEGER,
                 bits_per_elem REAL,
                 size_ratio INTEGER,
@@ -182,6 +190,7 @@ class MLOSDatabase:
     def log_round(
         self,
         workload_id: int,
+        trial: int,
         round: int,
         design: LSMDesign,
         cost: float,
@@ -191,6 +200,7 @@ class MLOSDatabase:
             """
             INSERT INTO tunings (
                 env_id,
+                trial,
                 round,
                 bits_per_elem,
                 size_ratio,
@@ -200,9 +210,11 @@ class MLOSDatabase:
                 kap15, kap16, kap17, kap18, kap19,
                 cost
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (workload_id, round, design.h, int(design.T)) + tuple(design.K) + (cost,),
+            (workload_id, trial, round, design.h, int(design.T))
+            + tuple(design.K)
+            + (cost,),
         )
         self.connector.commit()
 
