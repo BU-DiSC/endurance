@@ -29,7 +29,7 @@ class LearnedCostModelBuilder:
         self.dropout = dropout
         self.max_levels = max_levels
         self.size_ratio_min, self.size_ratio_max = size_ratio_range
-        self.capacity_range = self.size_ratio_max - self.size_ratio_min + 1
+        self.capacity_range = self.size_ratio_max - self.size_ratio_min
 
         self.norm_layer = nn.BatchNorm1d
         if norm_layer == "Layer":
