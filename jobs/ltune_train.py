@@ -181,8 +181,7 @@ class LTuneTrainJob:
 
         return trainer
 
-
-if __name__ == "__main__":
+def main():
     from endure.data.io import Reader
 
     config = Reader.read_config("endure.toml")
@@ -194,3 +193,7 @@ if __name__ == "__main__":
 
     job = LTuneTrainJob(config)
     job.run()
+
+
+if __name__ == "__main__":
+    main()

@@ -41,12 +41,12 @@ class ExperimentMLOS:
             CS.UniformIntegerHyperparameter(
                 name="size_ratio",
                 lower=self.bounds.size_ratio_range[0],
-                upper=self.bounds.size_ratio_range[1],
+                upper=self.bounds.size_ratio_range[1] - 1,  # ConfigSpace is inclusive
             ),
         ]
         kap_params = [
             CS.UniformIntegerHyperparameter(
-                name=f"kap_{i}", lower=1, upper=self.bounds.size_ratio_range[1] - 1
+                name=f"kap_{i}", lower=1, upper=self.bounds.size_ratio_range[1] - 2
             )
             for i in range(self.bounds.max_considered_levels)
         ]
@@ -59,7 +59,9 @@ class ExperimentMLOS:
 
     def _create_optimizer(self, parameter_space: CS.ConfigurationSpace):
         return SmacOptimizer(
-            parameter_space=parameter_space, optimization_targets=["cost"]
+            parameter_space=parameter_space,
+            optimization_targets=["cost"],
+            n_random_init=1,
         )
 
     def _train_model(
