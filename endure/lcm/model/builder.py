@@ -4,7 +4,7 @@ from torch import nn
 import torch
 
 from endure.lcm.data.input_features import kINPUT_FEATS_DICT
-from endure.lcm.model import KapModel, QModel, ClassicModel
+from endure.lcm.model import KapModel, QModel, ClassicModel, YZModel
 from endure.lsm.types import Policy
 
 
@@ -39,6 +39,7 @@ class LearnedCostModelBuilder:
             Policy.KHybrid: KapModel,
             Policy.QFixed: QModel,
             Policy.Classic: ClassicModel,
+            Policy.YZHybrid: YZModel,
         }
 
     def get_choices(self):
