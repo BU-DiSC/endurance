@@ -127,12 +127,14 @@ class KapLSMTuner(nn.Module):
 
         mask = nn.functional.one_hot(max_levels, num_classes=self.num_kap)
         cum_sum = torch.cumsum(mask, dim=1)
-        mask = mask - cum_sum + cum_sum[-1:None]  # Reverse cumulative sum
-        k = mask.unsqueeze(-1) * k
+        mask = 1 - cum_sum + mask  # Sets all values BEFORE max_level to 1
         default = torch.zeros(self.capacity_range)
         default[0] = 1
         default = default.to(k.device).to(torch.long)
-        k[k.sum(-1) == 0] += default
+        # Set K values outside actual level to 1
+        k = mask.unsqueeze(-1) * k
+        k[mask == 0] += default
+
         k = torch.flatten(k, start_dim=1)
 
         out = torch.concat([bits, t, k], dim=-1)
