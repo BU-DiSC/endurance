@@ -10,7 +10,7 @@ from endure.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
 from mlos_core.optimizers import SmacOptimizer
 
 NUM_ROUNDS = 100
-NUM_TRIALS = 10
+NUM_TRIALS = 100
 
 
 class ExperimentMLOS:
@@ -91,6 +91,7 @@ class ExperimentMLOS:
 
     def run(self) -> None:
         system = System()
+        self.db.create_tables()
         for rep_wl in self.config["workloads"]:
             workload = Workload(
                 z0=rep_wl["z0"],
@@ -110,10 +111,13 @@ class ExperimentMLOS:
 
 class MLOSDatabase:
     def __init__(self, config: dict, db_path: str = "mlos_exp.db") -> None:
-        self.config = config
         self.log: logging.Logger = logging.getLogger(config["log"]["name"])
-        connector = sqlite3.connect(db_path)
-        cursor = connector.cursor()
+        self.connector = sqlite3.connect(db_path)
+        self.db_path = db_path
+        self.config = config
+
+    def create_tables(self) -> None:
+        cursor = self.connector.cursor()
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS environments (
@@ -149,10 +153,10 @@ class MLOSDatabase:
             );
             """
         )
-        connector.commit()
+        self.connector.commit()
         cursor.close()
-        self.log.info(f"Created database: {db_path}")
-        self.connector = connector
+
+        return
 
     def log_workload(self, workload: Workload, system: System) -> int:
         cursor = self.connector.cursor()
