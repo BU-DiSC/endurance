@@ -51,11 +51,8 @@ class YZModel(nn.Module):
             if isinstance(module, nn.Linear):
                 nn.init.xavier_normal_(module.weight)
 
-<<<<<<< HEAD
-    def _split_input(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor]:
-=======
+
     def _split_input(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
->>>>>>> ca6ca28a37da6c0b43e61b589e8bcc69b0bc3e35
         categorical_bound = self.num_feats - 3
         feats = x[:, :categorical_bound]
         capacities = x[:, categorical_bound:]
@@ -70,11 +67,8 @@ class YZModel(nn.Module):
         y_cap = capacities[:, 1, :] 
         z_cap = capacities[:, 2, :]
 
-<<<<<<< HEAD
         return (feats, size_ratio, y_cap, z_cap)
-=======
-        return feats, size_ratio, y_cap, z_cap
->>>>>>> ca6ca28a37da6c0b43e61b589e8bcc69b0bc3e35
+
 
     def _forward_impl(self, x: Tensor) -> Tensor:
         feats, size_ratio, y_cap, z_cap = self._split_input(x)
