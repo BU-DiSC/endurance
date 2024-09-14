@@ -20,7 +20,7 @@ class YZModel(nn.Module):
         norm_layer: Optional[Callable[..., nn.Module]] = None
     ) -> None:
         super().__init__()
-        width = (num_feats - 2) + (2 * embedding_size)
+        width = (num_feats - 3) + (3 * embedding_size)
         if norm_layer is None:
             norm_layer = nn.BatchNorm1d
         self.t_embedding = nn.Linear(capacity_range, embedding_size)

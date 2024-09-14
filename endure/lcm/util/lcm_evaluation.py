@@ -60,6 +60,9 @@ class LCMEvalUtil:
                 row[f"K_{idx}"] = k
         elif design.policy == Policy.QFixed:
             row['Q'] = design.Q
+        elif design.policy == Policy.YZHybrid:
+            row['Y'] = design.Y
+            row['Z'] = design.Z
         row['cost_lcm'] = cost_lcm
         row['cost_acm'] = cost_acm
 
