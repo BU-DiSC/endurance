@@ -40,7 +40,7 @@ class LearnedCostModelLoss(torch.nn.Module):
         )
         status = self.model.load_state_dict(data)
         self.capacity_range = (
-            self.bounds.size_ratio_range[1] - self.bounds.size_ratio_range[0] + 1
+            self.bounds.size_ratio_range[1] - self.bounds.size_ratio_range[0]
         )
         self.num_levels = self.bounds.max_considered_levels
 

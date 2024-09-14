@@ -54,17 +54,18 @@ def get_bounds(
     h_bounds = get_h_bounds(bounds, system)
 
     lb = (h_bounds[0], t_bounds[0])
-    ub = (h_bounds[1], t_bounds[1])
+    ub = (h_bounds[1], t_bounds[1] - 1)
+    # Because scipy optimizer bounds are INCLUSIVE on the right hand we subtract 2
     if policy == Policy.QFixed:
         lb += (t_bounds[0] - 1,)
-        ub += (t_bounds[1] - 1,)
+        ub += (t_bounds[1] - 2,)
     elif policy == Policy.YZHybrid:
         lb += (t_bounds[0] - 1, t_bounds[0] - 1)
-        ub += (t_bounds[1] - 1, t_bounds[1] - 1)
+        ub += (t_bounds[1] - 2, t_bounds[1] - 1)
     elif policy == Policy.KHybrid:
         max_levels: int = bounds.max_considered_levels
         lb += tuple(t_bounds[0] - 1 for _ in range(max_levels))
-        ub += tuple(t_bounds[1] - 1 for _ in range(max_levels))
+        ub += tuple(t_bounds[1] - 2 for _ in range(max_levels))
     elif policy in (Policy.Tiering, Policy.Leveling):
         pass  # No need to add more items for classic policy
 

@@ -25,7 +25,7 @@ class Trainer:
         model_test_kwargs: dict[str, Any] = {},
         disable_tqdm: bool = False,
         no_checkpoint: bool = False,
-        train_callback: Optional[Callable[[dict], None]] = None,
+        train_callback: Optional[Callable[[dict], dict]] = None,
     ) -> None:
         self.log = log
         self.model = model
@@ -95,7 +95,7 @@ class Trainer:
                 self.scheduler.step()
 
         if self.train_callback is not None:
-            self.train_callback(self.model_train_kwargs)
+            self.model_train_kwargs = self.train_callback(self.model_train_kwargs)
 
         if self.train_len == 0:
             self.train_len = batch + 1

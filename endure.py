@@ -10,6 +10,7 @@ from jobs.data_gen import DataGenJob
 from jobs.ltune_train import LTuneTrainJob
 from jobs.botorch_bo import BayesianPipeline
 from jobs.mlos_bo import BayesianPipelineMlos
+from jobs.mlos_exp_runs import ExperimentMLOS
 
 
 class EndureDriver:
@@ -20,7 +21,7 @@ class EndureDriver:
             format=config["log"]["format"], datefmt=config["log"]["datefmt"]
         )
         self.log: logging.Logger = logging.getLogger(config["log"]["name"])
-        self.log.setLevel(logging.getLevelName(config["log"]["level"]))
+        self.log.setLevel(getattr(logging, config["log"]["level"]))
         log_level = logging.getLevelName(self.log.getEffectiveLevel())
         self.log.debug(f"Log level: {log_level}")
 
@@ -33,12 +34,13 @@ class EndureDriver:
             "LTuneTrain": LTuneTrainJob,
             "BayesianPipelineBoTorch": BayesianPipeline,
             "BayesianPipelineMLOS": BayesianPipelineMlos,
+            "ExperimentMLOS": ExperimentMLOS,
         }
         jobs_list = self.config["app"]["run"]
         for job_name in jobs_list:
             job = jobs.get(job_name, None)
             if job is None:
-                self.log.warn(f"No job associated with {job_name}")
+                self.log.warning(f"No job associated with {job_name}")
                 continue
             job = job(config)
             _ = job.run()
