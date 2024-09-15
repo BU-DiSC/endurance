@@ -3,7 +3,7 @@ from typing import Tuple
 from torch import nn
 from endure.lsm.types import Policy
 
-from endure.ltune.model import ClassicTuner, QLSMTuner, KapLSMTuner
+from endure.ltune.model import ClassicTuner, QLSMTuner, KapLSMTuner, YZLSMTuner
 from endure.ltune.data.input_features import kINPUT_FEATS
 
 
@@ -34,6 +34,7 @@ class LTuneModelBuilder:
             Policy.Classic: ClassicTuner,
             Policy.QFixed: QLSMTuner,
             Policy.KHybrid: KapLSMTuner,
+            Policy.YZHybrid: YZLSMTuner,
         }
 
     def get_choices(self):
