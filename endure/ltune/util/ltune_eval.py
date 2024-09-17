@@ -118,6 +118,8 @@ class LTuneEvalUtil:
             design = self._qlsm_convert(output)
         elif self.design_type == Policy.KHybrid:
             design = self._klsm_convert(output)
+        elif self.design_type == Policy.YZHybrid:
+            design = self._yzlsm_convert(output)
         else: # self.design_type == Policy.Classic
             design = self._classic_convert(output)
 
@@ -143,6 +145,17 @@ class LTuneEvalUtil:
 
         return LSMDesign(h=h, T=t, Q=q, policy=Policy.QFixed)
 
+    def _yzlsm_convert(self, output: Tensor) -> LSMDesign:
+        out = output.flatten()
+        cap_range = self.calc_size_ratio_range()
+        h = out[0].item()
+        caps = out[1:].reshape(-1, cap_range)
+        t = torch.argmax(caps[0]).item() + 2
+        y = torch.argmax(caps[1]).item() + 1
+        z = torch.argmax(caps[2]).item() + 1
+
+        return LSMDesign(h=h, T=t, Y=y, Z=z, policy=Policy.YZHybrid)
+        
     def _classic_convert(self, output: Tensor) -> LSMDesign:
         out = output.flatten()
         cap_range = self.calc_size_ratio_range()
@@ -208,6 +221,11 @@ class LTuneEvalUtil:
         if stune_design.policy == Policy.QFixed:
             row['stune_Q'] = stune_design.Q
             row['ltune_Q'] = ltune_design.Q
+        elif stune_design.policy == Policy.YZHybrid:
+            row['stune_Y'] = stune_design.Y
+            row['ltune_Y'] = ltune_design.Y
+            row['stune_Z'] = stune_design.Z
+            row['ltune_Z'] = ltune_design.Z
         elif stune_design.policy == Policy.KHybrid:
             row['stune_K'] = stune_design.K
             row['ltune_K'] = ltune_design.K

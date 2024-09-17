@@ -30,12 +30,11 @@ class YZLSMTuner(nn.Module):
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(p=dropout_percentage)
         hidden = []
-        print("length", hidden_length)
         for _ in range(hidden_length):
             hidden.append(nn.Linear(hidden_width, hidden_width))
+            # hidden.append(nn.ReLU())
         self.hidden = nn.Sequential(*hidden)
-
-        self.y_decision = nn.Linear(hidden_width, capacity_range) 
+        self.y_decision = nn.Linear(hidden_width, capacity_range)
         self.z_decision = nn.Linear(hidden_width, capacity_range)
         self.t_decision = nn.Linear(hidden_width, capacity_range)
         self.bits_decision = nn.Linear(hidden_width, 1)
@@ -57,13 +56,10 @@ class YZLSMTuner(nn.Module):
         out = self.hidden(out)
 
         bits = self.bits_decision(out)
-        
         y = self.y_decision(out)
         y = nn.functional.gumbel_softmax(y, tau=temp, hard=hard)
-
         z = self.z_decision(out)
         z = nn.functional.gumbel_softmax(z, tau=temp, hard=hard)
-
         t = self.t_decision(out)
         t = nn.functional.gumbel_softmax(t, tau=temp, hard=hard)
 
