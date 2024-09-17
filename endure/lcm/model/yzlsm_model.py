@@ -5,7 +5,6 @@ from torch import nn
 import torch
 import torch.nn.functional as F
 
-OUT_WIDTH = 4
 
 class YZModel(nn.Module):
     def __init__(
