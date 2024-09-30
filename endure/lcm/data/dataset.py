@@ -59,7 +59,7 @@ class LCMDataSet(torch.utils.data.IterableDataset):
         elif self.design == Policy.KHybrid:
             return one_hot_lcm(data, num_feat, self.max_levels + 1, self.categories)
         elif self.design == Policy.YZHybrid:
-            raise NotImplementedError
+            return one_hot_lcm(data, num_feat, 3, self.categories)
         elif self.design in [Policy.Leveling, Policy.Tiering]:
             raise NotImplementedError
         else:
