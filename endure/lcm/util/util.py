@@ -55,14 +55,9 @@ def create_input_from_types(
     wl = [z0, z1, q, w]
     sys = [system.B, system.s, system.E, system.H, system.N]
     size_ratio_idx = design.T - min_t
-
-    print("Design Policy Value:", design.policy.value)
-    print("Size Ratio Index:", size_ratio_idx)
-
     if design.policy in (Policy.Tiering, Policy.Leveling, Policy.Classic):
         inputs = wl + sys + [design.h, size_ratio_idx, design.policy.value]
         data = torch.Tensor(inputs)
-        print("Data before one_hot_lcm_classic:", data)
         size_ratio = torch.tensor(size_ratio_idx).to(torch.long)
         policy = torch.tensor(design.policy.value).to(torch.long)
         out = one_hot_lcm_classic_distinct(data, categories, size_ratio, policy)
@@ -72,7 +67,7 @@ def create_input_from_types(
         data = torch.Tensor(inputs)
         num_feats = 1 + len(design.K)
         out = one_hot_lcm(data, len(inputs), num_feats, categories)
-    else: # design.policy == Policy.QFixed
+    else: 
         inputs = wl + sys + [design.h, size_ratio_idx, design.Q - 1]
         data = torch.Tensor(inputs)
         out = one_hot_lcm(data, len(inputs), 2, categories)
