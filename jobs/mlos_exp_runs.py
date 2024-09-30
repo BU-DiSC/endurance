@@ -4,7 +4,7 @@ import sqlite3
 import ConfigSpace as CS
 import numpy as np
 import pandas as pd
-from endure.lcm.data.generator import KHybridGenerator
+from endure.lcm.data.generator import KHybridGenerator, ClassicGenerator, YZCostGenerator
 from endure.lsm.cost import EndureCost
 from endure.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
 from mlos_core.optimizers import SmacOptimizer
@@ -17,19 +17,40 @@ class ExperimentMLOS:
     def __init__(self, config: dict) -> None:
         self.log: logging.Logger = logging.getLogger(config["log"]["name"])
         self.bounds: LSMBounds = LSMBounds(**config["lsm"]["bounds"])
+        self.model_type = getattr(Policy, config["lsm"]["design"])
         self.cf: EndureCost = EndureCost(self.bounds.max_considered_levels)
-        self.gen: KHybridGenerator = KHybridGenerator(self.bounds)
         self.db = MLOSDatabase(config)
         self.config = config
+        if self.model_type == Policy.Classic:
+            self.gen: ClassicGenerator = ClassicGenerator(self.bounds)
+        elif self.model_type == Policy.YZHybrid:
+            self.gen: YZCostGenerator = YZCostGenerator(self.bounds)
+        else:
+            self.gen: KHybridGenerator = KHybridGenerator(self.bounds)
 
     def _suggest_to_design(self, suggestion: pd.DataFrame) -> LSMDesign:
-        kaps: np.ndarray = suggestion[[f"kap_{idx}" for idx in range(20)]].values[0]
         bits_per_element: float = suggestion["bits_per_element"].values[0]
         size_ratio: int = suggestion["size_ratio"].values[0]
-
-        return LSMDesign(
-            h=bits_per_element, T=size_ratio, policy=Policy.KHybrid, K=kaps.tolist()
-        )
+        if self.model_type == Policy.Classic:
+            pol_val: int = suggestion["pol_val"].values[0]
+            if pol_val == 0:
+                policy = Policy.Tiering
+            else:
+                policy = Policy.Leveling
+            return LSMDesign(
+                h=bits_per_element, T=size_ratio, policy=policy
+            )
+        elif self.model_type == Policy.YZHybrid:
+            y_val: int = suggestion["y_val"].values[0]
+            z_val: int = suggestion["z_val"].values[0]
+            return LSMDesign(
+                h=bits_per_element, T=size_ratio, policy=Policy.YZHybrid, Y=y_val, Z=z_val
+            )
+        elif self.model_type == Policy.KHybrid:
+            kaps: np.ndarray = suggestion[[f"kap_{idx}" for idx in range(20)]].values[0]
+            return LSMDesign(
+                h=bits_per_element, T=size_ratio, policy=Policy.KHybrid, K=kaps.tolist()
+            )
 
     def _create_parameter_space(self, system: System) -> CS.ConfigurationSpace:
         norm_params = [
@@ -44,14 +65,37 @@ class ExperimentMLOS:
                 upper=self.bounds.size_ratio_range[1] - 1,  # ConfigSpace is inclusive
             ),
         ]
-        kap_params = [
-            CS.UniformIntegerHyperparameter(
-                name=f"kap_{i}", lower=1, upper=self.bounds.size_ratio_range[1] - 2
-            )
-            for i in range(self.bounds.max_considered_levels)
-        ]
-        parameters = norm_params + kap_params
-
+        if self.model_type == Policy.Classic:
+            classic_params = [
+                CS.UniformIntegerHyperparameter(
+                    name="pol_val",
+                    lower=0,
+                    upper=1,
+                )
+            ]
+            parameters = norm_params + classic_params
+        if self.model_type == Policy.YZHybrid:
+            yz_params = [
+                CS.UniformIntegerHyperparameter(
+                    name="y_val",
+                    lower=1,
+                    upper=self.bounds.size_ratio_range[1]-1,
+                ),
+                CS.UniformIntegerHyperparameter(
+                    name="z_val",
+                    lower=1,
+                    upper=self.bounds.size_ratio_range[1]-1,
+                ),
+            ]
+            parameters = norm_params + yz_params
+        elif self.model_type == Policy.KHybrid:
+            kap_params = [
+                CS.UniformIntegerHyperparameter(
+                    name=f"kap_{i}", lower=1, upper=self.bounds.size_ratio_range[1] - 1
+                )
+                for i in range(self.bounds.max_considered_levels)
+            ]
+            parameters = norm_params + kap_params
         parameter_space = CS.ConfigurationSpace(seed=0)
         parameter_space.add_hyperparameters(parameters)
 
@@ -110,7 +154,7 @@ class ExperimentMLOS:
 
 
 class MLOSDatabase:
-    def __init__(self, config: dict, db_path: str = "mlos_exp.db") -> None:
+    def __init__(self, config: dict, db_path: str = "mlos_exp_classic.db") -> None:
         self.log: logging.Logger = logging.getLogger(config["log"]["name"])
         self.connector = sqlite3.connect(db_path)
         self.db_path = db_path
@@ -144,6 +188,8 @@ class MLOSDatabase:
                 round INTEGER,
                 bits_per_elem REAL,
                 size_ratio INTEGER,
+                policy TEXT,
+                y_val INTEGER, z_val INTEGER,
                 kap0 REAL, kap1 REAL, kap2 REAL, kap3 REAL, kap4 REAL,
                 kap5 REAL, kap6 REAL, kap7 REAL, kap8 REAL, kap9 REAL,
                 kap10 REAL, kap11 REAL, kap12 REAL, kap13 REAL, kap14 REAL,
@@ -201,6 +247,8 @@ class MLOSDatabase:
         design: LSMDesign,
         cost: float,
     ) -> None:
+        if len(design.K) < 20:
+            design.K = design.K + [1] * (20 - len(design.K))
         cursor = self.connector.cursor()
         cursor.execute(
             """
@@ -210,15 +258,18 @@ class MLOSDatabase:
                 round,
                 bits_per_elem,
                 size_ratio,
+                policy,
+                y_val, z_val,
                 kap0, kap1, kap2, kap3, kap4,
                 kap5, kap6, kap7, kap8, kap9,
                 kap10, kap11, kap12, kap13, kap14,
                 kap15, kap16, kap17, kap18, kap19,
                 cost
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                      ?,?,?)
             """,
-            (workload_id, trial, round, design.h, int(design.T))
+            (workload_id, trial, round, design.h, int(design.T), str(design.policy), int(design.Y), int(design.Z))
             + tuple(design.K)
             + (cost,),
         )

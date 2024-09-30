@@ -56,16 +56,16 @@ class ClassicModel(nn.Module):
         feats = x[:, :t_boundary]
 
         if self.training:
-            size_ratio = x[:, t_boundary]
+            size_ratio = x[:, -1]
             size_ratio = size_ratio.to(torch.long)
             size_ratio = F.one_hot(size_ratio, num_classes=self.capacity_range)
-            policy = x[:, -1]
+            policy = x[:, t_boundary]
             policy = policy.to(torch.long)
             policy = F.one_hot(policy, num_classes=2)
         else:
             policy = x[:, policy_boundary : policy_boundary + 2]
             size_ratio = x[:, t_boundary : policy_boundary]
-
+        
         return (feats, size_ratio, policy)
 
     def _forward_impl(self, x: Tensor) -> Tensor:
