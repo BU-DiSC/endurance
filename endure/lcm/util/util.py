@@ -19,13 +19,22 @@ def one_hot_lcm(
 
     return out
 
+def one_hot_lcm_classic_distinct(data: Tensor, categories: int, size_ratio: Tensor, policy: Tensor) -> Tensor:
+    size_ratio = F.one_hot(size_ratio, num_classes=categories)
+    policy = F.one_hot(policy, num_classes=2)
+    out = [data[:-2], size_ratio, policy]
+    out = torch.cat(out)
+
+    return out
+
+
 def one_hot_lcm_classic(
     data: Tensor,
     categories: int
 ) -> Tensor:
-    policy = data[-1].to(torch.long)
+    policy = data[-2].to(torch.long)
+    size_ratio = data[-1].to(torch.long)
     policy = F.one_hot(policy, num_classes=2)
-    size_ratio = data[-2].to(torch.long)
     size_ratio = F.one_hot(size_ratio, num_classes=categories)
     out = [data[:-2], size_ratio, policy]
     out = torch.cat(out)
@@ -45,11 +54,13 @@ def create_input_from_types(
     categories = max_t - min_t
     wl = [z0, z1, q, w]
     sys = [system.B, system.s, system.E, system.H, system.N]
-    size_ratio = design.T - min_t
-    if design.policy in (Policy.Tiering, Policy.Leveling):
-        inputs = wl + sys + [design.h, size_ratio, design.policy.value]
+    size_ratio_idx = design.T - min_t
+    if design.policy in (Policy.Tiering, Policy.Leveling, Policy.Classic):
+        inputs = wl + sys + [design.h, size_ratio_idx, design.policy.value]
         data = torch.Tensor(inputs)
-        out = one_hot_lcm_classic(data, categories)
+        size_ratio = torch.tensor(size_ratio_idx).to(torch.long)
+        policy = torch.tensor(design.policy.value).to(torch.long)
+        out = one_hot_lcm_classic_distinct(data, categories, size_ratio, policy)
     elif design.policy == Policy.KHybrid:
         ks = [k - 1 if k > 0 else 0 for k in design.K]
         inputs = wl + sys + [design.h, size_ratio] + ks
@@ -57,11 +68,11 @@ def create_input_from_types(
         num_feats = 1 + len(design.K)
         out = one_hot_lcm(data, len(inputs), num_feats, categories)
     elif design.policy == Policy.YZHybrid: # design.policy == Policy.QFixed
-        inputs = wl + sys + [design.h, size_ratio, design.Y - 1, design.Z - 1]
+        inputs = wl + sys + [design.h, size_ratio_idx, design.Y - 1, design.Z - 1]
         data = torch.Tensor(inputs)
         out = one_hot_lcm(data, len(inputs), 3, categories)
     else: # design.policy == Policy.QFixed
-        inputs = wl + sys + [design.h, size_ratio, design.Q - 1]
+        inputs = wl + sys + [design.h, size_ratio_idx, design.Q - 1]
         data = torch.Tensor(inputs)
         out = one_hot_lcm(data, len(inputs), 2, categories)
 
