@@ -134,7 +134,7 @@ class ExperimentMLOS:
         return
 
     def run(self) -> None:
-        system = System()
+        system = System() 
         self.db.create_tables()
         for rep_wl in self.config["workloads"]:
             workload = Workload(
@@ -154,14 +154,16 @@ class ExperimentMLOS:
 
 
 class MLOSDatabase:
-    def __init__(self, config: dict, db_path: str = "mlos_exp_classic.db") -> None:
+    def __init__(self, config: dict, db_path: str = "testing_yz.db") -> None:
         self.log: logging.Logger = logging.getLogger(config["log"]["name"])
         self.connector = sqlite3.connect(db_path)
         self.db_path = db_path
         self.config = config
+        self.model_type = getattr(Policy, config["lsm"]["design"])
 
     def create_tables(self) -> None:
         cursor = self.connector.cursor()
+    
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS environments (
@@ -179,30 +181,38 @@ class MLOSDatabase:
             );
             """
         )
-        cursor.execute(
-            """
+    
+        tunings_cols_comm = """
+            idx INTEGER PRIMARY KEY AUTOINCREMENT,
+            env_id INTEGER,
+            trial INTEGER,
+            round INTEGER,
+            bits_per_elem REAL,
+            size_ratio INTEGER,
+            cost REAL"""
+    
+        if self.model_type == Policy.Classic:
+            policy_field = "policy TEXT"
+        elif self.model_type == Policy.YZHybrid:
+            policy_field = "y_val INTEGER, z_val INTEGER"
+        else:
+            kap_fields = ", ".join([f"kap{i} REAL" for i in range(20)])
+            policy_field = kap_fields
+        key_string = "FOREIGN KEY (env_id) REFERENCES workloads(env_id)"
+        create_tunings_table_query = f"""
             CREATE TABLE IF NOT EXISTS tunings (
-                idx INTEGER PRIMARY KEY AUTOINCREMENT,
-                env_id INTEGER,
-                trial INTEGER,
-                round INTEGER,
-                bits_per_elem REAL,
-                size_ratio INTEGER,
-                policy TEXT,
-                y_val INTEGER, z_val INTEGER,
-                kap0 REAL, kap1 REAL, kap2 REAL, kap3 REAL, kap4 REAL,
-                kap5 REAL, kap6 REAL, kap7 REAL, kap8 REAL, kap9 REAL,
-                kap10 REAL, kap11 REAL, kap12 REAL, kap13 REAL, kap14 REAL,
-                kap15 REAL, kap16 REAL, kap17 REAL, kap18 REAL, kap19 REAL,
-                cost REAL,
-                FOREIGN KEY (env_id) REFERENCES workloads(env_id)
+                {tunings_cols_comm}, {policy_field}, 
+                {key_string}
             );
-            """
-        )
+        """
+        
+        cursor.execute(create_tunings_table_query)
         self.connector.commit()
         cursor.close()
-
+    
         return
+
+
 
     def log_workload(self, workload: Workload, system: System) -> int:
         cursor = self.connector.cursor()
@@ -235,7 +245,7 @@ class MLOSDatabase:
             ),
         )
         self.connector.commit()
-
+    
         assert cursor.lastrowid is not None
         return cursor.lastrowid
 
@@ -247,32 +257,63 @@ class MLOSDatabase:
         design: LSMDesign,
         cost: float,
     ) -> None:
-        if len(design.K) < 20:
-            design.K = design.K + [1] * (20 - len(design.K))
         cursor = self.connector.cursor()
-        cursor.execute(
-            """
-            INSERT INTO tunings (
-                env_id,
-                trial,
-                round,
-                bits_per_elem,
-                size_ratio,
-                policy,
-                y_val, z_val,
-                kap0, kap1, kap2, kap3, kap4,
-                kap5, kap6, kap7, kap8, kap9,
-                kap10, kap11, kap12, kap13, kap14,
-                kap15, kap16, kap17, kap18, kap19,
-                cost
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                      ?,?,?)
-            """,
-            (workload_id, trial, round, design.h, int(design.T), str(design.policy), int(design.Y), int(design.Z))
-            + tuple(design.K)
-            + (cost,),
-        )
+        if self.model_type == Policy.Classic:
+            cursor.execute(
+                """
+                INSERT INTO tunings (
+                    env_id,
+                    trial,
+                    round,
+                    bits_per_elem,
+                    size_ratio,
+                    policy,
+                    cost
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (workload_id, trial, round, design.h, int(design.T), str(design.policy))
+                + (cost,),
+            )
+        elif self.model_type == Policy.YZHybrid:
+            cursor.execute(
+                """
+                INSERT INTO tunings (
+                    env_id,
+                    trial,
+                    round,
+                    bits_per_elem,
+                    size_ratio,
+                    y_val, z_val,
+                    cost
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (workload_id, trial, round, design.h, int(design.T), int(design.Y), int(design.Z))
+                + (cost,),
+            )
+        else:
+            cursor.execute(
+                """
+                INSERT INTO tunings (
+                    env_id,
+                    trial,
+                    round,
+                    bits_per_elem,
+                    size_ratio,
+                    kap0, kap1, kap2, kap3, kap4,
+                    kap5, kap6, kap7, kap8, kap9,
+                    kap10, kap11, kap12, kap13, kap14,
+                    kap15, kap16, kap17, kap18, kap19,
+                    cost
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                        )
+                """,
+                (workload_id, trial, round, design.h, int(design.T),)
+                + tuple(design.K)
+                + (cost,),
+            )
+                
+                
         self.connector.commit()
-
+    
         return
