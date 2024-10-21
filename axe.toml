@@ -1,5 +1,5 @@
 # =============================================================================
-# ENDURE Configuration File
+# AXE Configuration File
 #   Following subsections are available
 #   APP
 #   LOGGER - output setting
@@ -18,7 +18,7 @@
 #   Logic of app including jobs list to run
 # =============================================================================
 [app]
-name = "ENDURE"
+name = "AXE"
 run = [
     # "DataGen",
     # "LCMTrain",
@@ -33,7 +33,7 @@ run = [
 #   Generic IO settings for experiments, saving data, etc
 # =============================================================================
 [log]
-name = 'endure-logger'
+name = 'axe-logger'
 format = "[%(levelname)s][%(asctime)-15s][%(filename)s] %(message)s"
 datefmt = '%d-%m-%y:%H:%M:%S'
 level = "DEBUG"

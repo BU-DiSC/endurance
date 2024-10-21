@@ -13,7 +13,7 @@ from jobs.mlos_bo import BayesianPipelineMlos
 from jobs.mlos_exp_runs import ExperimentMLOS
 
 
-class EndureDriver:
+class AxeDriver:
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
 
@@ -53,10 +53,10 @@ if __name__ == "__main__":
         config_path = sys.argv[1]
     else:
         file_dir = os.path.dirname(__file__)
-        config_path = os.path.join(file_dir, "endure.toml")
+        config_path = os.path.join(file_dir, "axe.toml")
 
     with open(config_path) as fid:
         config = toml.load(fid)
 
-    driver = EndureDriver(config)
+    driver = AxeDriver(config)
     driver.run()
