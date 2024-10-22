@@ -6,10 +6,10 @@ import torch
 
 sys.path.append(os.path.join(sys.path[0], "../../"))
 
-from endure.lsm.types import LSMBounds, Workload
-from endure.lcm.data.generator import LCMDataGenerator
+from axe.lsm.types import LSMBounds, Workload
+from axe.lcm.data.generator import LCMDataGenerator
 from jobs.bayesian_pipeline import BayesianPipeline
-from endure.lsm.cost import EndureCost
+from axe.lsm.cost import EndureCost
 
 
 def to_cuda(obj, seen=None):
@@ -96,7 +96,7 @@ def compare_designs(n_runs=100, csv_filename="yz_design_comparison.csv"):
 
 if __name__ == "__main__":
     file_dir = os.path.dirname(__file__)
-    config_path = os.path.join(file_dir, "endure.toml")
+    config_path = os.path.join(file_dir, "axe.toml")
     with open(config_path) as fid:
         config = toml.load(fid)
     bayesian_optimizer = BayesianPipeline(config)

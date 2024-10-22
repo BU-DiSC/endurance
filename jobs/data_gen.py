@@ -8,10 +8,10 @@ from tqdm import tqdm
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from endure.data.io import Reader
-from endure.lsm.types import Policy, LSMBounds
-from endure.ltune.data.generator import LTuneDataGenerator
-import endure.lcm.data.generator as Generators
+from axe.data.io import Reader
+from axe.lsm.types import Policy, LSMBounds
+from axe.ltune.data.generator import LTuneDataGenerator
+import axe.lcm.data.generator as Generators
 
 
 class DataGenJob:

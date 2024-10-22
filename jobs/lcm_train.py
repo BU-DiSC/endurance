@@ -8,13 +8,13 @@ import toml
 import torch
 import torch.optim as TorchOpt
 
-from endure.lcm.data.dataset import LCMDataSet
-from endure.lcm.model.builder import LearnedCostModelBuilder
-from endure.lsm.types import LSMBounds, Policy
-from endure.util.losses import LossBuilder
-from endure.util.lr_scheduler import LRSchedulerBuilder
-from endure.util.optimizer import OptimizerBuilder
-from endure.util.trainer import Trainer
+from axe.lcm.data.dataset import LCMDataSet
+from axe.lcm.model.builder import LearnedCostModelBuilder
+from axe.lsm.types import LSMBounds, Policy
+from axe.util.losses import LossBuilder
+from axe.util.lr_scheduler import LRSchedulerBuilder
+from axe.util.optimizer import OptimizerBuilder
+from axe.util.trainer import Trainer
 
 
 class LCMTrainJob:
@@ -123,7 +123,7 @@ class LCMTrainJob:
         except FileExistsError:
             return None
 
-        with open(os.path.join(save_dir, "endure.toml"), "w") as fid:
+        with open(os.path.join(save_dir, "axe.toml"), "w") as fid:
             toml.dump(self.config, fid)
 
         return save_dir
@@ -162,9 +162,9 @@ class LCMTrainJob:
 
 
 if __name__ == "__main__":
-    from endure.data.io import Reader
+    from axe.data.io import Reader
 
-    config = Reader.read_config("endure.toml")
+    config = Reader.read_config("axe.toml")
     logging.basicConfig(
         format=config["log"]["format"],
         datefmt=config["log"]["datefmt"],

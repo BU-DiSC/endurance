@@ -46,16 +46,16 @@ These are the general steps that can be used to generate data, train each model 
    ```bash
    pip install -r requirements.txt
    ```
-8. **Configure the endure.toml file (More details can be found below)** \
-   The [endure.toml](#Configuration-File) file contains all required options for the experiments and jobs. Please configure all the jobs and their respective parameters  required to successfully run the project.
+8. **Configure the axe.toml file (More details can be found below)** \
+   The [axe.toml](#Configuration-File) file contains all required options for the experiments and jobs. Please configure all the jobs and their respective parameters  required to successfully run the project.
 
 9. **Run the project** \
-    The project is structured such that all experiments can be run by just running the endure.py file. Use the following command to run it:
+    The project is structured such that all experiments can be run by just running the axe.py file. Use the following command to run it:
    ```bash
-   python endure.py
+   python axe.py
    ```
 ## Configuration File
-All of our configuration is handled by the endure.toml file placed in the root directory of our project. 
+All of our configuration is handled by the axe.toml file placed in the root directory of our project. 
 The config file is divided into sections denoted by a heading within the square brackets (for example *[app]*)  
 1. To run a specific job, change the variable **run** under the *[app]* header. All the available jobs are already present in the variable and provided as commented out code. Uncomment all jobs that have to be run to run multiple jobs or a single job.   
 
@@ -76,14 +76,14 @@ The config file is divided into sections denoted by a heading within the square 
 ## Project Structure
 Our project is separated into repositories to maintain a consistent structure. Below is a short description for each of the repositories to help any user of this project:
 
-1. **jobs** - This repo contains the main entry point defined in endure.py for each job. There are separate files dedicated to each job that can be identified using the filenames.
+1. **jobs** - This repo contains the main entry point defined in axe.py for each job. There are separate files dedicated to each job that can be identified using the filenames.
 
-2. **endure** - This repo contains multiple other repositories divided by use case as defined below:  
+2. **axe** - This repo contains multiple other repositories divided by use case as defined below:  
 
-   &emsp;a. **endure/lcm** - This repo contains the folders and files responsible for the *Learned Cost Model (LCM)* that helps learn the cost surface for the implemented solution. Within this directory, there is a *model* folder that contains the files for each LCM model structure (Classic, KLSM, QHybrid, Doestoevsky (YZLSM)). The *util* folder contains all utilities used by the models within *lcm*. The *data* folder contains code required for generating and using the input (data) files by the models.  
+   &emsp;a. **axe/lcm** - This repo contains the folders and files responsible for the *Learned Cost Model (LCM)* that helps learn the cost surface for the implemented solution. Within this directory, there is a *model* folder that contains the files for each LCM model structure (Classic, KLSM, QHybrid, Doestoevsky (YZLSM)). The *util* folder contains all utilities used by the models within *lcm*. The *data* folder contains code required for generating and using the input (data) files by the models.  
 
-   &emsp;b. **endure/lsm** - This repo contains the analytical solver repository called *solver* that is used as the basis of comparison as well as files associated with the structure of the lsm. It has a *types.py* file that is used throughout our project to define each type used. The project also has cost files that use the equations from the cost model (as stated in the paper) to calculate the cost of each operation for all models. There is a also a data_generator file that is used for generation of data from a given sample space uniformly at random.  
+   &emsp;b. **axe/lsm** - This repo contains the analytical solver repository called *solver* that is used as the basis of comparison as well as files associated with the structure of the lsm. It has a *types.py* file that is used throughout our project to define each type used. The project also has cost files that use the equations from the cost model (as stated in the paper) to calculate the cost of each operation for all models. There is a also a data_generator file that is used for generation of data from a given sample space uniformly at random.  
 
-   &emsp;c. **endure/ltune** - This repo contains the folders and files responsible for the *Learned Tuner (LTuner)* that helps predict the best configuration for the LSM Tree as per the solution proposed in the paper. Within this directory, there is a *model* folder that contains the files for each Ltuner model structure (Classic, KLSM, QHybrid, Doestoevsky (YZLSM)). The *util* folder contains all utilities used by the models within *ltune*. The *data* folder contains code required for generating and using the input (data) files by the models.  
+   &emsp;c. **axe/ltune** - This repo contains the folders and files responsible for the *Learned Tuner (LTuner)* that helps predict the best configuration for the LSM Tree as per the solution proposed in the paper. Within this directory, there is a *model* folder that contains the files for each Ltuner model structure (Classic, KLSM, QHybrid, Doestoevsky (YZLSM)). The *util* folder contains all utilities used by the models within *ltune*. The *data* folder contains code required for generating and using the input (data) files by the models.  
 
-   &emsp;d. **endure/util** - Contains utility files that are used generally by all modules.  
+   &emsp;d. **axe/util** - Contains utility files that are used generally by all modules.  
