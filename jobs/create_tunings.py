@@ -4,9 +4,9 @@ import logging
 import numpy as np
 import pandas as pd
 
-from endure.lcm.data.generator import LCMDataGenerator
-import endure.lsm.solver as Solvers
-from endure.lsm.types import Policy
+from axe.lcm.data.generator import LCMDataGenerator
+import axe.lsm.solver as Solvers
+from axe.lsm.types import Policy
 
 
 class CreateTuningsJob:

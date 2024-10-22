@@ -4,9 +4,9 @@ import sqlite3
 import ConfigSpace as CS
 import numpy as np
 import pandas as pd
-from endure.lcm.data.generator import KHybridGenerator, ClassicGenerator, YZCostGenerator
-from endure.lsm.cost import EndureCost
-from endure.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
+from axe.lcm.data.generator import KHybridGenerator, ClassicGenerator, YZCostGenerator
+from axe.lsm.cost import EndureCost
+from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
 from mlos_core.optimizers import SmacOptimizer
 
 NUM_ROUNDS = 100
@@ -37,14 +37,16 @@ class ExperimentMLOS:
                 policy = Policy.Tiering
             else:
                 policy = Policy.Leveling
-            return LSMDesign(
-                h=bits_per_element, T=size_ratio, policy=policy
-            )
+            return LSMDesign(h=bits_per_element, T=size_ratio, policy=policy)
         elif self.model_type == Policy.YZHybrid:
             y_val: int = suggestion["y_val"].values[0]
             z_val: int = suggestion["z_val"].values[0]
             return LSMDesign(
-                h=bits_per_element, T=size_ratio, policy=Policy.YZHybrid, Y=y_val, Z=z_val
+                h=bits_per_element,
+                T=size_ratio,
+                policy=Policy.YZHybrid,
+                Y=y_val,
+                Z=z_val,
             )
         elif self.model_type == Policy.KHybrid:
             kaps: np.ndarray = suggestion[[f"kap_{idx}" for idx in range(20)]].values[0]
@@ -79,12 +81,12 @@ class ExperimentMLOS:
                 CS.UniformIntegerHyperparameter(
                     name="y_val",
                     lower=1,
-                    upper=self.bounds.size_ratio_range[1]-1,
+                    upper=self.bounds.size_ratio_range[1] - 1,
                 ),
                 CS.UniformIntegerHyperparameter(
                     name="z_val",
                     lower=1,
-                    upper=self.bounds.size_ratio_range[1]-1,
+                    upper=self.bounds.size_ratio_range[1] - 1,
                 ),
             ]
             parameters = norm_params + yz_params
@@ -134,7 +136,7 @@ class ExperimentMLOS:
         return
 
     def run(self) -> None:
-        system = System() 
+        system = System()
         self.db.create_tables()
         for rep_wl in self.config["workloads"]:
             workload = Workload(
@@ -163,7 +165,7 @@ class MLOSDatabase:
 
     def create_tables(self) -> None:
         cursor = self.connector.cursor()
-    
+
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS environments (
@@ -181,7 +183,7 @@ class MLOSDatabase:
             );
             """
         )
-    
+
         tunings_cols_comm = """
             idx INTEGER PRIMARY KEY AUTOINCREMENT,
             env_id INTEGER,
@@ -190,7 +192,7 @@ class MLOSDatabase:
             bits_per_elem REAL,
             size_ratio INTEGER,
             cost REAL"""
-    
+
         if self.model_type == Policy.Classic:
             policy_field = "policy TEXT"
         elif self.model_type == Policy.YZHybrid:
@@ -205,14 +207,12 @@ class MLOSDatabase:
                 {key_string}
             );
         """
-        
+
         cursor.execute(create_tunings_table_query)
         self.connector.commit()
         cursor.close()
-    
+
         return
-
-
 
     def log_workload(self, workload: Workload, system: System) -> int:
         cursor = self.connector.cursor()
@@ -245,7 +245,7 @@ class MLOSDatabase:
             ),
         )
         self.connector.commit()
-    
+
         assert cursor.lastrowid is not None
         return cursor.lastrowid
 
@@ -287,7 +287,15 @@ class MLOSDatabase:
                     cost
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (workload_id, trial, round, design.h, int(design.T), int(design.Y), int(design.Z))
+                (
+                    workload_id,
+                    trial,
+                    round,
+                    design.h,
+                    int(design.T),
+                    int(design.Y),
+                    int(design.Z),
+                )
                 + (cost,),
             )
         else:
@@ -308,12 +316,17 @@ class MLOSDatabase:
                         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                         )
                 """,
-                (workload_id, trial, round, design.h, int(design.T),)
+                (
+                    workload_id,
+                    trial,
+                    round,
+                    design.h,
+                    int(design.T),
+                )
                 + tuple(design.K)
                 + (cost,),
             )
-                
-                
+
         self.connector.commit()
-    
+
         return

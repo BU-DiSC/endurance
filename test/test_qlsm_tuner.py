@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from endure.ltune.model.qlsm_tuner import QLSMTuner
+from axe.ltune.model.qlsm_tuner import QLSMTuner
 
 
 @pytest.mark.parametrize("num_feats", [3])

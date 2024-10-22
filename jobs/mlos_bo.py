@@ -1,16 +1,14 @@
-import os
-import toml
 import logging
 import ConfigSpace as CS
 import numpy as np
 import pandas as pd
 
 import mlos_core.optimizers
-from endure.lsm.cost import EndureCost
-from endure.lcm.data.generator import KHybridGenerator
-from endure.lsm.solver import KLSMSolver
-from endure.lsm.types import LSMDesign, System, Policy, Workload, LSMBounds
-from endure.data.io import Reader
+from axe.lsm.cost import EndureCost
+from axe.lcm.data.generator import KHybridGenerator
+from axe.lsm.solver import KLSMSolver
+from axe.lsm.types import LSMDesign, System, Policy, Workload, LSMBounds
+from axe.data.io import Reader
 
 
 def export_to_csv(mlos_costs, analytical_costs, mlos_designs, analytical_designs, systems, workloads) -> None:
@@ -154,7 +152,7 @@ def find_analytical_results(system: System, workload: Workload, bounds: LSMBound
 
 
 if __name__ == "__main__":
-    config = Reader.read_config("endure.toml")
+    config = Reader.read_config("axe.toml")
 
     log = logging.getLogger(config["log"]["name"])
     log.info("Initializing Bayesian Optimization Job")

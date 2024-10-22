@@ -1,8 +1,8 @@
 import pytest
 import torch
 
-from endure.lcm.util import one_hot_lcm
-from endure.lcm.model import QModel
+from axe.lcm.util import one_hot_lcm
+from axe.lcm.model import QModel
 
 OUT_WIDTH = 4
 

@@ -1,6 +1,6 @@
 import sqlite3
-from endure.data.io import Reader
-from endure.lsm.types import LSMDesign, Policy, System, Workload
+from axe.data.io import Reader
+from axe.lsm.types import LSMDesign, Policy, System, Workload
 
 
 def initialize_database(db_path: str = "cost_log.db") -> sqlite3.Connection:
@@ -227,6 +227,6 @@ def log_run_details(
 
 
 if __name__ == "__main__":
-    config = Reader.read_config("endure.toml")
+    config = Reader.read_config("axe.toml")
     conn = initialize_database()
     conn.close()
