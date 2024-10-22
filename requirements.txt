@@ -1,5 +1,7 @@
 dill
 joblib
+mlos
+mlos-core
 numba
 numpy
 pandas
@@ -12,4 +14,3 @@ toml
 torch
 torchdata
 tqdm
-mlos
