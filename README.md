@@ -12,6 +12,7 @@ These are the general steps that can be used to generate data, train each model 
 1. **Install Python (3.7 or later)**  
    Download Python from the official repository:  \
    [https://www.python.org/downloads/](https://www.python.org/downloads/)  \
+
    Follow the installation instructions for your operating system (Windows, Mac, Linux).
 
 2. **Verify Python installation**  
@@ -26,10 +27,11 @@ These are the general steps that can be used to generate data, train each model 
    b) If Python is already installed but not added to "PATH", these are some helpful links to do this: \
        i)  https://phoenixnap.com/kb/add-python-to-path  \
        ii) https://realpython.com/add-python-to-path/  
-   
+
 4. **Install pip** \
    https://pip.pypa.io/en/stable/installation/
    
+
 5. **Verify pip installation** 
    ```bash
    pip --version
