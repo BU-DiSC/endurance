@@ -8,7 +8,6 @@ from typing import Any
 from jobs.lcm_train import LCMTrainJob
 from jobs.data_gen import DataGenJob
 from jobs.ltune_train import LTuneTrainJob
-from jobs.botorch_bo import BayesianPipeline
 from jobs.mlos_bo import BayesianPipelineMlos
 from jobs.mlos_exp_runs import ExperimentMLOS
 
@@ -32,7 +31,6 @@ class AxeDriver:
             "DataGen": DataGenJob,
             "LCMTrain": LCMTrainJob,
             "LTuneTrain": LTuneTrainJob,
-            "BayesianPipelineBoTorch": BayesianPipeline,
             "BayesianPipelineMLOS": BayesianPipelineMlos,
             "ExperimentMLOS": ExperimentMLOS,
         }
