@@ -1,12 +1,10 @@
-#!/usr/bin/env python
-import argparse
 import logging
 import multiprocessing as mp
 import os
 
+import click
 import pyarrow as pa
 import pyarrow.parquet as pq
-import toml
 from tqdm import tqdm
 
 from axe.lcm.data.schema import LCMDataSchema
@@ -14,20 +12,27 @@ from axe.lsm.types import LSMBounds, Policy
 
 
 class CreateLCMData:
-    def __init__(self, cfg: dict) -> None:
-        self.log: logging.Logger = logging.getLogger(cfg["app"]["name"])
-        self.disable_tqdm: bool = cfg["app"]["disable_tqdm"]
-        self.policy: Policy = getattr(Policy, cfg["lsm"]["policy"])
-        self.bounds: LSMBounds = LSMBounds(**cfg["lsm"]["bounds"])
-        self.seed: int = cfg["app"]["random_seed"]
+    def __init__(
+        self,
+        config: dict,
+        output_dir: str,
+        num_samples: int = 1024,
+        num_threads: int = 1,
+        num_files: int = 1,
+        overwrite_if_exists: bool = False,
+    ) -> None:
+        self.log: logging.Logger = logging.getLogger(config["app"]["name"])
+        self.disable_tqdm: bool = config["app"]["disable_tqdm"]
+        self.policy: Policy = getattr(Policy, config["lsm"]["policy"])
+        self.bounds: LSMBounds = LSMBounds(**config["lsm"]["bounds"])
+        self.seed: int = config["app"]["random_seed"]
 
-        jcfg = cfg["job"]["create_lcm_data"]
-        self.output_dir: str = jcfg["output_dir"]
-        self.num_samples: int = jcfg["num_samples"]
-        self.num_files: int = jcfg["num_files"]
-        self.num_workers: int = jcfg["num_workers"]
-        self.overwrite_if_exists: bool = jcfg["overwrite_if_exists"]
-        self.cfg = cfg
+        self.output_dir: str = output_dir
+        self.num_samples: int = num_samples
+        self.num_files: int = num_files
+        self.num_threads: int = num_threads
+        self.overwrite_if_exists: bool = overwrite_if_exists
+        self.cfg = config
 
     def generate_parquet_file(self, schema: LCMDataSchema, idx: int, pos: int) -> int:
         fname = f"data{idx:04}.parquet"
@@ -66,7 +71,7 @@ class CreateLCMData:
         self.log.info(f"Writing all files to {self.output_dir}")
 
         inputs = list(range(0, self.num_files))
-        threads = self.num_workers
+        threads = self.num_threads
         if threads == -1:
             threads = mp.cpu_count()
         if threads > self.num_files:
@@ -86,17 +91,32 @@ class CreateLCMData:
         return
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, help="path to config file")
-    args = parser.parse_args()
-    config = toml.load(args.config)
-    logging.basicConfig(**config["log"])
-    log: logging.Logger = logging.getLogger(config["app"]["name"])
-    log.info(f"Log level: {logging.getLevelName(log.getEffectiveLevel())}")
+@click.command(
+    "create-lcm-data",
+    help="Generate training data for the Learned Cost Model (LCM).",
+)
+@click.option("--output-dir", help="Directory to save the generated data.")
+@click.option("--num-samples", type=int, help="Number of samples per file.")
+@click.option("--num-files", type=int, help="Number of files to generate.")
+@click.option("--num-threads", type=int, help="Number of worker processes to use.")
+@click.option("--overwrite-if-exists/--no-overwrite-if-exists", is_flag=True, help="Overwrite existing files.")
+@click.option("--lsm-policy", "policy", help="LSM policy to use.")
+@click.pass_context
+def create_lcm_data(
+    ctx: click.Context,
+    output_dir: str,
+    num_samples: int,
+    num_files: int,
+    num_threads: int,
+    overwrite_if_exists: bool,
+    policy: str,
+):
+    """Generate training data for the Learned Cost Model (LCM)."""
+    config = ctx.obj
 
-    CreateLCMData(toml.load(args.config)).run()
+    if policy is not None:
+        config["lsm"]["policy"] = policy
 
-
-if __name__ == "__main__":
-    main()
+    CreateLCMData(
+        config, output_dir, num_samples, num_threads, num_files, overwrite_if_exists
+    ).run()

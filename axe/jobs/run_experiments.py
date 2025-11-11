@@ -1,8 +1,7 @@
 #!/usr/bin/env python
-import argparse
 import logging
 
-import toml
+import click
 
 from experiments.evaluate_ltuner import ExpLTunerEvaluate
 from experiments.mlos_exp_runs import ExperimentMLOS
@@ -35,17 +34,19 @@ class RunExperiments:
         self.log.info("All experiments finished, exiting")
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, help="path to config file")
-    args = parser.parse_args()
-    config = toml.load(args.config)
-    logging.basicConfig(**config["log"])
-    log: logging.Logger = logging.getLogger(config["app"]["name"])
-    log.info(f"Log level: {logging.getLevelName(log.getEffectiveLevel())}")
+@click.command("run-experiments", help="Run experiments.")
+@click.option(
+    "--exp",
+    "exp_list",
+    multiple=True,
+    help="Specify experiments to run. Can be used multiple times.",
+)
+@click.pass_context
+def run_experiments(ctx: click.Context, exp_list: tuple[str, ...]):
+    """Run experiments."""
+    config = ctx.obj
 
-    RunExperiments(toml.load(args.config)).run()
+    if exp_list:
+        config["job"]["run_experiments"]["exp_list"] = list(exp_list)
 
-
-if __name__ == "__main__":
-    main()
+    RunExperiments(config).run()

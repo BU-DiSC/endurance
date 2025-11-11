@@ -1,37 +1,53 @@
 #!/usr/bin/env python
-import argparse
 import csv
 import logging
 import os
 from typing import Optional, Tuple
 
+import click
 import polars as pl
 import toml
 import torch
+from torch import Tensor
+from torch.utils.data import DataLoader, random_split
+from tqdm import tqdm
+
 from axe.lcm.data.schema import LCMDataSchema
 from axe.lcm.model.builder import LearnedCostModelBuilder
 from axe.lsm.types import LSMBounds, Policy
 from axe.util.losses import LossBuilder
 from axe.util.lr_scheduler import LRSchedulerBuilder
 from axe.util.optimizer import OptimizerBuilder
-from torch import Tensor
-from torch.utils.data import DataLoader, random_split
-from tqdm import tqdm
+
+logger = logging.getLogger(__name__)
 
 
 class TrainLCM:
-    def __init__(self, cfg: dict) -> None:
-        self.log: logging.Logger = logging.getLogger(cfg["app"]["name"])
-        self.disable_tqdm: bool = cfg["app"]["disable_tqdm"]
-        self.use_gpu = cfg["job"]["use_gpu_if_avail"]
+    def __init__(
+        self,
+        config: dict,
+        data_dir: str,
+        save_dir: str,
+        max_epochs: int = 10,
+        data_split: float = 0.9,
+        batch_size: int = 64,
+        shuffle: bool = False,
+        loss_fn: str = "MSE",
+        optimizer: str = "Adam",
+        lr_scheduler: str = "Constant",
+        num_workers: int = 1,
+        checkpoints: bool = False,
+    ) -> None:
+        self.disable_tqdm: bool = config["app"]["disable_tqdm"]
+        self.use_gpu = config["job"]["use_gpu_if_avail"]
         self.device = torch.device("cpu")
         if self.use_gpu and torch.cuda.is_available():
             self.device = torch.device("cuda:0")
-        self.policy: Policy = getattr(Policy, cfg["lsm"]["policy"])
-        self.bounds: LSMBounds = LSMBounds(**cfg["lsm"]["bounds"])
+        self.policy: Policy = getattr(Policy, config["lsm"]["policy"])
+        self.bounds: LSMBounds = LSMBounds(**config["lsm"]["bounds"])
         self.schema = LCMDataSchema(self.policy, self.bounds)
-        self.jcfg = cfg["job"]["train_lcm"]
-        self.cfg = cfg
+        self.jcfg = config["job"]["train_lcm"]
+        self.config = config
 
         # Build everything we need for training
         self.model = self._build_model()
@@ -43,10 +59,10 @@ class TrainLCM:
 
     def _build_loss_fn(self) -> torch.nn.Module:
         choice = self.jcfg["loss_fn"]
-        loss = LossBuilder(self.cfg["loss"]).build(choice)
-        self.log.info(f"Loss function: {choice}")
+        loss = LossBuilder(self.config["loss"]).build(choice)
+        logger.info(f"Loss function: {choice}")
         if loss is None:
-            self.log.warning(f"Invalid loss function: {choice}")
+            logger.warning(f"Invalid loss function: {choice}")
             raise KeyError
         if self.use_gpu and torch.cuda.is_available():
             loss.to("cuda")
@@ -55,7 +71,7 @@ class TrainLCM:
 
     def _build_model(self) -> torch.nn.Module:
         model = LearnedCostModelBuilder(
-            schema=self.schema, **self.cfg["lcm"]["model"]
+            schema=self.schema, **self.config["lcm"]["model"]
         ).build()
         # model.compile()
         model.to(self.device)
@@ -63,14 +79,14 @@ class TrainLCM:
         return model
 
     def _build_optimizer(self, model) -> torch.optim.Optimizer:
-        return OptimizerBuilder(self.cfg["optimizer"]).build(
+        return OptimizerBuilder(self.config["optimizer"]).build(
             optimizer_choice=self.jcfg["optimizer"], model=model
         )
 
     def _build_scheduler(
         self, optimizer: torch.optim.Optimizer
     ) -> Optional[torch.optim.lr_scheduler._LRScheduler]:
-        return LRSchedulerBuilder(self.cfg["scheduler"]).build(
+        return LRSchedulerBuilder(self.config["scheduler"]).build(
             optimizer, self.jcfg["lr_scheduler"]
         )
 
@@ -100,12 +116,12 @@ class TrainLCM:
         return training_data, validate_data
 
     def _make_save_dir(self) -> None:
-        self.log.info(f"Saving tuner in {self.jcfg['save_dir']}")
+        logger.info(f"Saving tuner in {self.jcfg['save_dir']}")
         os.makedirs(self.jcfg["save_dir"], exist_ok=False)
         if not self.jcfg["no_checkpoint"]:
             os.makedirs(os.path.join(self.jcfg["save_dir"], "checkpoints"))
         with open(os.path.join(self.jcfg["save_dir"], "axe.toml"), "w") as fid:
-            toml.dump(self.cfg, fid)
+            toml.dump(self.config, fid)
 
     def train_step(self, feats: Tensor, labels: Tensor, **kwargs) -> float:
         label = labels.to(self.device)
@@ -161,7 +177,7 @@ class TrainLCM:
         torch.save(save_dict, os.path.join(self.jcfg["save_dir"], fname))
 
     def run(self):
-        self.log.info("[Job] Training LCM")
+        logger.info("[Job] Training LCM")
         self._make_save_dir()
 
         loss_file = os.path.join(self.jcfg["save_dir"], "losses.csv")
@@ -175,36 +191,79 @@ class TrainLCM:
             write = csv.writer(fid)
             write.writerow([0, loss_min, loss_min])
         for epoch in range(max_epochs):
-            self.log.info(f"Epoch: [{epoch+1}/{max_epochs}]")
+            logger.info(f"Epoch: [{epoch + 1}/{max_epochs}]")
             train_loss = self.train_loop()
             curr_loss = self.validate_loop()
-            self.log.info(f"Training loss: {train_loss}")
-            self.log.info(f"Validate loss: {curr_loss}")
+            logger.info(f"Training loss: {train_loss}")
+            logger.info(f"Validate loss: {curr_loss}")
             if not self.jcfg["no_checkpoint"]:
                 self.save_model(f"checkpoints/epoch{epoch:02d}.model", loss=curr_loss)
 
             if curr_loss < loss_min:
                 loss_min = curr_loss
-                self.log.info("New minmum loss saving best model")
+                logger.info("New minmum loss saving best model")
                 self.save_model("best_model.model", loss=loss_min, epoch=epoch)
             with open(loss_file, "a") as fid:
                 write = csv.writer(fid)
                 write.writerow([epoch + 1, train_loss, curr_loss])
 
-        self.log.info("Training finished")
+        logger.info("Training finished")
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, help="path to config file")
-    args = parser.parse_args()
-    config = toml.load(args.config)
-    logging.basicConfig(**config["log"])
-    log: logging.Logger = logging.getLogger(config["app"]["name"])
-    log.info(f"Log level: {logging.getLevelName(log.getEffectiveLevel())}")
+@click.command("train-lcm", help="Train the Learned Cost Model (LCM).")
+@click.option("--max-epochs", type=int, help="Maximum number of training epochs.")
+@click.option("--save-dir", help="Directory to save the trained model.")
+@click.option(
+    "--checkpoints/--no-checkpoints", is_flag=True, help="Disable model checkpoints."
+)
+@click.option("--data-split", type=float, help="Train/validation data split ratio.")
+@click.option("--data-dir", help="Directory containing the training data.")
+@click.option("--batch-size", type=int, help="Batch size for training.")
+@click.option("--shuffle/--no-shuffle", is_flag=True, help="Shuffle the training data.")
+@click.option(
+    "--num-workers", type=int, help="Number of worker processes for data loading."
+)
+@click.option("--loss-fn", help="Loss function to use for training.")
+@click.option("--optimizer", help="Optimizer to use for training.")
+@click.option("--lr-scheduler", help="Learning rate scheduler to use.")
+@click.option("--lsm-policy", "policy", help="LSM policy to use.")
+@click.option("--use-gpu/--no-use-gpu", is_flag=True, help="Use GPU if available.")
+@click.pass_context
+def train_lcm(
+    ctx: click.Context,
+    max_epochs: int,
+    save_dir: str,
+    checkpoints: bool,
+    data_split: float,
+    data_dir: str,
+    batch_size: int,
+    shuffle: bool,
+    num_workers: int,
+    loss_fn: str,
+    optimizer: str,
+    lr_scheduler: str,
+    policy: str,
+    use_gpu: bool,
+):
+    """Train the Learned Cost Model (LCM)."""
+    config = ctx.obj
+    job_config = config["job"]["train_lcm"]
 
-    TrainLCM(config).run()
+    if policy is not None:
+        config["lsm"]["policy"] = policy
+    config["job"]["use_gpu_if_avail"] = use_gpu
 
-
-if __name__ == "__main__":
-    main()
+    TrainLCM(
+        config,
+        max_epochs,
+        save_dir,
+        checkpoints,
+        data_split,
+        data_dir,
+        batch_size,
+        shuffle,
+        num_workers,
+        loss_fn,
+        optimizer,
+        lr_scheduler,
+    ).run()

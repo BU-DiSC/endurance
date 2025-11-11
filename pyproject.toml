@@ -1,18 +1,20 @@
 [project]
 name = "proj_axe"
 version = "0.1"
-requires-python = ">=3.10"
+requires-python = ">=3.9,<3.11"
 dependencies = [
+    "click",
     "dill",
     "joblib",
     "mlos",
     "mlos-core[smac]",
     "numba",
     "numpy",
-    "polars",
     "pandas",
     "pandas-stubs",
+    "polars",
     "pyarrow",
+    "pydantic",
     "pytest",
     "reinmax",
     "scipy",
@@ -21,3 +23,13 @@ dependencies = [
     "torchdata",
     "tqdm",
 ]
+
+[tool.setuptools]
+packages = ["axe"]
+
+[project.scripts]
+axe = "axe:axe"
+
+[tool.basedpyright]
+typeCheckingMode = "standard"
+

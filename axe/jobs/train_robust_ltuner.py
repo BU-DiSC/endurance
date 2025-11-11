@@ -1,22 +1,23 @@
 #!/usr/bin/env python
-import argparse
 import csv
 import logging
 import os
 from typing import Optional, Tuple
 
+import click
 import polars as pl
 import toml
 import torch
-from axe.lsm.types import LSMBounds, Policy
-from axe.ltuner.data.schema import LTunerDataSchema
-from axe.ltuner.robust_loss import LearnedRobustLoss
-from axe.ltuner.model.builder import LTuneModelBuilder
-from axe.util.lr_scheduler import LRSchedulerBuilder
-from axe.util.optimizer import OptimizerBuilder
 from torch import Tensor
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
+
+from axe.lsm.types import LSMBounds, Policy
+from axe.ltuner.data.schema import LTunerDataSchema
+from axe.ltuner.model.builder import LTuneModelBuilder
+from axe.ltuner.robust_loss import LearnedRobustLoss
+from axe.util.lr_scheduler import LRSchedulerBuilder
+from axe.util.optimizer import OptimizerBuilder
 
 
 class TrainRobustLTuner:
@@ -193,17 +194,66 @@ class TrainRobustLTuner:
         self.log.info("Training finished")
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, help="path to config file")
-    args = parser.parse_args()
-    config = toml.load(args.config)
-    logging.basicConfig(**config["log"])
-    log: logging.Logger = logging.getLogger(config["app"]["name"])
-    log.info(f"Log level: {logging.getLevelName(log.getEffectiveLevel())}")
+@click.command("train-robust-ltuner", help="Train the Robust Learned Tuner (LTuner).")
+@click.option("--max-epochs", type=int, help="Maximum number of training epochs.")
+@click.option("--save-dir", help="Directory to save the trained model.")
+@click.option("--loss-fn-path", help="Path to the learned cost model for the loss function.")
+@click.option("--optimizer", help="Optimizer to use for training.")
+@click.option("--lr-scheduler", help="Learning rate scheduler to use.")
+@click.option("--no-checkpoint", is_flag=True, help="Disable model checkpoints.")
+@click.option("--data-split", type=float, help="Train/validation data split ratio.")
+@click.option("--data-dir", help="Directory containing the training data.")
+@click.option("--batch-size", type=int, help="Batch size for training.")
+@click.option("--shuffle", is_flag=True, help="Shuffle the training data.")
+@click.option("--num-workers", type=int, help="Number of worker processes for data loading.")
+@click.option("--lsm-policy", "policy", help="LSM policy to use.")
+@click.option("--use-gpu-if-avail", is_flag=True, help="Use GPU if available.")
+@click.pass_context
+def train_robust_ltuner(
+    ctx: click.Context,
+    max_epochs: int,
+    save_dir: str,
+    loss_fn_path: str,
+    optimizer: str,
+    lr_scheduler: str,
+    no_checkpoint: bool,
+    data_split: float,
+    data_dir: str,
+    batch_size: int,
+    shuffle: bool,
+    num_workers: int,
+    policy: str,
+    use_gpu_if_avail: bool,
+):
+    """Train the Robust Learned Tuner (LTuner)."""
+    config = ctx.obj
+    job_config = config["job"]["train_ltuner"]
+
+    if max_epochs is not None:
+        job_config["max_epochs"] = max_epochs
+    if save_dir is not None:
+        job_config["save_dir"] = save_dir
+    if loss_fn_path is not None:
+        job_config["loss_fn_path"] = loss_fn_path
+    if optimizer is not None:
+        job_config["optimizer"] = optimizer
+    if lr_scheduler is not None:
+        job_config["lr_scheduler"] = lr_scheduler
+    if no_checkpoint:
+        job_config["no_checkpoint"] = no_checkpoint
+    if data_split is not None:
+        job_config["data_split"] = data_split
+    if data_dir is not None:
+        job_config["data_dir"] = data_dir
+    if batch_size is not None:
+        job_config["batch_size"] = batch_size
+    if shuffle:
+        job_config["shuffle"] = shuffle
+    if num_workers is not None:
+        job_config["num_workers"] = num_workers
+    if policy is not None:
+        config["lsm"]["policy"] = policy
+    if use_gpu_if_avail:
+        config["job"]["use_gpu_if_avail"] = use_gpu_if_avail
 
     TrainRobustLTuner(config).run()
-
-
-if __name__ == "__main__":
-    main()

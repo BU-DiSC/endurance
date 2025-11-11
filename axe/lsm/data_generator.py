@@ -1,11 +1,12 @@
 import random
-from typing import Optional, override
 from itertools import combinations_with_replacement
+from typing import Optional
 
 import numpy as np
+from typing_extensions import override
 
-from axe.lsm.types import LSMDesign, System, Policy, LSMBounds, Workload
 from axe.lsm.cost import Cost
+from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
 
 
 class LSMDataGenerator:
@@ -21,7 +22,7 @@ class LSMDataGenerator:
 
     def _sample_size_ratio(self) -> int:
         low, high = self.bounds.size_ratio_range
-        return self.rng.integers(low=low, high=high)
+        return self.rng.integers(low=low, high=high, dtype=int)
 
     def _sample_bloom_filter_bits(self, max: Optional[float] = None) -> float:
         if max is None:
@@ -52,7 +53,7 @@ class LSMDataGenerator:
 
     def _sample_total_elements(self) -> int:
         low, high = self.bounds.elements_range
-        return self.rng.integers(low=low, high=high)
+        return self.rng.integers(low=low, high=high, dtype=int)
 
     def sample_system(self) -> System:
         E = self._sample_entry_size()
@@ -166,6 +167,7 @@ class QHybridGen(LSMDataGenerator):
         return self.rng.integers(
             low=self.bounds.size_ratio_range[0] - 1,
             high=max_size_ratio,
+            dtype=int,
         )
 
     @override
@@ -189,6 +191,7 @@ class FluidLSMGen(LSMDataGenerator):
         return self.rng.integers(
             low=self.bounds.size_ratio_range[0] - 1,
             high=max_size_ratio,
+            dtype=int,
         )
 
     @override

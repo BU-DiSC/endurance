@@ -135,3 +135,4 @@ dmypy.json
 *.pt
 
 .DS_Store
+uv.lock

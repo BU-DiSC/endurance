@@ -1,16 +1,15 @@
 #!/usr/bin/env python
-import argparse
 import logging
 import multiprocessing as mp
 import os
-import toml
 
+import click
 import pyarrow as pa
 import pyarrow.parquet as pq
+from tqdm import tqdm
+
 from axe.lsm.types import LSMBounds, Policy
 from axe.ltuner.data.schema import LTunerDataSchema
-
-from tqdm import tqdm
 
 
 class CreateLTunerData:
@@ -88,17 +87,42 @@ class CreateLTunerData:
         return
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, help="path to config file")
-    args = parser.parse_args()
-    config = toml.load(args.config)
-    logging.basicConfig(**config["log"])
-    log: logging.Logger = logging.getLogger(config["app"]["name"])
-    log.info(f"Log level: {logging.getLevelName(log.getEffectiveLevel())}")
+@click.command(
+    "create-ltuner-data",
+    help="Generate training data for the Learned Tuner (LTuner).",
+)
+@click.option("--output-dir", help="Directory to save the generated data.")
+@click.option("--num-samples", type=int, help="Number of samples per file.")
+@click.option("--num-files", type=int, help="Number of files to generate.")
+@click.option("--num-workers", type=int, help="Number of worker processes to use.")
+@click.option("--overwrite-if-exists", is_flag=True, help="Overwrite existing files.")
+@click.option("--lsm-policy", "policy", help="LSM policy to use.")
+@click.pass_context
+def create_ltuner_data(
+    ctx: click.Context,
+    output_dir: str,
+    num_samples: int,
+    num_files: int,
+    num_workers: int,
+    overwrite_if_exists: bool,
+    policy: str,
+):
+    """Generate training data for the Learned Tuner (LTuner)."""
+    config = ctx.obj
 
-    CreateLTunerData(toml.load(args.config)).run()
+    # Update config with CLI options if they are provided
+    job_config = config["job"]["create_ltuner_data"]
+    if output_dir is not None:
+        job_config["output_dir"] = output_dir
+    if num_samples is not None:
+        job_config["num_samples"] = num_samples
+    if num_files is not None:
+        job_config["num_files"] = num_files
+    if num_workers is not None:
+        job_config["num_workers"] = num_workers
+    if overwrite_if_exists:
+        job_config["overwrite_if_exists"] = overwrite_if_exists
+    if policy is not None:
+        config["lsm"]["policy"] = policy
 
-
-if __name__ == "__main__":
-    main()
+    CreateLTunerData(config).run()
