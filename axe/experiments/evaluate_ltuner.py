@@ -12,7 +12,7 @@ from axe.lsm.solver import get_solver_from_policy
 from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
 from axe.ltuner.data.schema import LTunerDataSchema
 from axe.ltuner.model.builder import LTuneModelBuilder
-from experiments.infra import AxeResultDB
+from .infra import AxeResultDB
 
 
 class ExpLTunerEvaluate:

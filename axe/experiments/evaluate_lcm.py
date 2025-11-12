@@ -10,7 +10,7 @@ from axe.lcm.data.schema import LCMDataSchema
 from axe.lcm.model import LearnedCostModelBuilder
 from axe.lcm.model.wrapper import LCMWrapper
 from axe.lsm.types import LSMBounds, Policy
-from experiments.infra import AxeResultDB
+from .infra import AxeResultDB
 
 
 class ExpLCMEvaluate:

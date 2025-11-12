@@ -3,9 +3,9 @@ import logging
 
 import click
 
-from experiments.evaluate_ltuner import ExpLTunerEvaluate
-from experiments.mlos_exp_runs import ExperimentMLOS
-from experiments.evaluate_lcm import ExpLCMEvaluate
+from ..experiments.evaluate_ltuner import ExpLTunerEvaluate
+from ..experiments.mlos_exp_runs import ExperimentMLOS
+from ..experiments.evaluate_lcm import ExpLCMEvaluate
 
 
 class RunExperiments:

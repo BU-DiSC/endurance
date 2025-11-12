@@ -10,6 +10,8 @@ from tqdm import tqdm
 from axe.lcm.data.schema import LCMDataSchema
 from axe.lsm.types import LSMBounds, Policy
 
+logger = logging.getLogger(__name__)
+
 
 class CreateLCMData:
     def __init__(
@@ -21,7 +23,6 @@ class CreateLCMData:
         num_files: int = 1,
         overwrite_if_exists: bool = False,
     ) -> None:
-        self.log: logging.Logger = logging.getLogger(config["app"]["name"])
         self.disable_tqdm: bool = config["app"]["disable_tqdm"]
         self.policy: Policy = getattr(Policy, config["lsm"]["policy"])
         self.bounds: LSMBounds = LSMBounds(**config["lsm"]["bounds"])
@@ -39,7 +40,7 @@ class CreateLCMData:
         fpath = os.path.join(self.output_dir, fname)
 
         if os.path.exists(fpath) and (not self.overwrite_if_exists):
-            self.log.debug(f"{fpath} exists, exiting.")
+            logger.debug(f"{fpath} exists, exiting.")
             return -1
 
         pbar = tqdm(
@@ -66,18 +67,18 @@ class CreateLCMData:
         return idx
 
     def run(self) -> None:
-        self.log.info("[Job] Creating LCM Data")
+        logger.info("[Job] Creating LCM Data")
         os.makedirs(self.output_dir, exist_ok=True)
-        self.log.info(f"Writing all files to {self.output_dir}")
+        logger.info(f"Writing all files to {self.output_dir}")
 
         inputs = list(range(0, self.num_files))
         threads = self.num_threads
         if threads == -1:
             threads = mp.cpu_count()
         if threads > self.num_files:
-            self.log.info("Num workers > num files, scaling down")
+            logger.info("Num workers > num files, scaling down")
             threads = self.num_files
-        self.log.debug(f"Using {threads=}")
+        logger.debug(f"Using {threads=}")
 
         if threads < 2:
             for idx in range(self.num_files):
@@ -96,10 +97,17 @@ class CreateLCMData:
     help="Generate training data for the Learned Cost Model (LCM).",
 )
 @click.option("--output-dir", help="Directory to save the generated data.")
-@click.option("--num-samples", type=int, help="Number of samples per file.")
-@click.option("--num-files", type=int, help="Number of files to generate.")
-@click.option("--num-threads", type=int, help="Number of worker processes to use.")
-@click.option("--overwrite-if-exists/--no-overwrite-if-exists", is_flag=True, help="Overwrite existing files.")
+@click.option(
+    "--num-samples", type=int, default=1024, help="Number of samples per file."
+)
+@click.option("--num-files", type=int, default=1, help="Number of files to generate.")
+@click.option("--num-threads", type=int, default=1, help="Number of threads to use.")
+@click.option(
+    "--overwrite-if-exists/--no-overwrite-if-exists",
+    is_flag=True,
+    default=False,
+    help="Overwrite existing files if they exists.",
+)
 @click.option("--lsm-policy", "policy", help="LSM policy to use.")
 @click.pass_context
 def create_lcm_data(

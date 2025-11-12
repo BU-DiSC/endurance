@@ -1,7 +1,8 @@
 from typing import Literal
-from pydantic import BaseModel, Field
-from .lsm.types import LSMBounds, Policy, System
 
+from pydantic import BaseModel, Field
+
+from .lsm.types import LSMBounds, Policy, System
 
 
 class LTunerModelConfig(BaseModel):
@@ -16,8 +17,10 @@ class LSMConfig(BaseModel):
     policy: Policy = Field(default=Policy.Classic)
     bounds: LSMBounds = Field(default_factory=LSMBounds)
 
+
 class AxeConfig(BaseModel):
     lsm: LSMConfig = Field(default_factory=LSMConfig)
     system: System = Field(default_factory=System)
     use_gpu: bool = Field(default=False)
     show_tqdm: bool = Field(default=False)
+    seed: int = Field(default=2169)

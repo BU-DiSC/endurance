@@ -21,29 +21,29 @@ from .jobs.train_robust_ltuner import train_robust_ltuner
     type=click.Path(exists=True),
 )
 @click.pass_context
-def axe(ctx: click.Context, config_path: str):
+def main(ctx: click.Context, config_path: str):
     """A CLI for the AXE project."""
     with open(config_path) as f:
         config = toml.load(f)
 
-    logging.basicConfig(
-        format=config["log"]["format"], datefmt=config["log"]["datefmt"]
-    )
-    log: logging.Logger = logging.getLogger(config["app"]["name"])
-    log.setLevel(getattr(logging, config["log"]["level"]))
-    log_level = logging.getLevelName(log.getEffectiveLevel())
-    log.debug(f"Log level: {log_level}")
+    format = "[%(levelname)s][%(asctime)-15s][%(filename)s] %(message)s"
+    datefmt = "%d-%m-%y:%H:%M:%S"
+    logging.basicConfig(format=format, datefmt=datefmt)
+    logger: logging.Logger = logging.getLogger(__name__)
+    logger.setLevel(getattr(logging, config["log"]["level"]))
+
+    log_level = logging.getLevelName(logger.getEffectiveLevel())
+    logger.debug(f"Log level: {log_level}")
 
     ctx.obj = config
 
 
-axe.add_command(create_lcm_data)
-axe.add_command(create_ltuner_data)
-axe.add_command(run_experiments)
-axe.add_command(train_lcm)
-axe.add_command(train_ltuner)
-axe.add_command(train_robust_ltuner)
+main.add_command(create_lcm_data)
+main.add_command(create_ltuner_data)
+main.add_command(run_experiments)
+main.add_command(train_lcm)
+main.add_command(train_ltuner)
+main.add_command(train_robust_ltuner)
 
 if __name__ == "__main__":
-    axe()
-
+    main()

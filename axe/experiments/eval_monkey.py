@@ -9,7 +9,7 @@ import toml
 from axe.lsm.cost import Cost
 from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
 from axe.ltuner.data.schema import LTunerDataSchema
-from experiments.infra import AxeResultDB
+from .infra import AxeResultDB
 
 MONKEY_BIN = "../../rocksdb-dosto/examples/monkey_experiments/throughput_exp_runner"
 T_IDX = 12
