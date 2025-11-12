@@ -7,8 +7,9 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from tqdm import tqdm
 
+from axe.config import AxeConfig
 from axe.lcm.data.schema import LCMDataSchema
-from axe.lsm.types import LSMBounds, Policy
+from axe.lsm.types import Policy
 
 logger = logging.getLogger(__name__)
 
@@ -16,24 +17,19 @@ logger = logging.getLogger(__name__)
 class CreateLCMData:
     def __init__(
         self,
-        config: dict,
+        config: AxeConfig,
         output_dir: str,
         num_samples: int = 1024,
         num_threads: int = 1,
         num_files: int = 1,
         overwrite_if_exists: bool = False,
     ) -> None:
-        self.disable_tqdm: bool = config["app"]["disable_tqdm"]
-        self.policy: Policy = getattr(Policy, config["lsm"]["policy"])
-        self.bounds: LSMBounds = LSMBounds(**config["lsm"]["bounds"])
-        self.seed: int = config["app"]["random_seed"]
-
         self.output_dir: str = output_dir
         self.num_samples: int = num_samples
         self.num_files: int = num_files
         self.num_threads: int = num_threads
         self.overwrite_if_exists: bool = overwrite_if_exists
-        self.cfg = config
+        self.config = config
 
     def generate_parquet_file(self, schema: LCMDataSchema, idx: int, pos: int) -> int:
         fname = f"data{idx:04}.parquet"
@@ -48,7 +44,7 @@ class CreateLCMData:
             desc=fname,
             position=pos,
             ncols=80,
-            disable=self.disable_tqdm,
+            disable=self.config.disable_tqdm,
         )
         table = [schema.sample_row_dict() for _ in pbar]
         table = pa.Table.from_pylist(table)
@@ -60,7 +56,11 @@ class CreateLCMData:
         pos = 0
         if len(mp.current_process()._identity) > 0 and not single_worker:
             pos = mp.current_process()._identity[0] - 1
-        schema = LCMDataSchema(self.policy, self.bounds, seed=(self.seed + idx))
+        schema = LCMDataSchema(
+            self.config.lsm.policy,
+            self.config.lsm.bounds,
+            seed=(self.config.seed + idx),
+        )
 
         self.generate_parquet_file(schema, idx, pos)
 
@@ -91,7 +91,6 @@ class CreateLCMData:
 
         return
 
-
 @click.command(
     "create-lcm-data",
     help="Generate training data for the Learned Cost Model (LCM).",
@@ -120,10 +119,10 @@ def create_lcm_data(
     policy: str,
 ):
     """Generate training data for the Learned Cost Model (LCM)."""
-    config = ctx.obj
+    config: AxeConfig = ctx.obj
 
     if policy is not None:
-        config["lsm"]["policy"] = policy
+        config.lsm.policy = getattr(Policy, policy)
 
     CreateLCMData(
         config, output_dir, num_samples, num_threads, num_files, overwrite_if_exists

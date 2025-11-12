@@ -4,6 +4,7 @@ import logging
 import click
 import toml
 
+from .config import AxeConfig
 from .jobs.create_lcm_data import create_lcm_data
 from .jobs.create_ltuner_data import create_ltuner_data
 from .jobs.run_experiments import run_experiments
@@ -23,17 +24,16 @@ from .jobs.train_robust_ltuner import train_robust_ltuner
 @click.pass_context
 def main(ctx: click.Context, config_path: str):
     """A CLI for the AXE project."""
-    with open(config_path) as f:
-        config = toml.load(f)
-
     format = "[%(levelname)s][%(asctime)-15s][%(filename)s] %(message)s"
     datefmt = "%d-%m-%y:%H:%M:%S"
     logging.basicConfig(format=format, datefmt=datefmt)
     logger: logging.Logger = logging.getLogger(__name__)
-    logger.setLevel(getattr(logging, config["log"]["level"]))
 
-    log_level = logging.getLevelName(logger.getEffectiveLevel())
-    logger.debug(f"Log level: {log_level}")
+    with open(config_path) as f:
+        data = toml.load(f)
+    config = AxeConfig.model_validate(data)
+
+    logger.setLevel(config.log_level)
 
     ctx.obj = config
 

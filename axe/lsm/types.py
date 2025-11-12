@@ -3,13 +3,13 @@ import enum
 from typing import Tuple
 
 
-class Policy(enum.Enum):
-    Tiering = 0
-    Leveling = 1
-    Classic = 2
-    Kapacity = 3
-    QHybrid = 4
-    Fluid = 5
+class Policy(str, enum.Enum):
+    Tiering = "Tiering"
+    Leveling = "Leveling"
+    Classic = "Classic"
+    Kapacity = "Kapacity"
+    QHybrid = "QHybrid"
+    Fluid = "Fluid"
 
 
 @dataclass()
