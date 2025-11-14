@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 import logging
+from typing import Optional
 
-import click
+import typer
+from typing_extensions import Annotated
 
 from ..experiments.evaluate_ltuner import ExpLTunerEvaluate
 from ..experiments.mlos_exp_runs import ExperimentMLOS
@@ -34,19 +36,20 @@ class RunExperiments:
         self.log.info("All experiments finished, exiting")
 
 
-@click.command("run-experiments", help="Run experiments.")
-@click.option(
-    "--exp",
-    "exp_list",
-    multiple=True,
-    help="Specify experiments to run. Can be used multiple times.",
-)
-@click.pass_context
-def run_experiments(ctx: click.Context, exp_list: tuple[str, ...]):
+def run_experiments(
+    ctx: typer.Context,
+    exp_list: Annotated[
+        list[str],
+        typer.Option(
+            "--exp",
+            help="Specify experiments to run. Can be used multiple times.",
+        ),
+    ],
+):
     """Run experiments."""
     config = ctx.obj
 
     if exp_list:
-        config["job"]["run_experiments"]["exp_list"] = list(exp_list)
+        config["job"]["run_experiments"]["exp_list"] = exp_list
 
     RunExperiments(config).run()

@@ -2,11 +2,13 @@
 import logging
 import multiprocessing as mp
 import os
+from typing import Optional
 
-import click
 import pyarrow as pa
 import pyarrow.parquet as pq
+import typer
 from tqdm import tqdm
+from typing_extensions import Annotated
 
 from axe.lsm.types import LSMBounds, Policy
 from axe.ltuner.data.schema import LTunerDataSchema
@@ -87,25 +89,26 @@ class CreateLTunerData:
         return
 
 
-@click.command(
-    "create-ltuner-data",
-    help="Generate training data for the Learned Tuner (LTuner).",
-)
-@click.option("--output-dir", help="Directory to save the generated data.")
-@click.option("--num-samples", type=int, help="Number of samples per file.")
-@click.option("--num-files", type=int, help="Number of files to generate.")
-@click.option("--num-workers", type=int, help="Number of worker processes to use.")
-@click.option("--overwrite-if-exists", is_flag=True, help="Overwrite existing files.")
-@click.option("--lsm-policy", "policy", help="LSM policy to use.")
-@click.pass_context
 def create_ltuner_data(
-    ctx: click.Context,
-    output_dir: str,
-    num_samples: int,
-    num_files: int,
-    num_workers: int,
-    overwrite_if_exists: bool,
-    policy: str,
+    ctx: typer.Context,
+    output_dir: Annotated[
+        str, typer.Option("--output-dir", help="Directory to save the generated data.")
+    ],
+    num_samples: Annotated[
+        int, typer.Option("--num-samples", help="Number of samples per file.")
+    ],
+    num_files: Annotated[
+        int, typer.Option("--num-files", help="Number of files to generate.")
+    ],
+    num_workers: Annotated[
+        int, typer.Option("--num-workers", help="Number of worker processes to use.")
+    ],
+    overwrite_if_exists: Annotated[
+        bool, typer.Option("--overwrite-if-exists", help="Overwrite existing files.")
+    ],
+    policy: Annotated[
+        str, typer.Option("--lsm-policy", help="LSM policy to use.")
+    ],
 ):
     """Generate training data for the Learned Tuner (LTuner)."""
     config = ctx.obj

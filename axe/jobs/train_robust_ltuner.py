@@ -4,13 +4,14 @@ import logging
 import os
 from typing import Optional, Tuple
 
-import click
 import polars as pl
 import toml
 import torch
+import typer
 from torch import Tensor
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
+from typing_extensions import Annotated
 
 from axe.lsm.types import LSMBounds, Policy
 from axe.ltuner.data.schema import LTunerDataSchema
@@ -194,36 +195,51 @@ class TrainRobustLTuner:
         self.log.info("Training finished")
 
 
-@click.command("train-robust-ltuner", help="Train the Robust Learned Tuner (LTuner).")
-@click.option("--max-epochs", type=int, help="Maximum number of training epochs.")
-@click.option("--save-dir", help="Directory to save the trained model.")
-@click.option("--loss-fn-path", help="Path to the learned cost model for the loss function.")
-@click.option("--optimizer", help="Optimizer to use for training.")
-@click.option("--lr-scheduler", help="Learning rate scheduler to use.")
-@click.option("--no-checkpoint", is_flag=True, help="Disable model checkpoints.")
-@click.option("--data-split", type=float, help="Train/validation data split ratio.")
-@click.option("--data-dir", help="Directory containing the training data.")
-@click.option("--batch-size", type=int, help="Batch size for training.")
-@click.option("--shuffle", is_flag=True, help="Shuffle the training data.")
-@click.option("--num-workers", type=int, help="Number of worker processes for data loading.")
-@click.option("--lsm-policy", "policy", help="LSM policy to use.")
-@click.option("--use-gpu-if-avail", is_flag=True, help="Use GPU if available.")
-@click.pass_context
 def train_robust_ltuner(
-    ctx: click.Context,
-    max_epochs: int,
-    save_dir: str,
-    loss_fn_path: str,
-    optimizer: str,
-    lr_scheduler: str,
-    no_checkpoint: bool,
-    data_split: float,
-    data_dir: str,
-    batch_size: int,
-    shuffle: bool,
-    num_workers: int,
-    policy: str,
-    use_gpu_if_avail: bool,
+    ctx: typer.Context,
+    max_epochs: Annotated[
+        int, typer.Option("--max-epochs", help="Maximum number of training epochs.")
+    ],
+    save_dir: Annotated[
+        str, typer.Option("--save-dir", help="Directory to save the trained model.")
+    ],
+    loss_fn_path: Annotated[
+        str,
+        typer.Option(
+            "--loss-fn-path", help="Path to the learned cost model for the loss function."
+        ),
+    ],
+    optimizer: Annotated[
+        str, typer.Option("--optimizer", help="Optimizer to use for training.")
+    ],
+    lr_scheduler: Annotated[
+        str, typer.Option("--lr-scheduler", help="Learning rate scheduler to use.")
+    ],
+    no_checkpoint: Annotated[
+        bool, typer.Option("--no-checkpoint", help="Disable model checkpoints.")
+    ],
+    data_split: Annotated[
+        float, typer.Option("--data-split", help="Train/validation data split ratio.")
+    ],
+    data_dir: Annotated[
+        str, typer.Option("--data-dir", help="Directory containing the training data.")
+    ],
+    batch_size: Annotated[
+        int, typer.Option("--batch-size", help="Batch size for training.")
+    ],
+    shuffle: Annotated[bool, typer.Option("--shuffle", help="Shuffle the training data.")],
+    num_workers: Annotated[
+        int,
+        typer.Option(
+            "--num-workers", help="Number of worker processes for data loading."
+        ),
+    ],
+    policy: Annotated[
+        str, typer.Option("--lsm-policy", help="LSM policy to use.")
+    ],
+    use_gpu_if_avail: Annotated[
+        bool, typer.Option("--use-gpu-if-avail", help="Use GPU if available.")
+    ],
 ):
     """Train the Robust Learned Tuner (LTuner)."""
     config = ctx.obj

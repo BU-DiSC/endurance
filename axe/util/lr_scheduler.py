@@ -1,28 +1,25 @@
-from typing import Optional, Any
+from typing import Optional
 
 import torch.optim as Opt
 
+from axe.config import SchedulerConfig
+
 
 class LRSchedulerBuilder:
-    def __init__(self, config: dict[str, Any]):
-        self.scheduler_kwargs = config
+    def __init__(self, config: SchedulerConfig):
+        self.config = config
 
     def _build_cosine_anneal(
         self,
         optimizer: Opt.Optimizer,
     ) -> Opt.lr_scheduler.CosineAnnealingLR:
-        return Opt.lr_scheduler.CosineAnnealingLR(
-            optimizer, **self.scheduler_kwargs["CosineAnnealingLR"]
-        )
+        return Opt.lr_scheduler.CosineAnnealingLR(optimizer, **self.config.options)
 
     def _build_exponential(
         self,
         optimizer: Opt.Optimizer,
     ) -> Opt.lr_scheduler.ExponentialLR:
-        return Opt.lr_scheduler.ExponentialLR(
-            optimizer,
-            **self.scheduler_kwargs["Exponential"],
-        )
+        return Opt.lr_scheduler.ExponentialLR(optimizer, **self.config.options)
 
     def build(
         self, optimizer: Opt.Optimizer, scheduler_choice: str = "Constant"

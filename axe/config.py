@@ -51,7 +51,7 @@ class LSMConfig(BaseModel):
 
 class AxeConfig(BaseModel):
     use_gpu: bool = Field(default=False)
-    disable_tqdm: bool = Field(default=True)
+    disable_tqdm: bool = Field(default=False)
     seed: int = Field(default=2169)
     log_level: Literal["CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG"] = Field(
         default="INFO"

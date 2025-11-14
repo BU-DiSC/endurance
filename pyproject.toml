@@ -1,9 +1,8 @@
 [project]
 name = "proj_axe"
 version = "0.1"
-requires-python = ">=3.9,<3.11"
+requires-python = "~=3.10"
 dependencies = [
-    "click",
     "dill",
     "joblib",
     "mlos",
@@ -22,6 +21,8 @@ dependencies = [
     "torch",
     "torchdata",
     "tqdm",
+    "typer",
+    "typing-extensions",
 ]
 
 [build-system]
@@ -40,7 +41,7 @@ where = ["."]
 include = ["axe*"]
 
 [project.scripts]
-axe = "axe.cli:main"
+axe = "axe.cli:app"
 
 [tool.basedpyright]
 typeCheckingMode = "standard"

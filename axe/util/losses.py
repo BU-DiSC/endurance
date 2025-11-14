@@ -1,11 +1,13 @@
-from typing import Any, Callable, Optional
+from typing import Callable, Optional
 
 import torch
 
+from axe.config import LossConfig
+
 
 class LossBuilder:
-    def __init__(self, loss_kwargs: dict[str, Any]) -> None:
-        self.loss_kwargs = loss_kwargs
+    def __init__(self, config: LossConfig) -> None:
+        self.config = config
 
     def build(self, choice: str) -> Optional[torch.nn.Module]:
         losses: dict[str, Callable] = {
@@ -23,10 +25,10 @@ class LossBuilder:
         return loss()
 
     def _build_huber(self) -> torch.nn.Module:
-        return torch.nn.HuberLoss(**self.loss_kwargs["Huber"])
+        return torch.nn.HuberLoss(**self.config.options)
 
     def _build_mse(self) -> torch.nn.Module:
-        return torch.nn.MSELoss(**self.loss_kwargs["MSE"])
+        return torch.nn.MSELoss(**self.config.options)
 
 
 class MSLELoss(torch.nn.Module):

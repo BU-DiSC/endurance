@@ -1,11 +1,13 @@
 import logging
 import multiprocessing as mp
 import os
+from typing import Optional
 
-import click
 import pyarrow as pa
 import pyarrow.parquet as pq
+import typer
 from tqdm import tqdm
+from typing_extensions import Annotated
 
 from axe.config import AxeConfig
 from axe.lcm.data.schema import LCMDataSchema
@@ -91,32 +93,32 @@ class CreateLCMData:
 
         return
 
-@click.command(
-    "create-lcm-data",
-    help="Generate training data for the Learned Cost Model (LCM).",
-)
-@click.option("--output-dir", help="Directory to save the generated data.")
-@click.option(
-    "--num-samples", type=int, default=1024, help="Number of samples per file."
-)
-@click.option("--num-files", type=int, default=1, help="Number of files to generate.")
-@click.option("--num-threads", type=int, default=1, help="Number of threads to use.")
-@click.option(
-    "--overwrite-if-exists/--no-overwrite-if-exists",
-    is_flag=True,
-    default=False,
-    help="Overwrite existing files if they exists.",
-)
-@click.option("--lsm-policy", "policy", help="LSM policy to use.")
-@click.pass_context
+
 def create_lcm_data(
-    ctx: click.Context,
-    output_dir: str,
-    num_samples: int,
-    num_files: int,
-    num_threads: int,
-    overwrite_if_exists: bool,
-    policy: str,
+    ctx: typer.Context,
+    output_dir: Annotated[
+        str, typer.Option("--output-dir", help="Directory to save the generated data.")
+    ],
+    num_samples: Annotated[
+        int, typer.Option("--num-samples", help="Number of samples per file.")
+    ] = 1024,
+    num_files: Annotated[
+        int, typer.Option("--num-files", help="Number of files to generate.")
+    ] = 1,
+    num_threads: Annotated[
+        int, typer.Option("--num-threads", help="Number of threads to use.")
+    ] = 1,
+    overwrite_if_exists: Annotated[
+        bool,
+        typer.Option(
+            "--overwrite-if-exists",
+            is_flag=True,
+            help="Overwrite existing files if they exists.",
+        ),
+    ] = False,
+    policy: Annotated[
+        Optional[str], typer.Option("--lsm-policy", help="LSM policy to use.")
+    ] = None,
 ):
     """Generate training data for the Learned Cost Model (LCM)."""
     config: AxeConfig = ctx.obj
