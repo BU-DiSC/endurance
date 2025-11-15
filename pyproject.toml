@@ -1,7 +1,7 @@
 [project]
 name = "proj_axe"
 version = "0.1"
-requires-python = "~=3.10"
+requires-python = "~=3.10.0"
 dependencies = [
     "dill",
     "joblib",
