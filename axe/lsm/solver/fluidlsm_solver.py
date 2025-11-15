@@ -2,8 +2,10 @@ from typing import Callable, Optional, Tuple
 
 import numpy as np
 import scipy.optimize as SciOpt
+
+from axe.config import LSMBounds
 from axe.lsm.cost import Cost
-from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
+from axe.lsm.types import LSMDesign, Policy, System, Workload
 
 from .util import (
     ETA_DEFAULT,
@@ -104,7 +106,7 @@ class FluidLSMSolver:
             fun=lambda x: self.nominal_objective(x, system, workload),
             x0=init_args,
             callback=callback_fn,
-            **default_kwargs
+            **default_kwargs,
         )
         design = LSMDesign(
             bits_per_elem=solution.x[0],

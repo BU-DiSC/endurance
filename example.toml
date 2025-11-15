@@ -1,4 +1,22 @@
-# ==
+# -----------------------------------------------------------------------------
+# AXE configuration file
+#   Holds all of the configuration options, defaults are found in axe/config.py
+# -----------------------------------------------------------------------------
+use_gpu = false
+disable_tqdm = false
+seed = 0
+log_level = "INFO"
+
+[lsm]
+# Policy will effect everything else down stream (e.g. choice of neural network
+# architecture for learned cost model)
+#   Tiering
+#   Leveling
+#   Classic - Considers both leveing and tiering
+#   QHybrid - Levels 1 -> L = Q
+#   Fluid - Levels 1 -> (L-1) = Q, Level L = Z
+#   Kapacity - Each level has own K_i decision
+policy = "Kapacity"
 
 # Bounds will describe the search space of potential values
 [lsm.bounds]
@@ -37,17 +55,55 @@ hard = false
 temp = 0.001
 hard = true
 
+# --------------------------------------
+[lcm_train]
+#   training parameters for the learned cost model
+# --------------------------------------
+max_epochs = 10
+data_split = 0.9
+batch_size = 64
+shuffle = false
+num_workers = 1
+checkpoints = true
+
 # Optimizer choice for training, refer to pytorch docs for options
-[optimizer]
+[lcm_train.optimizer]
 name = "Adam"
 options = {"lr" = 0.001}
 
 # scheduler choice for training, refer to pytorch docs for options
-[scheduler]
+[lcm_train.scheduler]
 name = "CosineAnnealingLR"
 options = {"T_max" = 10, "eta_min" = 0.0001}
 
 # loss choice for training, the name can be a path to a neural network
-[loss]
+[lcm_train.loss]
 name = "MSE"
 options = {"reduction" = "mean"}
+
+# --------------------------------------
+[ltuner_train]
+#   training parameters for the learned tuner
+# --------------------------------------
+max_epochs = 100
+data_split = 0.9
+batch_size = 1024
+shuffle = true
+num_workers = 2
+checkpoints = true
+
+# Optimizer choice for training, refer to pytorch docs for options
+[ltuner_train.optimizer]
+name = "AdamW"
+options = {"lr" = 0.001}
+
+# scheduler choice for training, refer to pytorch docs for options
+[ltuner_train.scheduler]
+name = "CosineAnnealingLR"
+options = {"T_max" = 10, "eta_min" = 0.0001}
+
+# loss choice for training, the name can be a path to a neural network
+# [ltuner_train.loss]
+# name = "MSE"
+# loss_fn_path = "data/lcm/models/kaplsm_250523_1406"
+# options = {"reduction" = "mean"}

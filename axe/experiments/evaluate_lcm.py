@@ -9,7 +9,8 @@ from tqdm import tqdm
 from axe.lcm.data.schema import LCMDataSchema
 from axe.lcm.model import LearnedCostModelBuilder
 from axe.lcm.model.wrapper import LCMWrapper
-from axe.lsm.types import LSMBounds, Policy
+from axe.lsm.types import Policy
+from axe.config import LSMBounds
 from .infra import AxeResultDB
 
 

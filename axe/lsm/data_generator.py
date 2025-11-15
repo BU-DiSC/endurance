@@ -5,8 +5,9 @@ from typing import Optional
 import numpy as np
 from typing_extensions import override
 
+from axe.config import LSMBounds
 from axe.lsm.cost import Cost
-from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
+from axe.lsm.types import LSMDesign, Policy, System, Workload
 
 
 class LSMDataGenerator:

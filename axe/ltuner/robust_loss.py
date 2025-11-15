@@ -5,9 +5,10 @@ import toml
 import torch
 from torch import Tensor
 
+from axe.config import LSMBounds
 from axe.lcm.data.schema import LCMDataSchema
 from axe.lcm.model.builder import LearnedCostModelBuilder
-from axe.lsm.types import LSMBounds, Policy
+from axe.lsm.types import Policy
 from axe.ltuner.data.schema import LTunerDataSchema
 
 

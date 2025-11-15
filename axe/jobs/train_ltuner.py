@@ -13,7 +13,8 @@ from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 from typing_extensions import Annotated
 
-from axe.lsm.types import LSMBounds, Policy
+from axe.lsm.types import Policy
+from axe.config import LSMBounds
 from axe.ltuner.data.schema import LTunerDataSchema
 from axe.ltuner.loss import LearnedCostModelLoss
 from axe.ltuner.model.builder import LTuneModelBuilder

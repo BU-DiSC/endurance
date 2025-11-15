@@ -15,9 +15,6 @@ from .jobs.train_robust_ltuner import train_robust_ltuner
 
 app = typer.Typer()
 
-format = "[%(levelname)s][%(asctime)-15s][%(filename)s] %(message)s"
-datefmt = "%d-%m-%y:%H:%M:%S"
-logging.basicConfig(level=logging.DEBUG, format=format, datefmt=datefmt)
 logger = logging.getLogger(__name__)
 
 
@@ -46,10 +43,10 @@ def main(
         data = toml.load(f)
     config = AxeConfig.model_validate(data)
 
-    if verbose:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(config.log_level)
+    format = "[%(levelname)s][%(asctime)-15s][%(filename)s] %(message)s"
+    datefmt = "%d-%m-%y:%H:%M:%S"
+    logging_level = logging.DEBUG if verbose else config.log_level 
+    logging.basicConfig(level=logging_level, format=format, datefmt=datefmt)
 
     ctx.obj = config
 

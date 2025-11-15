@@ -2,7 +2,8 @@ from typing import Any
 
 import axe.lsm.data_generator as DataGen
 from axe.lsm.cost import Cost
-from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
+from axe.lsm.types import LSMDesign, Policy, System, Workload
+from axe.config import LSMBounds
 
 kSYSTEM_HEADER = [
     "entries_per_page",

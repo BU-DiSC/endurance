@@ -13,10 +13,10 @@ from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 from typing_extensions import Annotated
 
-from axe.config import AxeConfig
+from axe.config import AxeConfig, LSMBounds
 from axe.lcm.data.schema import LCMDataSchema
 from axe.lcm.model.builder import LearnedCostModelBuilder
-from axe.lsm.types import LSMBounds, Policy
+from axe.lsm.types import Policy
 from axe.util.losses import LossBuilder
 from axe.util.lr_scheduler import LRSchedulerBuilder
 from axe.util.optimizer import OptimizerBuilder

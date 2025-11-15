@@ -38,17 +38,17 @@ class LSMDesign:
             assert len(self.kapacity) == 2
 
 
-@dataclass()
-class LSMBounds:
-    max_considered_levels: int = 20
-    bits_per_elem_range: Tuple[float, float] = (1, 10)
-    size_ratio_range: Tuple[int, int] = (2, 31)
-    page_sizes: Tuple = (4, 8, 16)
-    entry_sizes: Tuple = (1024, 2048, 4096, 8192)
-    memory_budget_range: Tuple[float, float] = (5.0, 20.0)
-    selectivity_range: Tuple[float, float] = (1e-7, 1e-9)
-    elements_range: Tuple[int, int] = (100000000, 5000000000)
-
+# @dataclass()
+# class LSMBounds:
+#     max_considered_levels: int = 20
+#     bits_per_elem_range: Tuple[float, float] = (1, 10)
+#     size_ratio_range: Tuple[int, int] = (2, 31)
+#     page_sizes: Tuple = (4, 8, 16)
+#     entry_sizes: Tuple = (1024, 2048, 4096, 8192)
+#     memory_budget_range: Tuple[float, float] = (5.0, 20.0)
+#     selectivity_range: Tuple[float, float] = (1e-7, 1e-9)
+#     elements_range: Tuple[int, int] = (100000000, 5000000000)
+#
 
 @dataclass(frozen=True)
 class Workload:

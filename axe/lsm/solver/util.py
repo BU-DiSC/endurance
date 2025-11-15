@@ -3,7 +3,8 @@ from typing import Optional, Tuple
 import numpy as np
 import scipy.optimize as SciOpt
 
-from axe.lsm.types import Policy, System, LSMBounds
+from axe.lsm.types import Policy, System
+from axe.config import LSMBounds
 
 H_DEFAULT = 3
 T_DEFAULT = 3

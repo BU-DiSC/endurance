@@ -1,9 +1,11 @@
 import torch
 
-from .util import eval_lcm_impl
+from axe.config import LSMBounds
 from axe.lcm.data.schema import LCMDataSchema
 from axe.lsm.cost import Cost
-from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
+from axe.lsm.types import LSMDesign, System, Workload
+
+from .util import eval_lcm_impl
 
 
 class LCMEvalUtil:

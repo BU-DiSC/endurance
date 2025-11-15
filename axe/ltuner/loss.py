@@ -7,8 +7,8 @@ from torch import Tensor
 
 from axe.lcm.data.schema import LCMDataSchema
 from axe.lcm.model.builder import LearnedCostModelBuilder
-from axe.lsm.types import LSMBounds, Policy
-
+from axe.lsm.types import Policy
+from axe.config import LSMBounds
 
 class LearnedCostModelLoss(torch.nn.Module):
     def __init__(self, config: dict[str, Any], model_path: str):

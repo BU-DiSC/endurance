@@ -7,11 +7,13 @@ import torch
 from torch import Tensor
 from tqdm import tqdm
 
+from axe.config import LSMBounds
 from axe.lsm.cost import Cost
 from axe.lsm.solver import get_solver_from_policy
-from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
+from axe.lsm.types import LSMDesign, Policy, System, Workload
 from axe.ltuner.data.schema import LTunerDataSchema
 from axe.ltuner.model.builder import LTuneModelBuilder
+
 from .infra import AxeResultDB
 
 

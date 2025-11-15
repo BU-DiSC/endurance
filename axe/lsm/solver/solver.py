@@ -1,6 +1,7 @@
 import numpy as np
 from axe.lsm.cost import Cost
-from axe.lsm.types import LSMBounds, Policy, System, Workload
+from axe.lsm.types import Policy, System, Workload
+from axe.config import LSMBounds
 
 from .util import (
     get_bounds,

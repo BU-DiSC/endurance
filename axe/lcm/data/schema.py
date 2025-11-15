@@ -1,8 +1,9 @@
 import polars as pl
 
 import axe.lsm.data_generator as DataGen
+from axe.config import LSMBounds
 from axe.lsm.cost import Cost
-from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
+from axe.lsm.types import LSMDesign, Policy, System, Workload
 
 kSYSTEM_HEADER = [
     "entries_per_page",
@@ -124,10 +125,25 @@ class LCMDataSchema:
             system.num_entries,
             design.bits_per_elem,
             design.size_ratio,
-            design.policy.value,
+            self._embed_policy(design.policy),
         ] + list(design.kapacity)
 
         return line
+
+    def _embed_policy(self, policy: Policy) -> int:
+        match policy:
+            case Policy.Tiering:
+                return 0
+            case Policy.Leveling:
+                return 1
+            case Policy.Classic:
+                return 2
+            case Policy.Kapacity:
+                return 3
+            case Policy.QHybrid:
+                return 4
+            case Policy.Fluid:
+                return 5
 
     def sample_row_dict(self) -> dict:
         column_names = self.get_column_names()

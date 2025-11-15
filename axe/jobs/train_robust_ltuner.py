@@ -13,7 +13,8 @@ from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 from typing_extensions import Annotated
 
-from axe.lsm.types import LSMBounds, Policy
+from axe.config import LSMBounds
+from axe.lsm.types import Policy
 from axe.ltuner.data.schema import LTunerDataSchema
 from axe.ltuner.model.builder import LTuneModelBuilder
 from axe.ltuner.robust_loss import LearnedRobustLoss
@@ -176,7 +177,7 @@ class TrainRobustLTuner:
 
         max_epochs = self.jcfg["max_epochs"]
         for epoch in range(max_epochs):
-            self.log.info(f"Epoch: [{epoch+1}/{max_epochs}]")
+            self.log.info(f"Epoch: [{epoch + 1}/{max_epochs}]")
             train_loss = self.train_loop()
             curr_loss = self.validate_loop()
             self.log.info(f"Training loss: {train_loss:.5e}")
@@ -206,7 +207,8 @@ def train_robust_ltuner(
     loss_fn_path: Annotated[
         str,
         typer.Option(
-            "--loss-fn-path", help="Path to the learned cost model for the loss function."
+            "--loss-fn-path",
+            help="Path to the learned cost model for the loss function.",
         ),
     ],
     optimizer: Annotated[
@@ -227,16 +229,16 @@ def train_robust_ltuner(
     batch_size: Annotated[
         int, typer.Option("--batch-size", help="Batch size for training.")
     ],
-    shuffle: Annotated[bool, typer.Option("--shuffle", help="Shuffle the training data.")],
+    shuffle: Annotated[
+        bool, typer.Option("--shuffle", help="Shuffle the training data.")
+    ],
     num_workers: Annotated[
         int,
         typer.Option(
             "--num-workers", help="Number of worker processes for data loading."
         ),
     ],
-    policy: Annotated[
-        str, typer.Option("--lsm-policy", help="LSM policy to use.")
-    ],
+    policy: Annotated[str, typer.Option("--lsm-policy", help="LSM policy to use.")],
     use_gpu_if_avail: Annotated[
         bool, typer.Option("--use-gpu-if-avail", help="Use GPU if available.")
     ],
@@ -273,3 +275,4 @@ def train_robust_ltuner(
         config["job"]["use_gpu_if_avail"] = use_gpu_if_avail
 
     TrainRobustLTuner(config).run()
+

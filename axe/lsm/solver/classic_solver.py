@@ -1,12 +1,13 @@
-from typing import Optional, Callable, Tuple, List
+from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 import scipy.optimize as SciOpt
 
+from axe.config import LSMBounds
 from axe.lsm.cost import Cost
-from axe.lsm.types import LSMDesign, Policy, System, LSMBounds, Workload
-from .util import kl_div_con
-from .util import get_bounds
+from axe.lsm.types import LSMDesign, Policy, System, Workload
+
+from .util import get_bounds, kl_div_con
 
 H_DEFAULT = 3
 T_DEFAULT = 5
@@ -30,7 +31,12 @@ class ClassicSolver:
         workload: Workload,
         rho: float,
     ) -> float:
-        eta, lamb, h, T, = x
+        (
+            eta,
+            lamb,
+            h,
+            T,
+        ) = x
         design = LSMDesign(bits_per_elem=h, size_ratio=T, policy=policy, kapacity=())
         query_cost = 0
         query_cost += workload.z0 * kl_div_con(
@@ -93,7 +99,7 @@ class ClassicSolver:
                 fun=lambda x: self.robust_objective(x, policy, system, workload, rho),
                 x0=init_args,
                 callback=callback_fn,
-                **default_kwargs
+                **default_kwargs,
             )
             if sol.fun < min_sol or (design is None and solution is None):
                 min_sol = sol.fun
@@ -135,7 +141,7 @@ class ClassicSolver:
                 fun=lambda x: self.nominal_objective(x, policy, system, workload),
                 x0=init_args,
                 callback=callback_fn,
-                **default_kwargs
+                **default_kwargs,
             )
             if sol.fun < min_sol or (design is None and solution is None):
                 min_sol = sol.fun

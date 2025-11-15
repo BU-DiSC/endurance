@@ -4,8 +4,9 @@ import ConfigSpace as CS
 import pandas as pd
 from mlos_core.optimizers import SmacOptimizer
 
+from axe.config import LSMBounds
 from axe.lsm.cost import Cost
-from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
+from axe.lsm.types import LSMDesign, Policy, System, Workload
 
 from .infra import AxeResultDB
 

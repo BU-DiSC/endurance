@@ -1,13 +1,14 @@
-from typing import Optional, Callable, Tuple, List
-import torch
+from typing import Callable, List, Optional, Tuple
 
 import numpy as np
 import scipy.optimize as SciOpt
+import torch
 
+from axe.config import LSMBounds
 from axe.lcm.model.wrapper import LCMWrapper
 from axe.lsm.cost import Cost
-from axe.lsm.types import LSMDesign, Policy, System, LSMBounds, Workload
 from axe.lsm.solver.util import get_bounds
+from axe.lsm.types import LSMDesign, Policy, System, Workload
 
 H_DEFAULT = 3
 T_DEFAULT = 5
@@ -96,7 +97,7 @@ class ClassicLCMSolver:
                 fun=lambda x: self.robust_objective(x, policy, system, workload, rho),
                 x0=init_args,
                 callback=callback_fn,
-                **default_kwargs
+                **default_kwargs,
             )
             if sol.fun < min_sol or (design is None and solution is None):
                 min_sol = sol.fun
@@ -138,7 +139,7 @@ class ClassicLCMSolver:
                 fun=lambda x: self.nominal_objective(x, policy, system, workload),
                 x0=init_args,
                 callback=callback_fn,
-                **default_kwargs
+                **default_kwargs,
             )
             if sol.fun < min_sol or (design is None and solution is None):
                 min_sol = sol.fun

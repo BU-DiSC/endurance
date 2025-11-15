@@ -2,7 +2,6 @@
 import logging
 import multiprocessing as mp
 import os
-from typing import Optional
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -10,7 +9,8 @@ import typer
 from tqdm import tqdm
 from typing_extensions import Annotated
 
-from axe.lsm.types import LSMBounds, Policy
+from axe.config import LSMBounds
+from axe.lsm.types import Policy
 from axe.ltuner.data.schema import LTunerDataSchema
 
 
@@ -106,9 +106,7 @@ def create_ltuner_data(
     overwrite_if_exists: Annotated[
         bool, typer.Option("--overwrite-if-exists", help="Overwrite existing files.")
     ],
-    policy: Annotated[
-        str, typer.Option("--lsm-policy", help="LSM policy to use.")
-    ],
+    policy: Annotated[str, typer.Option("--lsm-policy", help="LSM policy to use.")],
 ):
     """Generate training data for the Learned Tuner (LTuner)."""
     config = ctx.obj
@@ -129,3 +127,4 @@ def create_ltuner_data(
         config["lsm"]["policy"] = policy
 
     CreateLTunerData(config).run()
+
