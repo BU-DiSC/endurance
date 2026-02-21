@@ -9,26 +9,34 @@ import typer
 from tqdm import tqdm
 from typing_extensions import Annotated
 
-from axe.config import LSMBounds
+from axe.config import AxeConfig, LSMBounds
 from axe.lsm.types import Policy
 from axe.ltuner.data.schema import LTunerDataSchema
 
+logger = logging.getLogger(__name__)
+
 
 class CreateLTunerData:
-    def __init__(self, cfg: dict) -> None:
-        self.log: logging.Logger = logging.getLogger(cfg["app"]["name"])
-        self.disable_tqdm: bool = cfg["app"]["disable_tqdm"]
-        self.policy: Policy = getattr(Policy, cfg["lsm"]["policy"])
-        self.bounds: LSMBounds = LSMBounds(**cfg["lsm"]["bounds"])
-        self.seed: int = cfg["app"]["random_seed"]
+    def __init__(
+        self,
+        config: AxeConfig,
+        output_dir: str,
+        num_samples: int = 1024,
+        num_threads: int = 1,
+        num_files: int = 1,
+        overwrite_if_exists: bool = False,
+    ) -> None:
+        self.disable_tqdm: bool = config.disable_tqdm
+        self.policy: Policy = config.lsm.policy
+        self.bounds: LSMBounds = config.lsm.bounds
+        self.seed: int = config.seed
 
-        jcfg = cfg["job"]["create_ltuner_data"]
-        self.output_dir: str = jcfg["output_dir"]
-        self.num_samples: int = jcfg["num_samples"]
-        self.num_files: int = jcfg["num_files"]
-        self.num_workers: int = jcfg["num_workers"]
-        self.overwrite_if_exists: bool = jcfg["overwrite_if_exists"]
-        self.cfg = cfg
+        self.output_dir: str = output_dir
+        self.num_samples: int = num_samples
+        self.num_files: int = num_files
+        self.num_threads: int = num_threads
+        self.overwrite_if_exists: bool = overwrite_if_exists
+        self.config = config
 
     def generate_parquet_file(
         self, schema: LTunerDataSchema, idx: int, pos: int
@@ -37,7 +45,7 @@ class CreateLTunerData:
         fpath = os.path.join(self.output_dir, fname)
 
         if os.path.exists(fpath) and (not self.overwrite_if_exists):
-            self.log.debug(f"{fpath} exists, exiting.")
+            logger.debug(f"{fpath} exists, exiting.")
             return -1
 
         pbar = tqdm(
@@ -64,18 +72,18 @@ class CreateLTunerData:
         return idx
 
     def run(self) -> None:
-        self.log.info("[Job] Creating LTuner Data")
+        logger.info("[Job] Creating LTuner Data")
         os.makedirs(self.output_dir, exist_ok=True)
-        self.log.info(f"Writing all files to {self.output_dir}")
+        logger.info(f"Writing all files to {self.output_dir}")
 
         inputs = list(range(0, self.num_files))
-        threads = self.num_workers
+        threads = self.num_threads
         if threads == -1:
             threads = mp.cpu_count()
         if threads > self.num_files:
-            self.log.debug("Num workers > num files, scaling down")
+            logger.debug("Num workers > num files, scaling down")
             threads = self.num_files
-        self.log.debug(f"Using {threads=}")
+        logger.debug(f"Using {threads=}")
 
         if threads < 2:
             for idx in range(self.num_files):
@@ -126,5 +134,4 @@ def create_ltuner_data(
     if policy is not None:
         config["lsm"]["policy"] = policy
 
-    CreateLTunerData(config).run()
-
+    CreateLTunerData(config, output_dir=output_dir).run()

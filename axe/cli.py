@@ -27,7 +27,7 @@ def main(
             "--config",
             help="Path to the configuration file.",
         ),
-    ] = "axe.toml",
+    ] = "example.toml",
     verbose: Annotated[
         bool,
         typer.Option(

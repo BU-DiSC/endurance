@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 from typing_extensions import Annotated
 
-from axe.config import AxeConfig, LSMBounds
+from axe.config import AxeConfig, LSMBounds, LossConfig
 from axe.lcm.data.schema import LCMDataSchema
 from axe.lcm.model.builder import LearnedCostModelBuilder
 from axe.lsm.types import Policy
@@ -63,11 +63,11 @@ class TrainLCM:
         self.training_data, self.validate_data = self._build_data()
 
     def _build_loss_fn(self) -> torch.nn.Module:
-        choice = self.config.loss.name
-        loss = LossBuilder(self.config.loss).build(choice)
-        logger.info(f"Loss function: {choice}")
+        loss_config: LossConfig = self.config.lcm_train.loss
+        loss = LossBuilder(loss_config).build(loss_config.name)
+        logger.info(f"Loss function: {loss_config.name}")
         if loss is None:
-            logger.warning(f"Invalid loss function: {choice}")
+            logger.warning(f"Invalid loss function: {loss_config.name}")
             raise KeyError
         if self.config.use_gpu and torch.cuda.is_available():
             loss.to("cuda")
@@ -84,15 +84,16 @@ class TrainLCM:
         return model
 
     def _build_optimizer(self, model) -> torch.optim.Optimizer:
-        return OptimizerBuilder(self.config.optimizer).build(
-            optimizer_choice=self.config.optimizer.name, model=model
+        return OptimizerBuilder(self.config.lcm_train.optimizer).build(
+            optimizer_choice=self.config.lcm_train.optimizer.name, model=model
         )
 
     def _build_scheduler(
         self, optimizer: torch.optim.Optimizer
     ) -> Optional[torch.optim.lr_scheduler._LRScheduler]:
-        return LRSchedulerBuilder(self.config.scheduler).build(
-            optimizer, self.config.scheduler.name
+        cfg = self.config.lcm_train.scheduler
+        return LRSchedulerBuilder(cfg).build(
+            optimizer, cfg.name
         )
 
     def _build_data(self) -> Tuple[DataLoader, DataLoader]:
@@ -283,11 +284,11 @@ def train_lcm(
     if policy is not None:
         config.lsm.policy = getattr(Policy, policy)
     if loss_fn is not None:
-        config.loss.name = loss_fn
+        config.lcm_train.loss.name = loss_fn
     if optimizer is not None:
-        config.optimizer.name = optimizer
+        config.lcm_train.optimizer.name = optimizer
     if lr_scheduler is not None:
-        config.scheduler.name = lr_scheduler
+        config.lcm_train.scheduler.name = lr_scheduler
 
     TrainLCM(
         config,
