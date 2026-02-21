@@ -66,11 +66,8 @@ class QLSMSolver:
     def get_robust_design(
         self,
         system: System,
+        workload: Workload,
         rho: float,
-        z0: float,
-        z1: float,
-        q: float,
-        w: float,
         init_args: np.ndarray = np.array(
             [H_DEFAULT, T_DEFAULT, LAMBDA_DEFAULT, ETA_DEFAULT]
         ),

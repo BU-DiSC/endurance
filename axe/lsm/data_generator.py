@@ -1,5 +1,5 @@
 import random
-from typing import Optional, override
+from typing import Optional
 from itertools import combinations_with_replacement
 
 import numpy as np
@@ -21,7 +21,7 @@ class LSMDataGenerator:
 
     def _sample_size_ratio(self) -> int:
         low, high = self.bounds.size_ratio_range
-        return self.rng.integers(low=low, high=high)
+        return self.rng.integers(low=low, high=high).item()
 
     def _sample_bloom_filter_bits(self, max: Optional[float] = None) -> float:
         if max is None:
@@ -52,7 +52,7 @@ class LSMDataGenerator:
 
     def _sample_total_elements(self) -> int:
         low, high = self.bounds.elements_range
-        return self.rng.integers(low=low, high=high)
+        return self.rng.integers(low=low, high=high).item()
 
     def sample_system(self) -> System:
         E = self._sample_entry_size()
@@ -90,7 +90,6 @@ class TieringGen(LSMDataGenerator):
     def __init__(self, bounds: LSMBounds, **kwargs):
         super().__init__(bounds, **kwargs)
 
-    @override
     def sample_design(
         self,
         system: System,
@@ -108,7 +107,6 @@ class LevelingGen(LSMDataGenerator):
     def __init__(self, bounds: LSMBounds, **kwargs):
         super().__init__(bounds, **kwargs)
 
-    @override
     def sample_design(self, system: System) -> LSMDesign:
         h = self._sample_bloom_filter_bits(max=(system.mem_budget - self.MEM_EPSILON))
         T = self._sample_size_ratio()
@@ -123,7 +121,6 @@ class ClassicGen(LSMDataGenerator):
     def __init__(self, bounds: LSMBounds, **kwargs):
         super().__init__(bounds, **kwargs)
 
-    @override
     def sample_design(self, system: System) -> LSMDesign:
         h = self._sample_bloom_filter_bits(max=(system.mem_budget - self.MEM_EPSILON))
         T = self._sample_size_ratio()
@@ -142,7 +139,6 @@ class KapacityGen(LSMDataGenerator):
 
         return list(arr)
 
-    @override
     def sample_design(self, system: System) -> LSMDesign:
         design = super().sample_design(system)
         h = design.bits_per_elem
@@ -166,9 +162,8 @@ class QHybridGen(LSMDataGenerator):
         return self.rng.integers(
             low=self.bounds.size_ratio_range[0] - 1,
             high=max_size_ratio,
-        )
+        ).item()
 
-    @override
     def sample_design(self, system: System) -> LSMDesign:
         design = super().sample_design(system)
         h = design.bits_per_elem
@@ -189,9 +184,8 @@ class FluidLSMGen(LSMDataGenerator):
         return self.rng.integers(
             low=self.bounds.size_ratio_range[0] - 1,
             high=max_size_ratio,
-        )
+        ).item()
 
-    @override
     def sample_design(self, system: System) -> LSMDesign:
         design = super().sample_design(system)
         h = design.bits_per_elem

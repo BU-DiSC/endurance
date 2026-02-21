@@ -2,6 +2,7 @@ from typing import Callable, Optional, Tuple
 
 import numpy as np
 import scipy.optimize as SciOpt
+
 from axe.lsm.cost import Cost
 from axe.lsm.types import LSMBounds, LSMDesign, Policy, System, Workload
 
@@ -67,11 +68,8 @@ class FluidLSMSolver:
     def get_robust_design(
         self,
         system: System,
+        workload: Workload,
         rho: float,
-        z0: float,
-        z1: float,
-        q: float,
-        w: float,
         init_args: np.ndarray = np.array(
             [H_DEFAULT, T_DEFAULT, LAMBDA_DEFAULT, ETA_DEFAULT]
         ),
@@ -104,7 +102,7 @@ class FluidLSMSolver:
             fun=lambda x: self.nominal_objective(x, system, workload),
             x0=init_args,
             callback=callback_fn,
-            **default_kwargs
+            **default_kwargs,
         )
         design = LSMDesign(
             bits_per_elem=solution.x[0],
