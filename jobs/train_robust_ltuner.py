@@ -102,7 +102,7 @@ class TrainRobustLTuner:
         with open(os.path.join(self.jcfg["save_dir"], "axe.toml"), "w") as fid:
             toml.dump(self.cfg, fid)
 
-    def temp_step(self, decay_rate: float = 0.97, floor: float = 0.5):
+    def temp_step(self, decay_rate: float = 0.97, floor: float = 1):
         self.train_kwargs["temp"] *= decay_rate
         if self.train_kwargs["temp"] < floor:
             self.train_kwargs["temp"] = floor

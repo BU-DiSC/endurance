@@ -15,7 +15,7 @@ from axe.ltuner.model.builder import LTuneModelBuilder
 from experiments.infra import AxeResultDB
 
 
-class ExpLTunerEvaluate:
+class ExpRobustLTunerEvaluate:
     def __init__(self, config: dict) -> None:
         self.log: logging.Logger = logging.getLogger(config["app"]["name"])
         path = config["experiments"]["ltuner_path"]
@@ -75,12 +75,10 @@ class LTunerEvaluator:
         policy: Policy = getattr(Policy, cfg["lsm"]["policy"])
         bounds: LSMBounds = LSMBounds(**cfg["lsm"]["bounds"])
         self.schema: LTunerDataSchema = LTunerDataSchema(
-            policy=policy, bounds=bounds, seed=seed, robust=True
+            policy=policy, bounds=bounds, seed=seed
         )
         # load in model
-        self.model = LTuneModelBuilder(self.schema, **cfg["ltuner"]["model"]).build(
-            robust=True
-        )
+        self.model = LTuneModelBuilder(self.schema, **cfg["ltuner"]["model"]).build()
 
         model_data = torch.load(os.path.join(model_path, model_name), weights_only=True)
         self._load_status = self.model.load_state_dict(model_data["model_state_dict"])
@@ -163,9 +161,7 @@ class LTunerEvaluator:
             mem_budget=row["mem_budget"],
             num_entries=row["num_entries"],
         )
-        rho = row["rho"]
-
-        return workload, system, rho
+        return workload, system
 
     def get_ltune_designs(self, table: pl.DataFrame) -> list[LSMDesign]:
         input_dataset = table.to_torch(
@@ -197,14 +193,12 @@ class LTunerEvaluator:
             desc="Eval",
             ncols=80,
         ):
-            workload, system, rho = self.row_to_objs(row)
+            workload, system = self.row_to_objs(row)
             row = LTunerDataSchema.design_to_dict(ltune_design)
             row["cost"] = self.cost_fn.calc_cost(ltune_design, system, workload)
             ltuner_table.append(row)
 
-            design, _ = self.solver.get_robust_design(
-                system=system, workload=workload, rho=rho
-            )
+            design, _ = self.solver.get_nominal_design(system=system, workload=workload)
             row = LTunerDataSchema.design_to_dict(design)
             row["cost"] = self.cost_fn.calc_cost(design, system, workload)
             solver_table.append(row)

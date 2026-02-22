@@ -24,7 +24,7 @@ run = [
     # "train_lcm",
     # "create_ltuner_data",
     # "train_ltuner"
-    "run_experiments",
+    # "run_experiments",
 ]
 random_seed = 2169
 disable_tqdm = false
@@ -68,7 +68,7 @@ page_sizes = [4, 8, 16]                     # page size in KB
 entry_sizes = [1024, 2048, 4096, 8192]      # avg. size of each entry bits
 memory_budget_range = [5, 20]               # low, high, bits per element
 selectivity_range = [1e-7, 1e-9]            # low, high
-elements_range = [100000000, 2000000000]    # element range
+elements_range = [ 100000000, 2000000000 ]    # element range
 
 # =============================================================================
 # HEADER JOB
@@ -131,7 +131,7 @@ overwrite_if_exists = false
 [job.train_ltuner]
 # --------------------------------------
 max_epochs = 100
-save_dir = "data/ltuner/models/kaplsm_250523_1406"
+save_dir = "data/ltuner/models/robust_kaplsm_260221_1449"
 # Learned cost model is our loss, input full path to checkpoint or model file
 loss_fn_path = "data/lcm/models/kaplsm_250523_1406"
 optimizer = "AdamW"
@@ -209,7 +209,7 @@ hidden_length = 4
 hidden_width = 64
 dropout = 0.1                     # dropout percentage
 norm_layer = "Batch"            # batch or layer norm
-categorical_mode = "gumbel"    # reinmax or gumbel
+categorical_mode = "reinmax"    # reinmax or gumbel
 
 # =============================================================================
 # HEADER SCHEDULERS

@@ -11,9 +11,10 @@ from jobs.create_ltuner_data import CreateLTunerData
 from jobs.run_experiments import RunExperiments
 from jobs.train_lcm import TrainLCM
 from jobs.train_ltuner import TrainLTuner
+from jobs.train_robust_ltuner import TrainRobustLTuner
 
 
-class AxeDriver:
+class AxeApp:
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
 
@@ -32,6 +33,7 @@ class AxeDriver:
             "create_ltuner_data": CreateLTunerData,
             "train_ltuner": TrainLTuner,
             "run_experiments": RunExperiments,
+            "train_robust_ltuner": TrainRobustLTuner
         }
         jobs_list = self.config["app"]["run"]
         self.log.info(f"Jobs to run: {jobs_list}")
@@ -56,5 +58,5 @@ if __name__ == "__main__":
     with open(config_path) as fid:
         config = toml.load(fid)
 
-    driver = AxeDriver(config)
+    driver = AxeApp(config)
     driver.run()

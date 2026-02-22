@@ -134,4 +134,4 @@ dmypy.json
 *.model
 *.pt
 
-.DS_Store
+scratchbook/
